@@ -16,6 +16,7 @@ class BayesianCost(object):
         self._double_gaussian_weights_prior = double_gaussian_weights_prior
         self._wide_prior_std = wide_prior_std
         self._narrow_prior_std = narrow_prior_std
+        self._do_softmax = do_softmax
 
     def get_bayesian_cost(self, prediction, target, variances):
         log_pw, log_qw = self.calculate_priors()
@@ -45,9 +46,6 @@ class BayesianCost(object):
             log_qw += self.calc_log_q_prior(biases, mu_b, rho_b)
 
         return log_pw, log_qw
-
-    def calculate_likelihood(self, prediction, target, variances):
-        pass
 
     def calc_log_weight_prior(self, weights, layer):
 
@@ -95,15 +93,15 @@ class BayesianCost(object):
         return tf.reduce_sum(log_qw)
 
     def calculate_likelihood(self, truth, forecast, variance):
-        if DO_SOFTMAX:  # Corresponds to probability assigned to true outcome
+        if self._do_softmax:  # Corresponds to probability assigned to true outcome
             MIN_LOG_LIKELI = -10  # Avoid numerical issues  # TODO make sure that this is properly defined somewhere
             true_indices = tf.argmax(truth, # TODO create a new class for claaification proproblme????
-                                     axis=CLASS_DIM)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
+                                     axis=self._network.n_outputs)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
             p_forecast = tf.gather(forecast, true_indices)
             log_likelihood = tf.maximum(tf.log(p_forecast), MIN_LOG_LIKELI)
         else:
             chi_squared = (truth - forecast) ** 2 / variance
-            log_likelihood = - 0.5 * (chi_squared + tf.log(variance) + LOG_TWO_PI)  # TODO move LOG_PWO_PI to somewhere?
+            log_likelihood = - 0.5 * (chi_squared + tf.log(variance) + tm.LOG_TWO_PI)  # TODO move LOG_PWO_PI to somewhere?
 
         return tf.reduce_sum(log_likelihood)
 
