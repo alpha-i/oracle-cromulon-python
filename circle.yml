@@ -1,6 +1,6 @@
 machine:
   python:
-    version: 3.6
+    version: 3.6.0
   post:
     - wget http://repo.continuum.io/miniconda/Miniconda3-3.7.0-Linux-x86_64.sh -O ~/miniconda.sh
     - bash ~/miniconda.sh -b -p $HOME/miniconda
@@ -18,4 +18,5 @@ dependencies:
 
 test:
   override:
+    - flake8 ./
     - PYTHONPATH=. pytest --cov=alphai_crocubot_oracle --cov-report html:$CIRCLE_ARTIFACTS tests/

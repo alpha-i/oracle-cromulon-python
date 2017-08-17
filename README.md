@@ -21,15 +21,9 @@ $ source activate crocubot-env
 $ pip install -u setuptools --ignore-installed --no-cache-dir
 $ pip install -r requirements.txt --src $CONDA_PREFIX
 $ pip install -r requirements_dev.txt
+```
 
 ### Running the test suite
 ```bash
 $ PYTHONPATH=. python -m pytest tests/
 ```
-
-## Install
-To install run
-```
-$ pip install .
-```
-
