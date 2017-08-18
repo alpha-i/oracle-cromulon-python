@@ -6,13 +6,25 @@ from alphai_time_series.transform import gaussianise
 
 LOG_TWO_PI = np.log(2 * np.pi)
 
+# TODO
+# 1 set variables set in the config file and not as global constants
+# 2 make doctrings for all functions
+
+MIN_LOG_LIKELIHOOD = -10
 DEFAULT_TF_TYPE = tf.float32
 DEFAULT_D_TYPE = 'float32'
 
+
 def selu(x):
+    """
+    selu activation function 
+    see: https://arxiv.org/pdf/1706.02515.pdf
+    :param x: 
+    :return:
+    """
     alpha = 1.6732632423543772848170429916717
     scale = 1.0507009873554804934193349852946
-    return scale * tf.where(x>=0.0, x, alpha * tf.nn.elu(x))
+    return scale * tf.where(x >= 0.0, x, alpha * tf.nn.elu(x))
 
 
 def inv_selu(x):
@@ -35,12 +47,25 @@ def inv_selu(x):
 
     return tf.where(x >= 0.0, x / scale, tf.log(x / alpha / scale + 1.))
 
+
 def kelu(x):
+    """
+    experimental activation function
+    :param x: 
+    :return: 
+    """
     k = 3.0
-    return tf.where(x>=0.0, k * x, x / k)
+    return tf.where(x >= 0.0, k * x, x / k)
+
 
 def inv_kelu(x):
+    """
+    inverse of kelu function 
+    :param x: 
+    :return: 
+    """
     return -kelu(-x)
+
 
 def centred_gaussian(shape, sigma=1., seed=None):
     """Useful for generating Gaussian noise"""
@@ -107,14 +132,15 @@ def soft_inverse_np(matrix):
 #        print("found complex value")
 
     if not np.isfinite(matrix).all():
-         print("Inversion failed - elements not finite")
-         return matrix
+        print("Inversion failed - elements not finite")
+        return matrix
 
     return np.linalg.inv(matrix)  # or try np.linalg.inv(matrix)
 
 
 def unit_gaussian(x):
     return tf.cast(tf.contrib.distributions.Normal(1., 0.).prob(x), DEFAULT_TF_TYPE)
+
 
 def sinh_shift(x, c):
     """ See http://www.leemon.com/papers/2005bsi.pdf
