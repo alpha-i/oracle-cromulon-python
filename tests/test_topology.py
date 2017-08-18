@@ -7,16 +7,18 @@ class TestTopology(unittest.TestCase):
 
     def setUp(self):
 
-        self.layers = [{"input": 200, "output": 50, "activation_func": "relu", "trainable": False},
-                       {"input": 50, "output": 40, "activation_func": "relu", "trainable": False},
-                       {"input": 40, "output": 20, "activation_func": "linear", "trainable": False}]
+        self.layers = [
+        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
+        ]
 
         self.topology = Topology(self.layers)
 
     def test_positive_num_units(self):
 
         bad_layers = self.topology.layers
-        bad_layers[0]["output"] = -1
+        bad_layers[0]["height"] = -1
         self.assertRaises(
             ValueError,
             self.topology._verify_layers,
@@ -44,12 +46,18 @@ class TestTopology(unittest.TestCase):
             bad_layers
         )
 
-    def test_pair_of_layers(self):
+    def test_get_cell_shape(self):
 
-        bad_layers = self.topology.layers
-        bad_layers[0]["output"] = bad_layers[1]["input"] + 10
-        self.assertRaises(
-            ValueError,
-            self.topology._verify_layers,
-            bad_layers
-        )
+        cell_shape = self.topology.get_cell_shape(0)
+        assert cell_shape == [1 , 10]
+
+    def test_get_weight_shape(self):
+
+        weight_shape = self.topology.get_weight_shape(0)
+        assert weight_shape == [20, 10, 20, 10]
+
+    def test_get_bias_shape(self):
+
+        bias_shape = self.topology.get_bias_shape(0)
+        assert bias_shape == [20, 10]
+

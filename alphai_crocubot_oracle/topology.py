@@ -16,8 +16,8 @@ class Topology(object):
         self._verify_layers(layers)
         self.layers = layers
         self.n_layers = len(layers)
-        self.n_inputs = layers[0]["input"]
-        self.n_outputs = layers[-1]["output"]
+        self.n_inputs = layers[0]["height"] * layers[0]["width"]
+        self.n_outputs = layers[-1]["height"] * layers[-1]["width"]
 
     def _verify_layers(self, layers):
         """
@@ -27,43 +27,70 @@ class Topology(object):
         :return: None
         """
         for i, layer in enumerate(layers):
-            self._verify_single_layer(layer, i)
 
-        for i in range(len(layers) - 1):
-            self.verify_pair_of_layers(layers[i], layers[i+1], i)
+            if layer["activation_func"] not in self.activation_funcs:
+                raise ValueError('Unexpected activation function ' + str(layer["activation_func"]))
 
-    def _verify_single_layer(self, layer, layer_number):
+            for key in ['height', 'width']:
+                x = layer[key]
+                if not (isinstance(x, int) and x > 0):
+                    raise ValueError(
+                        'Layer {} {} should be a positive integer'.format(i, key)
+                    )
+
+            if not isinstance(layer["trainable"], bool):
+                raise ValueError('Layer {} trainable should be a boolean'.format(i))
+
+    def get_cell_shape(self, layer_number):
         """
-        A function that checks individual layers to ensure that the activation function is one that is expected,
-        that the input and output dimensions are positive integers and that the trainable flag is a boolean.
-        :param layer: dict
+        returns the shape of the cells in a layer specified by the layer number
         :param layer_number: int
-        :return: None
+        :return: [int, int]
         """
 
-        if layer["activation_func"] not in self.activation_funcs:
-            raise ValueError('Unexpected activation function ' + str(layer["activation_func"]))
+        cell_height = self.layers[layer_number]["cell_height"]
+        cell_width = self.layers[layer_number]["width"]
 
-        for key in ['input', 'output']:
-            x = layer[key]
-            if not (isinstance(x, int) and x > 0):
-                raise ValueError(
-                    'Layer {} {} should be a positive integer'.format(layer_number, key)
-                )
+        return [cell_height, cell_width]
 
-        if not isinstance(layer["trainable"], bool):
-            raise ValueError('Layer {} trainable should be a boolean'.format(layer_number))
+    def get_weight_shape(self, layer_number):
 
-    def verify_pair_of_layers(self, primary_layer, secondary_layer, layer_number):
+        if layer_number >= self.n_layers:
+            raise ValueError('layer_number should be strictly less the number of layers')
+
+        input_height = self.layers[layer_number]["height"]
+        input_width = self.layers[layer_number]["width"]
+
+        output_height = self.layers[layer_number + 1]["height"]
+        output_width = self.layers[layer_number + 1]["width"]
+
+        weight_shape = [input_height, input_width, output_height, output_width]
+
+        return weight_shape
+
+    def get_bias_shape(self, layer_number):
         """
-        A function that checks that the output dimension of one layer matches the input dimension in the layer above
-        :param primary_layer: dict defining a layer
-        :param secondary_layer: dict defining layer above
-        :param layer_number: int
-        :return: None
+        returns the shape of the biases in a layer specified by layer number as an array
+        :param layer_number:
+        :return:
         """
+        if layer_number >= self.n_layers:
+            raise ValueError('layer_number should be strictly less the number of layers')
 
-        if primary_layer["output"] != secondary_layer["input"]:
-            raise ValueError(
-                'The output of layer {} and the input of layer {} do not match.'.format(layer_number, layer_number+1)
-            )
+        height = self.layers[layer_number + 1]["height"]
+        width = self.layers[layer_number + 1]["width"]
+
+        bias_shape = [height, width]
+
+        return bias_shape
+
+
+if __name__ == "__main__":
+
+    layers = [
+        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
+        ]
+
+    topology = Topology(layers)
