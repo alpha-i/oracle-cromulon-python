@@ -15,9 +15,14 @@ class Topology(object):
         self.activation_funcs = ALLOWED_ACTIVATION_FN
         self._verify_layers(layers)
         self.layers = layers
-        self.n_layers = len(layers)
+        self.n_layers = len(layers) - 1  # n layers of neurons are connected by n-1 sets of weights
         self.n_inputs = layers[0]["height"] * layers[0]["width"]
         self.n_outputs = layers[-1]["height"] * layers[-1]["width"]
+        self.n_features_per_series = layers[0]["width"]
+        self.n_output_series = layers[-1]["height"]
+        self.n_series = layers[0]["height"]
+        self.n_classification_bins = layers[-1]["width"]
+
 
     def _verify_layers(self, layers):
         """
