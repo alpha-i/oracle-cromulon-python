@@ -99,45 +99,6 @@ def rand_lognormal_tf(shape, sigma):
     return tf.random_normal(shape=shape, stddev=sigma, dtype=DEFAULT_TF_TYPE)
 
 
-def left_inverse(matrix):
-
-    matrix_t = tf.transpose(matrix)
-    temp_matrix = tf.matmul(matrix, matrix_t)
-    inv_temp_matrix = matrix_soft_inverse(temp_matrix)
-
-    return tf.matmul(matrix_t, inv_temp_matrix)
-
-
-def right_inverse(matrix):
-
-    matrix_t = tf.transpose(matrix)
-    temp_matrix = tf.matmul(matrix_t, matrix)
-    inv_temp_matrix = matrix_soft_inverse(temp_matrix)
-
-    return tf.matmul(inv_temp_matrix, matrix_t)
-
-
-def matrix_soft_inverse(matrix):
-    """Wraps numpy inverse in tensorflow"""
-
-    return tf.py_func(soft_inverse_np, [matrix], DEFAULT_TF_TYPE)
-
-
-def soft_inverse_np(matrix):
-
-#    minval = np.min(np.abs(matrix))
-#    maxval = np.max(np.abs(matrix))
-    # print("inverting shape:", matrix.shape)
-#    if not np.isreal(matrix).all():
-#        print("found complex value")
-
-    if not np.isfinite(matrix).all():
-        print("Inversion failed - elements not finite")
-        return matrix
-
-    return np.linalg.inv(matrix)  # or try np.linalg.inv(matrix)
-
-
 def unit_gaussian(x):
     return tf.cast(tf.contrib.distributions.Normal(1., 0.).prob(x), DEFAULT_TF_TYPE)
 
