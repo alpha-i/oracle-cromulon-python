@@ -78,3 +78,16 @@ class TestTensormath(tf.test.TestCase):
             for x, mu, sigma, expected_result in zip(xs, mus, sigma, results):
                 actual_result = tm.log_gaussian(x, mu, sigma).eval()
                 self.assertAlmostEqual(actual_result, expected_result, places=4)
+
+    def test_log_gaussian(self):
+
+        xs = [-1.0, 0.2, 2.0]
+        mus = [0.1, 0.2, 1.0]
+        sigma = [0.1, 0.2, 10.0]
+
+        results = [-1.51427, -1.11894, -10.9189]
+
+        with self.test_session():
+            for x, mu, sigma, expected_result in zip(xs, mus, sigma, results):
+                actual_result = tm.log_gaussian_logsigma(x, mu, sigma).eval()
+                self.assertAlmostEqual(actual_result, expected_result, places=4)
