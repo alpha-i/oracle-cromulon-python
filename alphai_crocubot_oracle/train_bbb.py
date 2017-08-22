@@ -21,7 +21,7 @@ N_TRAIN_SAMPLES = 1000
 BATCH_SIZE = 100
 
 
-def train(topology, data_source="MNIST", architecture ='full', cost_type=DEFAULT_COST, do_load_model=DEFAULT_TRY_TO_RESTORE,
+def train(topology, data_source="MNIST", cost_type=DEFAULT_COST, do_load_model=DEFAULT_TRY_TO_RESTORE,
           n_epochs=DEFAULT_EPOCHS, save_file_name=None, dtype=tm.DEFAULT_TF_TYPE, bin_distribution=None,
           n_passes=DEFAULT_NUMBER_OF_PASSES):
     """Train network on either MNIST or time series data"""
