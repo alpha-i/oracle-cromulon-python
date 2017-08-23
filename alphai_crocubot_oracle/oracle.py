@@ -33,11 +33,11 @@ class MvpOracle:
                     ndays: number of days of feature data_x.
                     start_min_after_market_open: start time of feature data_x in minutes after market open.
                     is_target: boolean to define if this feature is a target (y). The feature is always consider as x.
-                exchange_name: name of the exchange to create the market calendar 
+                exchange_name: name of the exchange to create the market calendar
                 prediction_frequency_ndays: frequency of the prediction in days
-                prediction_min_after_market_open: prediction time in number of minutes after market open 
+                prediction_min_after_market_open: prediction time in number of minutes after market open
                 target_delta_ndays: days difference between prediction and target
-                target_min_after_market_open: target time in number of minutes after market open 
+                target_min_after_market_open: target time in number of minutes after market open
             covariance_config:
                 covariance_method: The name of the covariance estimation method.
                 covariance_ndays: The number of previous days those are needed for the covariance estimate (int).
@@ -98,7 +98,7 @@ class MvpOracle:
         :param pd.DataFrame historical_universes: dates and symbols of historical universes
         :param dict train_data: OHLCV data as dictionary of pandas DataFrame.
         :param datetime.datetime execution_time: time of execution of training
-        :return: 
+        :return:
         """
         logging.info('Training model on {}.'.format(
             execution_time,
@@ -203,5 +203,3 @@ class MvpOracle:
                 pass
             else:
                 raise NotImplementedError
-
-

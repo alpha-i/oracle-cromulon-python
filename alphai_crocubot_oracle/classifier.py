@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def make_template_distribution(training_labels, n_bins):
     """ Returns the best-fit characteristics of the continuous probability distribution fit to the input data"""
 
@@ -30,7 +31,7 @@ def make_template_distribution(training_labels, n_bins):
 
 
 def find_best_fit_pdf_type(x):
-    return 'Gaussian'  #  TBC: enable tests for t-distributed data; lognormal, etc
+    return 'Gaussian'  # TODO: enable tests for t-distributed data; lognormal, etc
 
 
 def compute_bin_centres(bin_edges):
@@ -71,7 +72,7 @@ def classify_labels(bin_edges, labels):
     binned_labels = np.zeros((n_labels, n_bins))
 
     for i in range(n_labels):
-        binned_labels[i,:], _ = np.histogram(labels[i], bin_edges, density=False)
+        binned_labels[i, :], _ = np.histogram(labels[i], bin_edges, density=False)
 
     if n_label_dimensions == 2:
         binned_labels = binned_labels.reshape(label_shape[0], label_shape[1], n_bins)
@@ -90,7 +91,7 @@ def declassify_labels(dist, pdf_arrays):
     point_estimates = extract_point_estimates(dist["bin_centres"], pdf_arrays)
 
     mean = np.mean(point_estimates)
-    variance = np.var(point_estimates)  -  dist['shep_correction']
+    variance = np.var(point_estimates) - dist['shep_correction']
 
     variance = np.maximum(variance, dist['shep_correction'])  # Prevent variance becoming too small
 
@@ -127,7 +128,7 @@ def calc_sheppards_correction(bin_widths):
 
 def calc_mean_bin_width(bin_edges):
 
-    n_bins = len(bin_edges)-1
+    n_bins = len(bin_edges) - 1
     full_gap = np.abs(bin_edges[-1] - bin_edges[0])
 
     return full_gap / n_bins

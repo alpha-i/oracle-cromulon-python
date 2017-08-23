@@ -33,6 +33,7 @@ def eval_neural_net(data, topology, save_file):
 
         return y.eval()
 
+
 def forecast_means_and_variance(outputs, bin_distribution):
     """ Each forecast comprises a mean and variance. NB not the covariance matrix
     Oracle will perform this outside, but this function is useful for testing purposes
@@ -51,10 +52,10 @@ def forecast_means_and_variance(outputs, bin_distribution):
 
     for i in range(n_samples):
         for j in range(n_series):
-            bin_passes = outputs[:,i,j, :]
+            bin_passes = outputs[:, i, j, :]
             temp_mean, temp_variance = cl.declassify_labels(bin_distribution, bin_passes)
             mean[i, j] = temp_mean
-            variance[i ,j] = temp_variance
+            variance[i, j] = temp_variance
 
     if n_series > 1:
         variance = make_diagonal_covariance_matrices(variance)

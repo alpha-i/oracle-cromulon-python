@@ -45,7 +45,7 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DE
     # First need to establish bin edges using full training set
     template_sample_size = np.minimum(FLAGS.n_training_samples, 10000)
     _, training_labels = io.load_training_batch(data_source, batch_number=0, batch_size=template_sample_size,
-                                                    labels_per_series=n_labels_per_series)
+                                                labels_per_series=n_labels_per_series)
     # Ideally may use a template for each series
     bin_distribution = cl.make_template_distribution(training_labels, topology.n_classification_bins)
 
@@ -104,6 +104,7 @@ def load_default_topology(data_source):
 
     return topo.Topology(n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
                          n_classification_bins=n_classification_bins)
+
 
 if __name__ == '__main__':
 

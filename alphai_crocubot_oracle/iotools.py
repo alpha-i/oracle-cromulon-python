@@ -12,6 +12,7 @@ MNIST = None
 DO_DIFF = True
 RESHAPE_MNIST = True
 
+
 def initialise_MNIST():
     global MNIST
     MNIST = input_data.read_data_sets("MNIST_data/", one_hot=True)
@@ -38,7 +39,7 @@ def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, lab
     if data_source == "low_noise":
         do_diff = False
 
-    if data_source=="MNIST":
+    if data_source == "MNIST":
         if MNIST is None:
             initialise_MNIST()
 
@@ -54,8 +55,8 @@ def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, lab
         np_dtype = dtype_from_tf_type(dtype)
         features, labels = pt.get_training_batch(series_name=data_source, batch_size=batch_size, batch_number=batch_number,
                                                  label_timesteps=labels_per_series, do_differential_forecast=do_diff, dtype=np_dtype)
-        #features = np.squeeze(features)
-        #labels = np.squeeze(labels)
+        # features = np.squeeze(features)
+        # labels = np.squeeze(labels)
 
     return features, labels
 
@@ -65,9 +66,9 @@ def load_test_samples(data_source="MNIST", labels_per_series=1, tf_type=None, do
 
     if tf_type is None:
         if FLAGS.TF_TYPE == 32:
-          tf_type = tf.float32
+            tf_type = tf.float32
         else:
-          tf_type = tf.float64
+            tf_type = tf.float64
 
     if data_source == "low_noise":
         do_differential_forecast = False
@@ -117,4 +118,3 @@ def dtype_from_tf_type(tf_dtype):
         return 'float32'
     else:
         raise NotImplementedError
-

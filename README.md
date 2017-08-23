@@ -19,6 +19,7 @@ $ source activate crocubot-env
 ```bash
 $ pip install -u setuptools --ignore-installed --no-cache-dir
 $ pip install -r requirements.txt --src $CONDA_PREFIX
+$ pip install -r requirements_alphai.txt --src $CONDA_PREFIX
 $ pip install -r requirements_dev.txt
 ```
 
