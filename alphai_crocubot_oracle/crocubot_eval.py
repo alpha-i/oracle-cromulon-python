@@ -3,7 +3,7 @@ import numpy as np
 
 from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
-import alphai_crocubot_oracle.network as nt
+import alphai_crocubot_oracle.crocubot_model as nt
 import alphai_crocubot_oracle.classifier as cl
 
 FLAGS = tf.app.flags.FLAGS
@@ -25,7 +25,7 @@ def eval_neural_net(data, topology, save_file):
         print('Variables already initialised')
 
     saver = tf.train.Saver()
-    y = nt.collate_multiple_passes(data, topology, number_of_passes=FLAGS.num_eval_passes)
+    y = nt.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
         print("Attempting to recover trained network:", save_file)
@@ -43,7 +43,7 @@ def forecast_means_and_variance(outputs, bin_distribution):
     :return: Means and variances of the posterior.
     """
 
-    assert outputs.shape[0] == FLAGS.num_eval_passes, 'unexpected output shape'
+    assert outputs.shape[0] == FLAGS.n_eval_passes, 'unexpected output shape'
     n_samples = outputs.shape[1]
     n_series = outputs.shape[2]
 

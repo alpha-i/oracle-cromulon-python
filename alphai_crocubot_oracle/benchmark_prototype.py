@@ -7,38 +7,20 @@ import alphai_crocubot_oracle.crocubot_eval as eval
 import alphai_crocubot_oracle.topology as topo
 import alphai_crocubot_oracle.classifier as cl
 import alphai_crocubot_oracle.iotools as io
-import alphai_crocubot_oracle.network as nt
+import alphai_crocubot_oracle.crocubot_model as nt
 import alphai_time_series.performance_trials as pt
 
+import alphai_crocubot_oracle.flags as set_flags
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('save_path', '/tmp/', """Path to save graph.""")
-tf.app.flags.DEFINE_string('D_TYPE', 'float32', """Data type for numpy.""")
-tf.app.flags.DEFINE_integer('TF_TYPE', 32, """Data type for tensorflow.""")
-tf.app.flags.DEFINE_integer('n_training_samples', 1000, """Number of data samples to use for training.""")
-tf.app.flags.DEFINE_integer('random_seed', 0, """Seed used to identify random noise realisiation.""")
-tf.app.flags.DEFINE_float('INITIAL_WEIGHT_UNCERTAINTY', 0.4, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('INITIAL_BIAS_UNCERTAINTY', 0.4, """Initial standard deviation on bias.""")
-tf.app.flags.DEFINE_float('INITIAL_WEIGHT_DISPLACEMENT', 0.1, """Initial offset on weight distributions.""")
-tf.app.flags.DEFINE_float('INITIAL_BIAS_DISPLACEMENT', 0.4, """Initial offset on bias distributions.""")
-tf.app.flags.DEFINE_float('INITIAL_ALPHA', 0.2, """Prior on weights.""")
-tf.app.flags.DEFINE_boolean('USE_PERFECT_NOISE', True, """Whether to set noise such that its mean and std are exactly the desired values""")
-tf.app.flags.DEFINE_boolean('double_gaussian_weights_prior', False, """Whether to impose a double Gaussian prior.""")
-tf.app.flags.DEFINE_float('wide_prior_std', 1.2, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('narrow_prior_std', 0.05, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('spike_slab_weighting', 0.5, """Initial standard deviation on weights.""")
-FLAGS._parse_flags()
-
 DEFAULT_DATA_SOURCE = 'stochasticwalk'
-DEFAULT_ARCHITECTURE = 'full'
-EVAL_NUMBER_PASSES = 100
-TRAIN_NUMBER_PASSES = 50
-EVAL_COVARIANCE_PASSES = 100
 TIME_LIMIT = 600
 DEFAULT_N_EPOCHS = 1
 
 
 def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DEFAULT_N_EPOCHS, do_training=True, n_labels_per_series=1):
+
+    set_flags.default()
 
     topology = load_default_topology(data_source)
 
@@ -51,8 +33,8 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DE
 
     start_time = timer()
     if do_training:
-        crocubot.train(topology, data_source=data_source, n_epochs=n_epochs, do_load_model=False,
-                       bin_distribution=bin_distribution, n_passes=TRAIN_NUMBER_PASSES)
+        crocubot.train(topology, data_source=data_source, do_load_model=False,
+                       bin_distribution=bin_distribution)
     else:
         nt.reset()
         nt.initialise_parameters(topology)
