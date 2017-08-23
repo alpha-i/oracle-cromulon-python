@@ -20,11 +20,24 @@ PRINT_LOSS_INTERVAL = 20
 N_TRAIN_SAMPLES = 1000
 BATCH_SIZE = 100
 
+tf.app.flags.DEFINE_integer('num_eval_passes', 50, """Number of passes to average over.""")
 
-def train(topology, data_source="MNIST", cost_type=DEFAULT_COST, do_load_model=DEFAULT_TRY_TO_RESTORE,
+def train(topology, data_source, cost_type=DEFAULT_COST, do_load_model=DEFAULT_TRY_TO_RESTORE,
           n_epochs=DEFAULT_EPOCHS, save_file_name=None, dtype=tm.DEFAULT_TF_TYPE, bin_distribution=None,
           n_passes=DEFAULT_NUMBER_OF_PASSES):
-    """Train network on either MNIST or time series data"""
+    """ Train network on either MNIST or time series data
+
+    :param Topology topology:
+    :param str data_source:
+    :param str cost_type:
+    :param do_load_model:
+    :param n_epochs:
+    :param save_file_name:
+    :param dtype:
+    :param bin_distribution:
+    :param n_passes:
+    :return:
+    """
 
     # Start from a clean graph
     nt.reset()
@@ -61,6 +74,7 @@ def train(topology, data_source="MNIST", cost_type=DEFAULT_COST, do_load_model=D
         for epoch in range(n_epochs):
 
             epoch_loss = 0.
+            epoch_loss_list = []
             start_time = timer()
 
             for b in range(n_batches): # The randomly sampled weights are fixed within single batch
@@ -73,12 +87,15 @@ def train(topology, data_source="MNIST", cost_type=DEFAULT_COST, do_load_model=D
                 nt.increment_noise_seed()
 
             time_epoch = timer() - start_time
+            epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
                 print('Epoch', epoch, "loss:", str.format('{0:.2e}', epoch_loss), "in", str.format('{0:.2f}', time_epoch), "seconds")
 
         save_path = saver.save(sess, save_file_name)
         print("Model saved in file:", save_path)
+
+    return topology, epoch_loss_list
 
 
 def set_cost_operator(x,  labels, topology, cost_type='bayes', number_of_passes=DEFAULT_NUMBER_OF_PASSES):
