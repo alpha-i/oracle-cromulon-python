@@ -2,6 +2,7 @@
 ignore=E501
 exclude=
     # No need to traverse our git directory
+    alphai_crocubot_oracle/third_party/,
     doc/,
     .git/,
     __pycache__,
