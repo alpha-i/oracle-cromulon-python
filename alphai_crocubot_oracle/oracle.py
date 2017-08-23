@@ -101,7 +101,6 @@ class MvpOracle:
                                               n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
                                               layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
 
-
     def train(self, historical_universes, train_data, execution_time):
         """
         Trains the model
@@ -117,7 +116,7 @@ class MvpOracle:
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
 
         assert train_y.shape[1] == 1
-        train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)  #FIXME probably clearer to use np.tranpose
+        train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)  # FIXME probably clearer to use np.tranpose
         train_y = train_y.reshape(train_y.shape[0], train_y.shape[2])
 
         if self._ml_library == 'keras':
@@ -138,7 +137,7 @@ class MvpOracle:
             train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
             train_path = self._train_file_manager.new_filename(execution_time)
-            history = crocubot.train(train_x, train_y, self._topology, save_file_path=train_path)
+            crocubot.train(train_x, train_y, self._topology, save_file_path=train_path)
 
             self._current_train = train_path
             self._bin_distribution = bin_distribution
@@ -186,13 +185,13 @@ class MvpOracle:
             forecast_covariance = None
         elif self._ml_library == 'TF':
             binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
-            #FIXME: The de-classification operation will be moved inside _data_transformation
+            # FIXME: The de-classification operation will be moved inside _data_transformation
             means, forecast_cov = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
             if not np.isfinite(forecast_cov).all():
                 raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
 
             forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
-                                                 index=predict_data['close'].columns)
+                                               index=predict_data['close'].columns)
         else:
             raise NotImplementedError
 

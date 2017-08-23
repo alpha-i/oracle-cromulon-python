@@ -23,7 +23,6 @@ def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, lab
                         bin_edges=None):
     """Load a subsample of examples for training"""
 
-
     if data_source == "low_noise":
         do_diff = False
 

@@ -36,7 +36,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
     model_initialiser = tf.global_variables_initializer()
 
-    n_batches = int(N_TRAIN_SAMPLES / FLAGS.batch_size)
+    n_batches = int(FLAGS.n_train_samples / FLAGS.batch_size)
     if save_path is None:
         save_path = io.load_file_name(data_source, topology)
     saver = tf.train.Saver()
@@ -65,7 +65,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
                 if use_data_loader:
                     batch_x, batch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, labels_per_series=topology.n_classification_bins, bin_edges=bin_edges)
                 else:
-                    lo_index = b*FLAGS.batch_size
+                    lo_index = b * FLAGS.batch_size
                     hi_index = lo_index + FLAGS.batch_size
                     batch_x = train_x[lo_index:hi_index, :]
                     batch_y = train_y[lo_index:hi_index, :]
@@ -89,7 +89,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
 def _set_cost_operator(x, labels, topology):
 
     cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std,
-    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
+                                    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
 
     predictions = cr.average_multiple_passes(x, FLAGS.n_train_passes, topology)
 

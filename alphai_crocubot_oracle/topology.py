@@ -35,7 +35,7 @@ class Topology(object):
 
         if layers is None:
             layers = self._build_layers(layer_heights, layer_widths, activation_functions)
-            #FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
+            # FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
             layers[0]["width"] = n_features_per_series
             layers[0]["height"] = n_series
             layers[-1]["height"] = n_forecasts

@@ -8,6 +8,7 @@ def default():
     default_config = load_default_config()
     set_training_flags(default_config)
 
+
 def set_training_flags(config):
     """ Assigns flags based on entries in dictionary"""
 
@@ -49,8 +50,8 @@ def load_default_config():
 
     config = {}
     config['model_save_path'] = '/tmp/crocubot/'
-    config['d_type'] =  'float32'
-    config['tf_type'] =  32
+    config['d_type'] = 'float32'
+    config['tf_type'] = 32
     config['random_seed'] = 0
 
     # Training specific
@@ -68,7 +69,7 @@ def load_default_config():
     config['INITIAL_WEIGHT_UNCERTAINTY'] = 0.4
     config['INITIAL_BIAS_UNCERTAINTY'] = 0.4
     config['INITIAL_WEIGHT_DISPLACEMENT'] = 0.1
-    config['INITIAL_BIAS_DISPLACEMENT']= 0.4
+    config['INITIAL_BIAS_DISPLACEMENT'] = 0.4
     config['USE_PERFECT_NOISE'] = True,
 
     # Priors
@@ -87,4 +88,3 @@ def dtype_from_tf_type(tf_dtype):
         return 'float32'
     else:
         raise NotImplementedError
-

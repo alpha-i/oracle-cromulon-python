@@ -24,7 +24,7 @@ def estimate_covariance(data, ndays, minutes_after_open, estimation_method, exch
     assert not data.isnull().any().any()
 
     nd = data.shape[1]
-    sampling_days = nd*DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR
+    sampling_days = nd * DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR
     data_points = data.values[-sampling_days:, :]
 
     if len(data_points) < ndays:

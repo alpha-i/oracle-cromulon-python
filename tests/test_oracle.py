@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timedelta
 from unittest import TestCase
-from dateutil import rrule
 
 import pandas as pd
 
