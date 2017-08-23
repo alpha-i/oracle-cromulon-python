@@ -33,8 +33,7 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DE
 
     start_time = timer()
     if do_training:
-        crocubot.train(topology, data_source=data_source, do_load_model=False,
-                       bin_distribution=bin_distribution)
+        crocubot.train(topology, data_source=data_source, bin_edges=bin_distribution["bin_edges"])
     else:
         nt.reset()
         nt.initialise_parameters(topology)

@@ -2,36 +2,30 @@ from timeit import default_timer as timer
 
 import tensorflow as tf
 
-import alphai_crocubot_oracle.crocubot_model as nt
+import alphai_crocubot_oracle.crocubot_model as cr
 import alphai_crocubot_oracle.bayesian_cost as cost
-import alphai_crocubot_oracle.tensormaths as tm
 import alphai_crocubot_oracle.iotools as io
-import alphai_crocubot_oracle.classifier as cl
 
 FLAGS = tf.app.flags.FLAGS
-
-DEFAULT_TRY_TO_RESTORE = 'True'
 PRINT_LOSS_INTERVAL = 20
-N_TRAIN_SAMPLES = 1000
 
 
-def train(topology, data_source):
+def train(topology, data_source, train_x=None, train_y=None, bin_edges=None):
     """ Train network on either MNIST or time series data
 
     :param Topology topology:
     :param str data_source:
-    :param str cost_type:
-    :param do_load_model:
-    :param save_file_name:
-    :param dtype:
-    :param bin_distribution:
-    :param n_passes:
-    :return:
+    :return: epoch_loss_list
     """
 
     # Start from a clean graph
-    nt.reset()
-    nt.initialise_parameters(topology)
+    cr.reset()
+    cr.initialise_parameters(topology)
+
+    if train_x is None:
+        use_data_loader = True
+    else:
+        use_data_loader = False
 
     # Placeholders for the inputs and outputs of neural networks
     x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series])
@@ -43,6 +37,7 @@ def train(topology, data_source):
     model_initialiser = tf.global_variables_initializer()
 
     n_batches = int(N_TRAIN_SAMPLES / FLAGS.batch_size)
+    save_file_name = io.load_file_name(data_source, topology)
     saver = tf.train.Saver()
 
     # Launch the graph
@@ -50,7 +45,6 @@ def train(topology, data_source):
     with tf.Session() as sess:
 
         if FLAGS.resume_training:
-            save_file_name = io.load_file_name(data_source, topology)
             try:
                 saver.restore(sess, save_file_name)
                 print("Model restored.")
@@ -67,13 +61,17 @@ def train(topology, data_source):
             start_time = timer()
 
             for b in range(n_batches):  # The randomly sampled weights are fixed within single batch
-                epoch_x, epoch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, labels_per_series=topology.n_classification_bins, dtype=dtype)
-                if bin_distribution is not None:
-                    epoch_y = cl.classify_labels(bin_distribution["bin_edges"], epoch_y)
+                if use_data_loader:
+                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, labels_per_series=topology.n_classification_bins, bin_edges=bin_edges)
+                else:
+                    lo_index = b*FLAGS.batch_size
+                    hi_index = lo_index + FLAGS.batch_size
+                    batch_x = train_x[lo_index:hi_index, :]
+                    batch_y = train_y[lo_index:hi_index, :]
 
-                _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: epoch_x, y: epoch_y})
+                _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
-                nt.increment_noise_seed()
+                cr.increment_noise_seed()
 
             time_epoch = timer() - start_time
             epoch_loss_list.append(epoch_loss)
@@ -84,14 +82,14 @@ def train(topology, data_source):
         save_path = saver.save(sess, save_file_name)
         print("Model saved in file:", save_path)
 
-    return topology, epoch_loss_list
+    return epoch_loss_list
 
 
 def set_cost_operator(x, labels, topology, cost_type='bayes', number_of_passes=DEFAULT_NUMBER_OF_PASSES):
 
     cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std,
                                     FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
-    predictions = nt.average_multiple_passes(x, FLAGS.n_train_passes, topology)
+    predictions = cr.average_multiple_passes(x, FLAGS.n_train_passes, topology)
 
     if FLAGS.cost_type == 'bayes':
         operator = cost_object.get_bayesian_cost(predictions, labels)
