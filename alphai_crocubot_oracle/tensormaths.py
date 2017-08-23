@@ -123,8 +123,8 @@ def roll_noise(noise, iteration):
 def roll_noise_np(noise, iteration):
     """
 
-    :param noise:
-    :param iteration:
+    :param noise: numpy array 
+    :param iteration: type integer 
     :return:
     """
 
