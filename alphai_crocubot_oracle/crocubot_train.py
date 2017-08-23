@@ -86,10 +86,11 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     return epoch_loss_list
 
 
-def set_cost_operator(x, labels, topology, cost_type='bayes', number_of_passes=DEFAULT_NUMBER_OF_PASSES):
+def _set_cost_operator(x, labels, topology):
 
     cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std,
-                                    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
+    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
+
     predictions = cr.average_multiple_passes(x, FLAGS.n_train_passes, topology)
 
     if FLAGS.cost_type == 'bayes':

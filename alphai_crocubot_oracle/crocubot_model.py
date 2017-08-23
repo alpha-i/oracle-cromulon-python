@@ -207,8 +207,12 @@ def initialise_parameters(topology):
         initialize_layer_variable(layer_number, 'rho_b', initial_rho_bias + tm.centred_gaussian(b_shape, np.abs(initial_rho_bias) / 10))
 
         is_alpha_trainable = False
+<<<<<<< HEAD:alphai_crocubot_oracle/network.py
         initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.D_TYPE),
                                   trainable=is_alpha_trainable)  # Hyperprior on the distribution of the weights
+=======
+        initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.d_type), trainable=is_alpha_trainable) # Hyperprior on the distribution of the weights
+>>>>>>> 85e387a9b4cd48e0d267f83560053331bf6481fa:alphai_crocubot_oracle/crocubot_model.py
 
         initialise_noise('weight_noise', w_shape, layer_number)
         initialise_noise('bias_noise', b_shape, layer_number)

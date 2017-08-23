@@ -188,7 +188,6 @@ class MvpOracle:
             binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
             #FIXME: The de-classification operation will be moved inside _data_transformation
             means, forecast_cov = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
-
             if not np.isfinite(forecast_cov).all():
                 raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
 
