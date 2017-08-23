@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 import alphai_crocubot_oracle.tensormaths as tm
-import alphai_crocubot_oracle.network as nt
+import alphai_crocubot_oracle.crocubot_model as cr
 
 
 class BayesianCost(object):
@@ -26,14 +26,14 @@ class BayesianCost(object):
         log_qw = 0.
 
         for layer in range(self.topology.n_layers):
-            mu_w = nt.get_layer_variable(layer, 'mu_w')
-            rho_w = nt.get_layer_variable(layer, 'rho_w')
-            mu_b = nt.get_layer_variable(layer, 'mu_b')
-            rho_b = nt.get_layer_variable(layer, 'rho_b')
+            mu_w = cr.get_layer_variable(layer, 'mu_w')
+            rho_w = cr.get_layer_variable(layer, 'rho_w')
+            mu_b = cr.get_layer_variable(layer, 'mu_b')
+            rho_b = cr.get_layer_variable(layer, 'rho_b')
 
             # Only want to consider independent weights, not the full set, so do_tile_weights=False
-            weights = nt.compute_weights(layer, iteration=0, do_tile_weights=False)
-            biases = nt.compute_biases(layer, iteration=0)
+            weights = cr.compute_weights(layer, iteration=0, do_tile_weights=False)
+            biases = cr.compute_biases(layer, iteration=0)
 
             log_pw += self.calc_log_weight_prior(weights, layer)  # not needed if we're using many passes
             log_pw += self.calc_log_bias_prior(biases, layer)
@@ -59,7 +59,7 @@ class BayesianCost(object):
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:
-            log_alpha = nt.get_layer_variable(layer, 'log_alpha')
+            log_alpha = cr.get_layer_variable(layer, 'log_alpha')
             log_pw = tm.log_gaussian_logsigma(weights, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
@@ -80,13 +80,13 @@ class BayesianCost(object):
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:
-            log_alpha = nt.get_layer_variable(layer, 'log_alpha')
+            log_alpha = cr.get_layer_variable(layer, 'log_alpha')
             log_pw = tm.log_gaussian_logsigma(biases, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
 
     def calc_log_hyperprior(self, layer):
-        return - nt.get_layer_variable(layer, 'log_alpha')  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
+        return - cr.get_layer_variable(layer, 'log_alpha')  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
 
     @staticmethod
     def calc_log_q_prior(theta, mu, rho):

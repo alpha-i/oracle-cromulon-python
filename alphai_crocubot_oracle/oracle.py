@@ -9,6 +9,7 @@ import mrpb as pb
 import alphai_crocubot_oracle.crocubot_train as crocubot
 import alphai_crocubot_oracle.crocubot_eval as crocubot_eval
 import alphai_crocubot_oracle.classifier as cl
+import alphai_crocubot_oracle.flags as fl
 
 from alphai_finance.data.transformation import FinancialDataTransformation
 
@@ -84,12 +85,15 @@ class MvpOracle:
         )
 
         self._train_file_manager.ensure_path_exists()
-
         self._ml_model = None
         self._est_cov = None
         self._current_train = None
 
         assert self._ml_library in ['keras', 'TF'], 'ml_library needs to be in [keras, TF]'
+
+        if self._ml_library == 'TF':
+            fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
+
 
     def train(self, historical_universes, train_data, execution_time):
         """
@@ -122,11 +126,11 @@ class MvpOracle:
 
         elif self._ml_library == 'TF':
 
-            # Bin the training labels - FIXME: These two lines to be moved to _data_transformation
+            # Classify the training labels - FIXME: These two lines to be moved to _data_transformation
             bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
             train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
-            topology, history = crocubot.train(train_x, train_y, self.network_config, self.training_config)
+            topology, history = crocubot.train(train_x, train_y, self._topology)
 
             self._topology = topology
             self._bin_distribution = bin_distribution
