@@ -19,10 +19,11 @@ class Topology(object):
     Run checks on the user input to verify that it defines a valid topology.
     """
 
-    def __init__(self, n_series=DEFAULT_N_SERIES, n_features_per_series=DEFAULT_FEAT_PER_SERIES, n_forecasts=DEFAULT_N_FORECASTS,
+    def __init__(self, layers, n_series=DEFAULT_N_SERIES, n_features_per_series=DEFAULT_FEAT_PER_SERIES, n_forecasts=DEFAULT_N_FORECASTS,
                  n_classification_bins=DEFAULT_BINS, layer_heights=DEFAULT_HEIGHTS, layer_widths=DEFAULT_WIDTHS, activation_functions=DEFAULT_ACT_FUNCTIONS):
         """
         Following info is required to construct a topology object
+        :param layers: Full list of layers can be provided, or:
         :param n_series:
         :param n_features_per_series:
         :param n_forecasts:
@@ -32,16 +33,16 @@ class Topology(object):
         :param activation_functions:
         """
 
-        layers = self._build_layers(layer_heights, layer_widths, activation_functions)
-        # FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
-        layers[0]["width"] = n_features_per_series
-        layers[0]["height"] = n_series
-        layers[-1]["height"] = n_forecasts
-        layers[-1]["width"] = n_classification_bins
+        if layers is None:
+            layers = self._build_layers(layer_heights, layer_widths, activation_functions)
+            #FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
+            layers[0]["width"] = n_features_per_series
+            layers[0]["height"] = n_series
+            layers[-1]["height"] = n_forecasts
+            layers[-1]["width"] = n_classification_bins
 
         self._verify_layers(layers)
         self.layers = layers
-
         self.n_series = n_series
         self.n_layers = len(layers) - 1  # n layers of neurons are connected by n-1 sets of weights
         self.n_features_per_series = n_features_per_series

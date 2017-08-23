@@ -96,7 +96,8 @@ class MvpOracle:
 
         if self._ml_library == 'TF':
             fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
-            self._croc_topology = tp.Topology(n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
+            # Topology can either be directly constructed from layers, or build from sequence of parameters
+            self._croc_topology = tp.Topology(layers=None, n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
                                               n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
                                               layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
 
@@ -116,7 +117,7 @@ class MvpOracle:
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
 
         assert train_y.shape[1] == 1
-        train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)
+        train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)  #FIXME probably clearer to use np.tranpose
         train_y = train_y.reshape(train_y.shape[0], train_y.shape[2])
 
         if self._ml_library == 'keras':
@@ -132,12 +133,14 @@ class MvpOracle:
 
         elif self._ml_library == 'TF':
 
-            # Classify the training labels - FIXME: These two lines to be moved to _data_transformation
+            # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
             bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
             train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
-            history = crocubot.train(train_x, train_y, self._topology)
+            train_path = self._train_file_manager.new_filename(execution_time)
+            history = crocubot.train(train_x, train_y, self._topology, save_file_path=train_path)
 
+            self._current_train = train_path
             self._bin_distribution = bin_distribution
 
         else:
@@ -149,7 +152,7 @@ class MvpOracle:
         :param dict predict_data: OHLCV data as dictionary of pandas DataFrame
         :param datetime.datetime execution_time: time of execution of prediction
 
-        :return tuple : mean vector (pd.Series) and covariance matrix (np.matrix)
+        :return : mean vector (pd.Series) and two covariance matrices (pd.DF)
         """
         if self._save_model:
             self._load_latest_train(execution_time)
@@ -180,10 +183,17 @@ class MvpOracle:
         logging.info('Predicting mean values.')
         if self._ml_library == 'keras':
             means = self._ml_model.predict(predict_x)
+            forecast_covariance = None
         elif self._ml_library == 'TF':
-            binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._save_file)
+            binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
+            #FIXME: The de-classification operation will be moved inside _data_transformation
+            means, forecast_cov = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
 
-            means, forecast_covariance = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
+            if not np.isfinite(forecast_cov).all():
+                raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
+
+            forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
+                                                 index=predict_data['close'].columns)
         else:
             raise NotImplementedError
 
@@ -208,7 +218,7 @@ class MvpOracle:
                     )
                 )
                 self._current_train = latest_train
-            elif self._ml_library == 'TF':  # TODO Implement TF load latest model
-                pass
+            elif self._ml_library == 'TF':  # Don't load model, just location of save file
+                self._current_train = latest_train
             else:
                 raise NotImplementedError

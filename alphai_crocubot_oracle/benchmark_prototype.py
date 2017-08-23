@@ -1,3 +1,5 @@
+# Useful for checking that training & inference works
+
 from timeit import default_timer as timer
 import numpy as np
 import tensorflow as tf
@@ -18,10 +20,9 @@ TIME_LIMIT = 600
 DEFAULT_N_EPOCHS = 1
 
 
-def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DEFAULT_N_EPOCHS, do_training=True, n_labels_per_series=1):
+def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training=True, n_labels_per_series=1):
 
     set_flags.default()
-
     topology = load_default_topology(data_source)
 
     # First need to establish bin edges using full training set
@@ -83,7 +84,7 @@ def load_default_topology(data_source):
     else:
         raise NotImplementedError
 
-    return topo.Topology(n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
+    return topo.Topology(layers=None, n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
                          n_classification_bins=n_classification_bins)
 
 
