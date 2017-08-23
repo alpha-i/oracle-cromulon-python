@@ -10,6 +10,7 @@ import alphai_crocubot_oracle.crocubot_train as crocubot
 import alphai_crocubot_oracle.crocubot_eval as crocubot_eval
 import alphai_crocubot_oracle.classifier as cl
 import alphai_crocubot_oracle.flags as fl
+import alphai_crocubot_oracle.topology as tp
 
 from alphai_finance.data.transformation import FinancialDataTransformation
 
@@ -51,12 +52,14 @@ class MvpOracle:
                 layer_heights: List of the number of neurons in each layer
                 layer_widths: List of the number of neurons in each layer
                 activation_functions: list of the activation functions in each layer
+                model_save_path: directory where the model is stored
             training_config:
                 epochs: The number of epochs in the model training as an integer.
                 learning_rate: The learning rate of the model as a float.
                 batch_size:  The batch size in training as an integer
                 cost_type:  The method for evaluating the loss (default: 'bayes')
                 train_path: The path to a folder in which the training data is to be stored.
+                resume_training: (bool) whether to load an pre-trained model
             verbose: Is a verbose output required? (bool)
             save_model: If true, save every trained model.
         """
@@ -93,6 +96,9 @@ class MvpOracle:
 
         if self._ml_library == 'TF':
             fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
+            self._croc_topology = tp.Topology(n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
+                                              n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
+                                              layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
 
 
     def train(self, historical_universes, train_data, execution_time):
@@ -130,9 +136,8 @@ class MvpOracle:
             bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
             train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
-            topology, history = crocubot.train(train_x, train_y, self._topology)
+            history = crocubot.train(train_x, train_y, self._topology)
 
-            self._topology = topology
             self._bin_distribution = bin_distribution
 
         else:

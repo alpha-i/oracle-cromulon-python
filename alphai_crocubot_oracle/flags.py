@@ -11,9 +11,9 @@ def default():
 def set_training_flags(config):
     """ Assigns flags based on entries in dictionary"""
 
-    tf.app.flags.DEFINE_string('graph_save_path', config['graph_save_path'], """Path to save graph.""")
-    tf.app.flags.DEFINE_string('d_type', config['D_TYPE'], """Data type for numpy.""")
-    tf.app.flags.DEFINE_integer('TF_TYPE', config['TF_TYPE'], """Data type for tensorflow.""")
+    tf.app.flags.DEFINE_string('model_save_path', config['model_save_path'], """Path to save graph.""")
+    tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
+    tf.app.flags.DEFINE_integer('TF_TYPE', config['tf_type'], """Data type for tensorflow.""")
     tf.app.flags.DEFINE_integer('random_seed', 0, """Seed used to identify random noise realisiation.""")
 
     # Training specific
@@ -24,6 +24,8 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_string('cost_type', config['cost_type'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_integer('n_train_passes', 50, """Number of passes to average over during training.""")
     tf.app.flags.DEFINE_integer('n_eval_passes', 100, """Number of passes to average over during evaluation.""")
+    tf.app.flags.DEFINE_boolean('resume_training', config['resume_training'],
+                                """Whether to set noise such that its mean and std are exactly the desired values""")
 
     # Initial conditions
     tf.app.flags.DEFINE_float('INITIAL_ALPHA', config['INITIAL_ALPHA'], """Prior on weights.""")
@@ -46,10 +48,10 @@ def set_training_flags(config):
 def load_default_config():
 
     config = {}
-    config['graph_save_path'] = '/tmp/crocubot/'
+    config['model_save_path'] = '/tmp/crocubot/'
     config['d_type'] =  'float32'
-    config['TF_TYPE'] =  32
-    config['random_seed']= 0
+    config['tf_type'] =  32
+    config['random_seed'] = 0
 
     # Training specific
     config['n_epochs'] = 1
@@ -59,6 +61,7 @@ def load_default_config():
     config['cost_type'] = 'bayes'
     config['n_train_passes'] = 30
     config['n_eval_passes'] = 100
+    config['resume_training'] = True
 
     # Initial conditions
     config['INITIAL_ALPHA'] = 0.2
@@ -75,3 +78,13 @@ def load_default_config():
     config['spike_slab_weighting'] = 0.5
 
     return config
+
+
+def dtype_from_tf_type(tf_dtype):
+    if tf_dtype == tf.float64:
+        return 'float64'
+    elif tf_dtype == tf.float32:
+        return 'float32'
+    else:
+        raise NotImplementedError
+
