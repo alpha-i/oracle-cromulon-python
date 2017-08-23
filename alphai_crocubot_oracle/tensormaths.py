@@ -94,13 +94,8 @@ def log_gaussian_logsigma(x, mu, logsigma):
     return -0.5 * LOG_TWO_PI - logsigma - (x - mu) ** 2 / (2. * tf.exp(2 * logsigma))
 
 
-def rand_lognormal_tf(shape, sigma):
-    """Computes random lognormal"""
-    return tf.random_normal(shape=shape, stddev=sigma, dtype=DEFAULT_TF_TYPE)
-
-
 def unit_gaussian(x):
-    return tf.cast(tf.contrib.distributions.Normal(1., 0.).prob(x), DEFAULT_TF_TYPE)
+    return tf.cast(tf.contrib.distributions.Normal(0., 1.).prob(x), DEFAULT_TF_TYPE)
 
 
 def sinh_shift(x, c):
