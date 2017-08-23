@@ -69,7 +69,6 @@ def load_test_samples(data_source="MNIST", labels_per_series=1, tf_type=None, do
         else:
           tf_type = tf.float64
 
-
     if data_source == "low_noise":
         do_differential_forecast = False
 
@@ -92,12 +91,12 @@ def load_test_samples(data_source="MNIST", labels_per_series=1, tf_type=None, do
     return features, labels
 
 
-def load_file_name(data_source, topology, path=DEFAULT_SAVE_PATH):
+def load_file_name(data_source, topology):
     """ File used for storing the network parameters.
 
-    :param data_source: Options: MNIST, low_noise, randomwalk, etc
-    :param Topology topology: Info on network shape, helps define savefile name
-    :param str1:
+    :param str data_source: Identify the data on which the network was trained: MNIST, low_noise, randomwalk, etc
+    :param Topology topology: Info on network shape
+    :param str path:
     :return:
     """
 
@@ -106,6 +105,7 @@ def load_file_name(data_source, topology, path=DEFAULT_SAVE_PATH):
     series_string = str(topology.n_series)
 
     bitstring = str(FLAGS.TF_TYPE)
+    path = FLAGS.save_path
 
     return path + bitstring[-2:] + "model_" + data_source + "_" + series_string + '_' + depth_string + "x" + breadth_string + ".ckpt"
 
