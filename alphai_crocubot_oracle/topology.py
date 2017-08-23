@@ -33,7 +33,7 @@ class Topology(object):
         """
 
         layers = self._build_layers(layer_heights, layer_widths, activation_functions)
-        #FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
+        # FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
         layers[0]["width"] = n_features_per_series
         layers[0]["height"] = n_series
         layers[-1]["height"] = n_forecasts
@@ -143,10 +143,8 @@ class Topology(object):
 
 if __name__ == "__main__":
 
-    layers = [
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
-        ]
+    layers = [{"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+              {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+              {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
 
     topology = Topology(layers)

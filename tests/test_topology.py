@@ -7,11 +7,9 @@ class TestTopology(unittest.TestCase):
 
     def setUp(self):
 
-        self.layers = [
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
-        ]
+        self.layers = [{"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+                       {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+                       {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
 
         self.topology = Topology(self.layers)
 
@@ -49,7 +47,7 @@ class TestTopology(unittest.TestCase):
     def test_get_cell_shape(self):
 
         cell_shape = self.topology.get_cell_shape(0)
-        assert cell_shape == [1 , 10]
+        assert cell_shape == [1, 10]
 
     def test_get_weight_shape(self):
 
@@ -60,4 +58,3 @@ class TestTopology(unittest.TestCase):
 
         bias_shape = self.topology.get_bias_shape(0)
         assert bias_shape == [20, 10]
-

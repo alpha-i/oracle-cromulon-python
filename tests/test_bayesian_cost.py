@@ -20,4 +20,3 @@ class TestBayesianCost(tf.test.TestCase):
                     expected_result,
                     places=6
                 )
-

@@ -17,9 +17,9 @@ DEFAULT_D_TYPE = 'float32'
 
 def selu(x):
     """
-    selu activation function 
+    selu activation function
     see: https://arxiv.org/pdf/1706.02515.pdf
-    :param x: 
+    :param x:
     :return:
     """
     alpha = 1.6732632423543772848170429916717
@@ -51,8 +51,8 @@ def inv_selu(x):
 def kelu(x):
     """
     experimental activation function
-    :param x: 
-    :return: 
+    :param x:
+    :return:
     """
     k = 3.0
     return tf.where(x >= 0.0, k * x, x / k)
@@ -60,9 +60,9 @@ def kelu(x):
 
 def inv_kelu(x):
     """
-    inverse of kelu function 
-    :param x: 
-    :return: 
+    inverse of kelu function
+    :param x:
+    :return:
     """
     return -kelu(-x)
 
@@ -124,13 +124,6 @@ def matrix_soft_inverse(matrix):
 
 
 def soft_inverse_np(matrix):
-
-#    minval = np.min(np.abs(matrix))
-#    maxval = np.max(np.abs(matrix))
-    # print("inverting shape:", matrix.shape)
-#    if not np.isreal(matrix).all():
-#        print("found complex value")
-
     if not np.isfinite(matrix).all():
         print("Inversion failed - elements not finite")
         return matrix
@@ -149,8 +142,8 @@ def sinh_shift(x, c):
     :param c:
     :return:
     """
-    pos_t = 0.5 + c*tf.exp(-x) - tf.exp(-2 * x) / 2
-    neg_t = -0.5 + c*tf.exp(x) + tf.exp(2 * x) / 2
+    pos_t = 0.5 + c * tf.exp(-x) - tf.exp(-2 * x) / 2
+    neg_t = -0.5 + c * tf.exp(x) + tf.exp(2 * x) / 2
 
     pos_f = x + tf.log(pos_t + tf.sqrt(tf.exp(-2 * x) + tf.square(pos_t)))
     neg_f = x - tf.log(-neg_t + tf.sqrt(tf.exp(2 * x) + tf.square(neg_t)))
