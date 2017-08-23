@@ -47,10 +47,9 @@ class BayesianCost(object):
     def calc_log_weight_prior(self, weights, layer):  # TODO can we make these two into a single function?
         """
         See Equation 7 in https://arxiv.org/pdf/1505.05424.pdf
-        
-        :param weights: 
-        :param layer: 
-        :return: 
+        :param weights:
+        :param layer:
+        :return:
         """
         if self._double_gaussian_weights_prior:
 
@@ -67,12 +66,10 @@ class BayesianCost(object):
     def calc_log_bias_prior(self, biases, layer):  # TODO can we make these two into a single function?
         """
         See Equation 7 in https://arxiv.org/pdf/1505.05424.pdf
-
-        :param biases: 
-        :param layer: 
-        :return: 
+        :param biases:
+        :param layer:
+        :return:
         """
-
         if self._double_gaussian_weights_prior:
 
             pwide = tf.contrib.distributions.Normal(0., 1.).prob(biases / self._wide_prior_std) / self._wide_prior_std
