@@ -3,6 +3,7 @@ import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
 np.random.seed(42)
 
+
 class TestTensormath(tf.test.TestCase):
 
     def test_selu(self):
@@ -79,7 +80,7 @@ class TestTensormath(tf.test.TestCase):
                 actual_result = tm.log_gaussian(x, mu, sigma).eval()
                 self.assertAlmostEqual(actual_result, expected_result, places=4)
 
-    def test_log_gaussian(self):
+    def test_log_gaussian_logsigma(self):
 
         xs = [-1.0, 0.2, 2.0]
         mus = [0.1, 0.2, 1.0]
@@ -91,3 +92,58 @@ class TestTensormath(tf.test.TestCase):
             for x, mu, sigma, expected_result in zip(xs, mus, sigma, results):
                 actual_result = tm.log_gaussian_logsigma(x, mu, sigma).eval()
                 self.assertAlmostEqual(actual_result, expected_result, places=4)
+
+    def test_unit_gaussian(self):
+        xs = [1.0, 1.2, 0.0]
+        results = [0.241971, 0.194186, 0.398922]
+
+        with self.test_session():
+            for x, expected_result in zip(xs, results):
+                actual_result = tm.unit_gaussian(x).eval()
+                self.assertAlmostEqual(actual_result, expected_result, places=4)
+
+    def test_sinh_shift(self):
+        xs = [-1., 0.0, 1., 0.1]
+        cs = [-1., 0.0, 1., 0.1]
+
+        results = [-1.51935, 0.0, 1.51935, 0.198854]
+
+        with self.test_session():
+            for x, c, expected_result in zip(xs, cs, results):
+                actual_result = tm.sinh_shift(x, c).eval()
+                self.assertAlmostEqual(actual_result, expected_result, places=4)
+
+    def test_roll_noise_np(self):
+
+        noise = np.asarray([[0.1, -0.3], [0.23, 0.56]])
+
+        results = [[0.1, -0.3,   0.23,  0.56],
+                   [0.56, 0.1, -0.3,   0.23],
+                   [0.23,  0.56,  0.1, -0.3]]
+
+        for i, expected_result in enumerate(results):
+            actual_result = tm.roll_noise_np(noise, i).flatten()
+            self.assertArrayNear(actual_result, expected_result, err=1e-7)
+
+    def test_roll_noise(self):
+        noise = np.asarray([[0.1, -0.3], [0.23, 0.56]])
+        results = [[0.1, -0.3,   0.23,  0.56],
+                   [0.56, 0.1, -0.3,   0.23],
+                   [0.23,  0.56,  0.1, -0.3]]
+
+        # test for  float64
+        with self.test_session():
+            for i, expected_result in enumerate(results):
+                actual_result = tf.py_func(tm.roll_noise_np, [noise, i], tf.float64).eval().flatten()
+                self.assertArrayNear(actual_result, expected_result, err=1e-7)
+
+        # test for float32
+        with self.test_session():
+            for i, expected_result in enumerate(results):
+                actual_result = tf.py_func(tm.roll_noise_np, [noise.astype(np.float32, copy=False), i],
+                                           tf.float32).eval().flatten()
+                self.assertArrayNear(actual_result, expected_result, err=1e-5)
+
+
+
+
