@@ -13,5 +13,3 @@ MNIST_RESHAPED_DS = DataSource(name="mnist_reshaped",
 LOW_NOISE_DS = DataSource(name="low_noise",
                           n_series=1,
                           n_timesteps=100)
-
-

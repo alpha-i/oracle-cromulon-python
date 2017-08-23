@@ -6,6 +6,7 @@ import alphai_crocubot_oracle.topology as tp
 
 FLAGS = tf.app.flags.FLAGS
 
+
 class LayeredNetwork(object):
     """
 
@@ -50,6 +51,7 @@ def increment_noise_seed():
 
     FLAGS.random_seed += 1
 
+
 def get_layer_variable(layer_number, var_name, reuse=True):
     """
 
@@ -65,12 +67,14 @@ def get_layer_variable(layer_number, var_name, reuse=True):
         v = tf.get_variable(var_name, dtype=tm.DEFAULT_TF_TYPE)
     return v
 
+
 def initialize_layer_variable(layer_number, var_name, initializer, trainable=True):
 
     assert isinstance(layer_number, int)
     scope_name = str(layer_number)
-    with tf.variable_scope(scope_name) as scope:
-        v = tf.get_variable(var_name, initializer=initializer, trainable=trainable, dtype=tm.DEFAULT_TF_TYPE)
+    with tf.variable_scope(scope_name):  # TODO check if this is the correct
+        tf.get_variable(var_name, initializer=initializer, trainable=trainable, dtype=tm.DEFAULT_TF_TYPE)
+
 
 def compute_weights(layer, iteration=0, do_tile_weights=True):
 
@@ -79,6 +83,7 @@ def compute_weights(layer, iteration=0, do_tile_weights=True):
     noise = get_noise(layer, iteration)
 
     return mean + tf.exp(rho) * noise
+
 
 def compute_biases(layer, iteration):
     """Bias is Gaussian distributed"""
@@ -92,6 +97,7 @@ def compute_biases(layer, iteration):
 
     return biases
 
+
 def get_noise(layer, iteration, is_weight=True):
 
     if is_weight:
@@ -104,9 +110,10 @@ def get_noise(layer, iteration, is_weight=True):
 
     return noise
 
-def reset():
 
+def reset():
     tf.reset_default_graph()
+
 
 def average_multiple_passes(data, number_of_passes, topology):
     """  Multiple passes allow us to estimate the posterior distribution.
@@ -123,7 +130,6 @@ def average_multiple_passes(data, number_of_passes, topology):
         variance = FLAGS.DEFAULT_FORECAST_VARIANCE
 
     return mean, variance
-
 
 
 def collate_multiple_passes(x, topology, number_of_passes=50):
@@ -201,11 +207,11 @@ def initialise_parameters(topology):
         initialize_layer_variable(layer_number, 'rho_b', initial_rho_bias + tm.centred_gaussian(b_shape, np.abs(initial_rho_bias) / 10))
 
         is_alpha_trainable = False
-        initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.D_TYPE), trainable=is_alpha_trainable) # Hyperprior on the distribution of the weights
+        initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.D_TYPE),
+                                  trainable=is_alpha_trainable)  # Hyperprior on the distribution of the weights
 
         initialise_noise('weight_noise', w_shape, layer_number)
         initialise_noise('bias_noise', b_shape, layer_number)
-
 
 
 def initialise_noise(var_name, shape, layer):
@@ -220,10 +226,8 @@ def initialise_noise(var_name, shape, layer):
 
 if __name__ == "__main__":
 
-    layers = [
-        {"activation_func": "input", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
-        ]
+    layers = [{"activation_func": "input", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+              {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+              {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
 
     topology = tp.Topology(layers)

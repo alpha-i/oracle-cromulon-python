@@ -22,6 +22,7 @@ BATCH_SIZE = 100
 
 tf.app.flags.DEFINE_integer('num_eval_passes', 50, """Number of passes to average over.""")
 
+
 def train(topology, data_source, cost_type=DEFAULT_COST, do_load_model=DEFAULT_TRY_TO_RESTORE,
           n_epochs=DEFAULT_EPOCHS, save_file_name=None, dtype=tm.DEFAULT_TF_TYPE, bin_distribution=None,
           n_passes=DEFAULT_NUMBER_OF_PASSES):
@@ -77,7 +78,7 @@ def train(topology, data_source, cost_type=DEFAULT_COST, do_load_model=DEFAULT_T
             epoch_loss_list = []
             start_time = timer()
 
-            for b in range(n_batches): # The randomly sampled weights are fixed within single batch
+            for b in range(n_batches):  # The randomly sampled weights are fixed within single batch
                 epoch_x, epoch_y = io.load_training_batch(data_source, batch_number=b, batch_size=BATCH_SIZE, labels_per_series=topology.n_classification_bins, dtype=dtype)
                 if bin_distribution is not None:
                     epoch_y = cl.classify_labels(bin_distribution["bin_edges"], epoch_y)
@@ -98,10 +99,9 @@ def train(topology, data_source, cost_type=DEFAULT_COST, do_load_model=DEFAULT_T
     return topology, epoch_loss_list
 
 
-def set_cost_operator(x,  labels, topology, cost_type='bayes', number_of_passes=DEFAULT_NUMBER_OF_PASSES):
-
-
-    cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std, FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
+def set_cost_operator(x, labels, topology, cost_type='bayes', number_of_passes=DEFAULT_NUMBER_OF_PASSES):
+    cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std,
+                                    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
     predictions = nt.average_multiple_passes(x, number_of_passes, topology)
 
     if cost_type == 'bayes':
