@@ -6,7 +6,7 @@ import tensorflow as tf
 import numpy as np
 
 # FIXME once time_series is updated, uncomment the below and delete the copy in this file
-#from alphai_time_series.calculator import make_diagonal_covariance_matrices
+# from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
 import alphai_crocubot_oracle.crocubot_model as cr
 import alphai_crocubot_oracle.classifier as cl
