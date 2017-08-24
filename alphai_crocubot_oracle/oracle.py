@@ -1,16 +1,15 @@
 # Interface with quant workflow.
 # Trains the network then uses it to make predictions
 # Also transforms the data before and after the predictions are made
-# This is intended to be a fairly generic code in that it can easily applied to other models
 
-# import os
+# A fairly generic interface, in that it can easily applied to other models
+# Keras/pb specific calls are commented out to avoid introducing extra dependencies
+
 import logging
 
-# from keras.models import load_model
 import pandas as pd
 import numpy as np
 
-#  import mrpb as pb
 import alphai_crocubot_oracle.crocubot_train as crocubot
 import alphai_crocubot_oracle.crocubot_eval as crocubot_eval
 import alphai_crocubot_oracle.classifier as cl
@@ -124,18 +123,18 @@ class MvpOracle:
         train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)  # FIXME probably clearer to use np.tranpose
         train_y = train_y.reshape(train_y.shape[0], train_y.shape[2])
 
-        if self._ml_library == 'keras':
-            model, history = pb.train_model(train_x, train_y, epochs=self._epochs, lr=self._learning_rate,
-                                            verbose=self._verbose, batch_size=self._batch_size, do=self._drop_out,
-                                            l2=self._l2, n_hidden=self._n_hidden)
-            self._ml_model = model
+        # if self._ml_library == 'keras':
+        # model, history = pb.train_model(train_x, train_y, epochs=self._epochs, lr=self._learning_rate,
+        #                                 verbose=self._verbose, batch_size=self._batch_size, do=self._drop_out,
+        #                                 l2=self._l2, n_hidden=self._n_hidden)
+        # self._ml_model = model
+        #
+        # if self._save_model:
+        #     train_path = self._train_file_manager.new_filename(execution_time)
+        #     self._current_train = train_path
+        #     model.save(train_path)
 
-            if self._save_model:
-                train_path = self._train_file_manager.new_filename(execution_time)
-                self._current_train = train_path
-                model.save(train_path)
-
-        elif self._ml_library == 'TF':
+        if self._ml_library == 'TF':
 
             train_x = np.squeeze(train_x, axis=3)
 
@@ -170,7 +169,7 @@ class MvpOracle:
         if self._ml_model is None:
             raise ValueError('No trained ML model available for prediction.')
 
-        # call the covariance library
+        # Call the covariance library
         logging.info('Estimating historical covariance matrix.')
         cov = estimate_covariance(
             predict_data,

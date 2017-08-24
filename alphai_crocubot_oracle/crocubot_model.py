@@ -7,7 +7,6 @@ import tensorflow as tf
 import numpy as np
 
 import alphai_crocubot_oracle.tensormaths as tm
-import alphai_crocubot_oracle.topology as tp
 
 FLAGS = tf.app.flags.FLAGS
 
