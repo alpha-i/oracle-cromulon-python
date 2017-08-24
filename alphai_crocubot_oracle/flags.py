@@ -78,7 +78,6 @@ def load_default_config():
     config['layer_widths'] = [3, 3]
     config['activation_functions'] = ['relu', 'relu']
 
-
     # Initial conditions
     config['INITIAL_ALPHA'] = 0.2
     config['INITIAL_WEIGHT_UNCERTAINTY'] = 0.4
