@@ -13,6 +13,7 @@ dependencies:
     - pip install setuptools
   override:
     - pip install -r requirements.txt
+    - pip install -r requirements_alphai.txt
   post:
     - pip install -r requirements_dev.txt
 
