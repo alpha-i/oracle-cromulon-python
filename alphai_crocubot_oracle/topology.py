@@ -1,8 +1,19 @@
+# Defines the layout of the network
+# Used by oracle, crocubot_model, and crocubot_train
+
 ACTIVATION_FN_LINEAR = "linear"
 ACTIVATION_FN_SELU = "selu"
 ACTIVATION_FN_RELU = "relu"
 
 ALLOWED_ACTIVATION_FN = [ACTIVATION_FN_RELU, ACTIVATION_FN_SELU, ACTIVATION_FN_LINEAR]
+
+DEFAULT_N_SERIES = 3
+DEFAULT_FEAT_PER_SERIES = 10
+DEFAULT_BINS = 10
+DEFAULT_N_FORECASTS = 3
+DEFAULT_HEIGHTS = [DEFAULT_N_SERIES, 10, DEFAULT_N_FORECASTS]
+DEFAULT_WIDTHS = [DEFAULT_FEAT_PER_SERIES, 10, DEFAULT_BINS]
+DEFAULT_ACT_FUNCTIONS = ['linear', 'relu', 'linear']
 
 
 class Topology(object):
@@ -11,18 +22,35 @@ class Topology(object):
     Run checks on the user input to verify that it defines a valid topology.
     """
 
-    def __init__(self, layers):
-        self.activation_funcs = ALLOWED_ACTIVATION_FN
+    def __init__(self, layers=None, n_series=DEFAULT_N_SERIES, n_features_per_series=DEFAULT_FEAT_PER_SERIES, n_forecasts=DEFAULT_N_FORECASTS,
+                 n_classification_bins=DEFAULT_BINS, layer_heights=DEFAULT_HEIGHTS, layer_widths=DEFAULT_WIDTHS, activation_functions=DEFAULT_ACT_FUNCTIONS):
+        """
+        Following info is required to construct a topology object
+        :param layers: Full list of layers can be provided, or:
+        :param n_series:
+        :param n_features_per_series:
+        :param n_forecasts:
+        :param n_classification_bins:
+        :param layer_heights:
+        :param layer_widths:
+        :param activation_functions:
+        """
+
+        if layers is None:
+            layers = self._build_layers(layer_heights, layer_widths, activation_functions)
+            # FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
+            layers[0]["width"] = n_features_per_series
+            layers[0]["height"] = n_series
+            layers[-1]["height"] = n_forecasts
+            layers[-1]["width"] = n_classification_bins
+
         self._verify_layers(layers)
         self.layers = layers
+        self.n_series = n_series
         self.n_layers = len(layers) - 1  # n layers of neurons are connected by n-1 sets of weights
-        self.n_inputs = layers[0]["height"] * layers[0]["width"]
-        self.n_outputs = layers[-1]["height"] * layers[-1]["width"]
-        self.n_features_per_series = layers[0]["width"]
-        self.n_output_series = layers[-1]["height"]
-        self.n_series = layers[0]["height"]
-        self.n_classification_bins = layers[-1]["width"]
-
+        self.n_features_per_series = n_features_per_series
+        self.n_forecasts = n_forecasts
+        self.n_classification_bins = n_classification_bins
 
     def _verify_layers(self, layers):
         """
@@ -33,7 +61,7 @@ class Topology(object):
         """
         for i, layer in enumerate(layers):
 
-            if layer["activation_func"] not in self.activation_funcs:
+            if layer["activation_func"] not in ALLOWED_ACTIVATION_FN:
                 raise ValueError('Unexpected activation function ' + str(layer["activation_func"]))
 
             for key in ['height', 'width']:
@@ -89,13 +117,29 @@ class Topology(object):
 
         return bias_shape
 
+    def _build_layers(self, layer_heights, layer_widths, activation_functions):
+        """
+        :param activation_functions:
+        :param n_series:
+        :param n_features_per_series:
+        :param n_forecasts:
+        :param n_classification_bins:
+        :param layer_heights:
+        :param layer_widths:
+        :return:
+        """
 
-if __name__ == "__main__":
+        layers = []
+        n_layers = len(activation_functions)
 
-    layers = [
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-        {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
-        ]
+        for i in range(n_layers):
+            layer = {}
+            layer["activation_func"] = activation_functions[i]
+            layer["trainable"] = True  # Just hardcode for now, will be configurable in future
+            layer["height"] = layer_heights[i]
+            layer["width"] = layer_widths[i]
+            layer["cell_height"] = 1  # Just hardcode for now, will be configurable in future
 
-    topology = Topology(layers)
+            layers.append(layer)
+
+        return layers

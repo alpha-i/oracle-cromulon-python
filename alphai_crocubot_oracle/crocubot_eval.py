@@ -1,76 +1,91 @@
+# This module is used to make predictions
+# Only used by oracle.py
+
+import logging
 import tensorflow as tf
 import numpy as np
 
-import alphai_crocubot_oracle.network as nt
-import alphai_crocubot_oracle.iotools as io
+# FIXME once time_series is updated, uncomment the below and delete the copy in this file
+#from alphai_time_series.calculator import make_diagonal_covariance_matrices
+
+import alphai_crocubot_oracle.crocubot_model as cr
 import alphai_crocubot_oracle.classifier as cl
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_integer('num_eval_passes', 50,
-                            """Number of passes to average over.""")
 
-
-def eval_neural_net(data_source, data, topology, number_of_passes=FLAGS.num_eval_passes):
+def eval_neural_net(data, topology, save_file):
     """ Multiple passes allow us to estimate the posterior distribution.
 
-    :param data_source: will load network trained on this dataset
     :param data:  Mini-batch to be fed into the network
-    :param number_of_passes: How many random realisations of the weights should be sampled
-    :return: 3D array with dimensions [n_passes, n_samples, n_labels] NB this is not the covariance - see network_covariance.py
+    :param topology: Specifies layout of network, also used to identify save file
+    :return: 3D array with dimensions [n_passes, n_samples, n_labels]
     """
 
-    print("Evaluating", data_source, "with shape", data.shape)
+    logging.info("Evaluating with shape", data.shape)
 
     try:
-        nt.initialise_parameters(topology)
+        cr.initialise_parameters(topology)
     except:
-        print('Variables already initialised')
+        logging.info('Variables already initialised')
 
     saver = tf.train.Saver()
-    save_file = io.load_file_name(data_source, topology)
-    y = nt.collate_multiple_passes(data, topology, number_of_passes=number_of_passes)
+    y = cr.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
-        print("Attempting to recover trained network:", save_file)
+        logging.info("Attempting to recover trained network:", save_file)
         saver.restore(sess, save_file)
-        first_output = y.eval()
 
-        if number_of_passes == 1:
-            return first_output
-        else:
-            return y.eval()
+        return y.eval()
 
-def forecast_means_and_variance(data_source, data, topology, number_of_passes=30, bin_distribution=None):
-    """ Each forecast comprises a mean and variance. NB not the covariance matrix - see network_covariance.py
 
-    :param data_source:
-    :param data:
-    :param number_of_passes:
+def forecast_means_and_variance(outputs, bin_distribution):
+    """ Each forecast comprises a mean and variance. NB not the covariance matrix
+    Oracle will perform this outside, but this function is useful for testing purposes
+
+    :param nparray outputs: Raw output from the network, a 4D array of shape [n_passes, n_samples, n_series, classes]
+    :param bin_distribution: Characterises the binning used to perform the classification task
     :return: Means and variances of the posterior.
     """
 
-    outputs = eval_neural_net(data_source, data, topology, number_of_passes)
-    assert outputs.shape[0] == number_of_passes, 'unexpected output shape'
-    # Expect 4D array of shape [n_passes, n_samples, n_series, classes]
+    assert outputs.shape[0] == FLAGS.n_eval_passes, 'unexpected output shape'
+    n_samples = outputs.shape[1]
+    n_series = outputs.shape[2]
 
-    if bin_distribution is None:
-        # Take mean and variance across different passes
-        mean = np.mean(outputs, axis=FLAGS.ENSEMBLE_DIMENSION)
-        variance = np.var(outputs, axis=FLAGS.ENSEMBLE_DIMENSION)
-    else:
-        n_samples = outputs.shape[1]
-        n_series = outputs.shape[2]
+    mean = np.zeros(shape=(n_samples, n_series))
+    variance = np.zeros(shape=(n_samples, n_series))
 
-        # Find mean and variance associated with each sample forecast
-        mean = np.zeros(shape=(n_samples, n_series))
-        variance = np.zeros(shape=(n_samples, n_series))
+    for i in range(n_samples):
+        for j in range(n_series):
+            bin_passes = outputs[:, i, j, :]
+            temp_mean, temp_variance = cl.declassify_labels(bin_distribution, bin_passes)
+            mean[i, j] = temp_mean
+            variance[i, j] = temp_variance
 
-        for i in range(n_samples):
-            for j in range(n_series):
-                bin_passes = outputs[:,i,j, :]
-                temp_mean, temp_variance = cl.declassify_labels(bin_distribution, bin_passes)
-                mean[i, j] = temp_mean
-                variance[i ,j] = temp_variance
+    if n_series > 1:
+        variance = make_diagonal_covariance_matrices(variance)
 
     return mean, variance
+
+
+# FIXME delete me once available in alphai_time_series
+def make_diagonal_covariance_matrices(variances):
+    """ Takes array of variances and makes diagonal covariance matrices
+
+    :param variances: [i, j] holds variance of forecast of sample i and series j
+    :return: Array of covariance matrices [n_samples, n_series, n_series]
+    """
+
+    if variances.ndim != 2:
+        raise ValueError('Dimensionality of the variances matrix {} should be 2'.format(variances.ndim))
+
+    n_samples = variances.shape[0]
+    n_series = variances.shape[1]
+
+    covariance_matrices = np.zeros((n_samples, n_series, n_series))
+
+    for i in range(n_samples):
+        diagonal_terms = variances[i, :]
+        covariance_matrices[i, :, :] = np.diag(diagonal_terms)
+
+    return covariance_matrices

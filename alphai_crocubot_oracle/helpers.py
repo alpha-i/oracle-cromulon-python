@@ -1,7 +1,9 @@
+# Used by oracle.py to keep track of the names of the save files
+
 import os
 import glob
 
-from alphai_mvp_oracle.constants import DATETIME_FORMAT_COMPACT
+from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 
 
 class TrainFileManager:
