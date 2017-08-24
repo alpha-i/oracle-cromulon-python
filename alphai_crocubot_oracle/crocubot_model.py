@@ -226,12 +226,3 @@ def initialise_noise(var_name, shape, layer):
         noise_vector = tm.centred_gaussian(shape)
 
     initialize_layer_variable(layer, var_name, noise_vector, trainable=False)
-
-
-if __name__ == "__main__":
-
-    layers = [{"activation_func": "input", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-              {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-              {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
-
-    topology = tp.Topology(layers)

@@ -143,12 +143,3 @@ class Topology(object):
             layers.append(layer)
 
         return layers
-
-
-if __name__ == "__main__":
-
-    layers = [{"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-              {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-              {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
-
-    topology = Topology(layers)
