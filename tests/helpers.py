@@ -5,12 +5,12 @@ import pandas_market_calendars as mcal
 from alphai_finance.data.cleaning import convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv
 from alphai_finance.data.read_from_hdf5 import read_feature_data_dict_from_hdf5
 
-from alphai_mvp_oracle.oracle import MvpOracle
+from alphai_crocubot_oracle.oracle import MvpOracle
 
 DATA_FILENAME = 'sample_hdf5.h5'
 
 FIXTURES_SOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
-FIXTURE_DESTINATION_DIR = '/tmp/mvp_data/'
+FIXTURE_DESTINATION_DIR = '/tmp/crocubot/'
 
 FIXTURE_DATA_FULLPATH = os.path.join(FIXTURE_DESTINATION_DIR, DATA_FILENAME)
 
