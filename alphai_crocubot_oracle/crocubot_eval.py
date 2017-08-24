@@ -1,6 +1,7 @@
 # This module is used to make predictions
 # Only used by oracle.py
 
+import logging
 import tensorflow as tf
 import numpy as np
 
@@ -20,18 +21,18 @@ def eval_neural_net(data, topology, save_file):
     :return: 3D array with dimensions [n_passes, n_samples, n_labels]
     """
 
-    print("Evaluating with shape", data.shape)
+    logging.info("Evaluating with shape", data.shape)
 
     try:
         cr.initialise_parameters(topology)
     except:
-        print('Variables already initialised')
+        logging.info('Variables already initialised')
 
     saver = tf.train.Saver()
     y = cr.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
-        print("Attempting to recover trained network:", save_file)
+        logging.info("Attempting to recover trained network:", save_file)
         saver.restore(sess, save_file)
 
         return y.eval()

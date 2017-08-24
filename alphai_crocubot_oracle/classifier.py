@@ -2,7 +2,7 @@
 # This will probably be moved to a data transformation library at a later point
 # This module is only used by oracle.py and iotools.py
 
-
+import logging
 import numpy as np
 
 
@@ -54,7 +54,7 @@ def compute_balanced_bin_edges(x, n_bins):
     n_xvals = len(x)
     xrange = np.linspace(0, n_xvals, n_bins + 1)
     n_array = np.arange(n_xvals)
-    print("Assigning", str(x.shape), "to", n_bins, "bins")
+    logging.info("Assigning", str(x.shape), "to", n_bins, "bins")
     return np.interp(xrange, n_array, np.sort(x))
 
 

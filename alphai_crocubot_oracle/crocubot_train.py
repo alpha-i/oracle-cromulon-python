@@ -3,6 +3,7 @@
 
 
 from timeit import default_timer as timer
+import logging
 
 import tensorflow as tf
 
@@ -46,15 +47,15 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     saver = tf.train.Saver()
 
     # Launch the graph
-    print("Launching Graph.")
+    logging.info("Launching Graph.")
     with tf.Session() as sess:
 
         if FLAGS.resume_training:
             try:
                 saver.restore(sess, save_path)
-                print("Model restored.")
+                logging.info("Model restored.")
             except:
-                print("Previous save file not found. Training from scratch")
+                logging.warning("Previous save file not found. Training from scratch")
                 sess.run(model_initialiser)
         else:
             sess.run(model_initialiser)
@@ -82,10 +83,10 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                print('Epoch', epoch, "loss:", str.format('{0:.2e}', epoch_loss), "in", str.format('{0:.2f}', time_epoch), "seconds")
+                logging.info('Epoch', epoch, "loss:", str.format('{0:.2e}', epoch_loss), "in", str.format('{0:.2f}', time_epoch), "seconds")
 
         out_path = saver.save(sess, save_path)
-        print("Model saved in file:", out_path)
+        logging.info("Model saved in file:", out_path)
 
     return epoch_loss_list
 

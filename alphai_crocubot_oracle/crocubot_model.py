@@ -1,6 +1,7 @@
 # Defines the network in tensorflow and allows access to its variables
 # Used by crocubot_train and crocubot_eval
 
+import logging
 
 import tensorflow as tf
 import numpy as np
@@ -130,7 +131,7 @@ def average_multiple_passes(data, number_of_passes, topology):
     mean, variance = tf.nn.moments(collated_outputs, axes=[0])
 
     if number_of_passes == 1:
-        print("warning - using default variance")
+        logging.warning("Using default variance")
         variance = FLAGS.DEFAULT_FORECAST_VARIANCE
 
     return mean, variance
