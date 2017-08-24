@@ -207,7 +207,7 @@ def initialise_parameters(topology):
         initialize_layer_variable(layer_number, 'rho_b', initial_rho_bias + tm.centred_gaussian(b_shape, np.abs(initial_rho_bias) / 10))
 
         is_alpha_trainable = False
-        initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.D_TYPE),
+        initialize_layer_variable(layer_number, 'log_alpha', np.log(FLAGS.INITIAL_ALPHA).astype(FLAGS.d_type),
                                   trainable=is_alpha_trainable)  # Hyperprior on the distribution of the weights
 
         initialise_noise('weight_noise', w_shape, layer_number)

@@ -91,4 +91,4 @@ def load_default_topology(data_source):
 if __name__ == '__main__':
 
     # Data_source:  'low_noise' 'randomwalk' 'weightedwalk' 'correlatedwalk' 'stochasticwalk
-    run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DEFAULT_N_EPOCHS, do_training=True)
+    run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training=True)

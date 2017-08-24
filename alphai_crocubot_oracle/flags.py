@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import argparse
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -12,10 +12,14 @@ def default():
 def set_training_flags(config):
     """ Assigns flags based on entries in dictionary"""
 
-    tf.app.flags.DEFINE_string('model_save_path', config['model_save_path'], """Path to save graph.""")
+    tf.flags._global_parser = argparse.ArgumentParser()
+
     tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
     tf.app.flags.DEFINE_integer('TF_TYPE', config['tf_type'], """Data type for tensorflow.""")
     tf.app.flags.DEFINE_integer('random_seed', 0, """Seed used to identify random noise realisiation.""")
+    tf.app.flags.DEFINE_integer('n_classification_bins', config['n_classification_bins'], """How many bins to use for classification.""")
+    tf.app.flags.DEFINE_string('model_save_path', config['model_save_path'], """Path to save graph.""")
+
 
     # Training specific
     tf.app.flags.DEFINE_integer('n_epochs', config['n_epochs'], """How many epochs to be used for training.""")
@@ -49,6 +53,7 @@ def set_training_flags(config):
 def load_default_config():
 
     config = {}
+    config['ml_library'] = 'TF'  # Informs Oracle we're using tensorflow
     config['model_save_path'] = '/tmp/crocubot/'
     config['d_type'] = 'float32'
     config['tf_type'] = 32
@@ -62,7 +67,17 @@ def load_default_config():
     config['cost_type'] = 'bayes'
     config['n_train_passes'] = 30
     config['n_eval_passes'] = 100
-    config['resume_training'] = True
+    config['resume_training'] = False
+
+    # Topology
+    config['n_series'] = 3
+    config['n_features_per_series'] = 271
+    config['n_forecasts'] = 3
+    config['n_classification_bins'] = 12
+    config['layer_heights'] = [3, 271]
+    config['layer_widths'] = [3, 3]
+    config['activation_functions'] = ['relu', 'relu']
+
 
     # Initial conditions
     config['INITIAL_ALPHA'] = 0.2

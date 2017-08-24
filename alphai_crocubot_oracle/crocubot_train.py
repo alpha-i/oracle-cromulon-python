@@ -36,7 +36,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
     model_initialiser = tf.global_variables_initializer()
 
-    n_batches = int(FLAGS.n_train_samples / FLAGS.batch_size)
+    n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
     if save_path is None:
         save_path = io.load_file_name(data_source, topology)
     saver = tf.train.Saver()
@@ -80,8 +80,8 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
                 print('Epoch', epoch, "loss:", str.format('{0:.2e}', epoch_loss), "in", str.format('{0:.2f}', time_epoch), "seconds")
 
-        saver.save(sess, save_path)
-        print("Model saved in file:", save_path)
+        out_path = saver.save(sess, save_path)
+        print("Model saved in file:", out_path)
 
     return epoch_loss_list
 

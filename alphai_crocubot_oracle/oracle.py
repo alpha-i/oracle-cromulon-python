@@ -18,7 +18,7 @@ from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_mrpb.hd5"
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot.hd5"
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -74,7 +74,7 @@ class MvpOracle:
         self._learning_rate = configuration['learning_rate']
         self._verbose = configuration['verbose']
         self._batch_size = configuration['batch_size']
-        self._n_classification_bins = configuration['network_config']['n_classification_bins']
+        self._n_classification_bins = configuration['n_classification_bins']
         self._drop_out = configuration['drop_out']
         self._l2 = configuration['l2']
         self._n_hidden = configuration['n_hidden']
@@ -97,7 +97,7 @@ class MvpOracle:
         if self._ml_library == 'TF':
             fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
             # Topology can either be directly constructed from layers, or build from sequence of parameters
-            self._croc_topology = tp.Topology(layers=None, n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
+            self._topology = tp.Topology(layers=None, n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
                                               n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
                                               layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
 
@@ -132,12 +132,15 @@ class MvpOracle:
 
         elif self._ml_library == 'TF':
 
+            train_x = np.squeeze(train_x, axis=3)
+
             # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
             bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
             train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
             train_path = self._train_file_manager.new_filename(execution_time)
-            crocubot.train(train_x, train_y, self._topology, save_file_path=train_path)
+            data_source = 'financial_stuff'
+            crocubot.train(self._topology, data_source, train_x, train_y, save_path=train_path)
 
             self._current_train = train_path
             self._bin_distribution = bin_distribution
