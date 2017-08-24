@@ -27,3 +27,12 @@ $ pip install -r requirements_dev.txt
 ```bash
 $ PYTHONPATH=. python -m pytest tests/
 ```
+
+
+## Installation on Windows
+We need to install `scipy` and `scikit-learn` using `conda` as it requires some external libraries which are not easy to build in Windows.
+```commandline
+conda install scipy==0.18.1
+conda install scikit-learn==0.18.1
+```
+

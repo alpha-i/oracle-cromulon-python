@@ -40,15 +40,13 @@ class TestTensormath(tf.test.TestCase):
 
     def test_centred_gaussian(self):
         shapes = [(3,), (2, 2)]
-        results = [
-                   np.array([-0.28077507, -0.1377521, -0.67632961]),
-                   np.array([[-0.28077507, - 0.1377521], [-0.67632961,  0.02458041]])
-                  ]
+        results = [np.array([-0.28077507, -0.1377521, -0.67632961]),
+                   np.array([[-0.28077507, - 0.1377521], [-0.67632961, 0.02458041]])]
 
         with self.test_session():
             for shape, expected_result in zip(shapes, results):
                 actual_result = tm.centred_gaussian(shape, sigma=1., seed=42).eval()
-                self.assertArrayNear(actual_result.flatten(),  expected_result.flatten(), err=1e-5)
+                self.assertArrayNear(actual_result.flatten(), expected_result.flatten(), err=1e-5)
 
     def test_perfect_centred_guassian(self):
         shapes = [(3,), (2, 2)]
@@ -59,7 +57,7 @@ class TestTensormath(tf.test.TestCase):
 
         for shape, expected_result in zip(shapes, results):
             actual_result = tm.perfect_centred_gaussian(shape, sigma=1.)
-            self.assertArrayNear(actual_result.flatten(),  expected_result.flatten(), err=1e-5)
+            self.assertArrayNear(actual_result.flatten(), expected_result.flatten(), err=1e-5)
 
     def test_log_gaussian(self):
         xs = [-1.0, 0.2, 2.0]
@@ -104,9 +102,9 @@ class TestTensormath(tf.test.TestCase):
 
     def test_roll_noise_np(self):
         noise = np.asarray([[0.1, -0.3], [0.23, 0.56]])
-        results = [[0.1, -0.3,   0.23,  0.56],
-                   [0.56, 0.1, -0.3,   0.23],
-                   [0.23,  0.56,  0.1, -0.3]]
+        results = [[0.1, -0.3, 0.23, 0.56],
+                   [0.56, 0.1, -0.3, 0.23],
+                   [0.23, 0.56, 0.1, -0.3]]
 
         for i, expected_result in enumerate(results):
             actual_result = tm.roll_noise_np(noise, i).flatten()
@@ -114,9 +112,9 @@ class TestTensormath(tf.test.TestCase):
 
     def test_roll_noise(self):
         noise = np.asarray([[0.1, -0.3], [0.23, 0.56]])
-        results = [[0.1, -0.3,   0.23,  0.56],
-                   [0.56, 0.1, -0.3,   0.23],
-                   [0.23,  0.56,  0.1, -0.3]]
+        results = [[0.1, -0.3, 0.23, 0.56],
+                   [0.56, 0.1, -0.3, 0.23],
+                   [0.23, 0.56, 0.1, -0.3]]
 
         # test for  float64
         with self.test_session():
@@ -130,7 +128,3 @@ class TestTensormath(tf.test.TestCase):
                 actual_result = tf.py_func(tm.roll_noise_np, [noise.astype(np.float32, copy=False), i],
                                            tf.float32).eval().flatten()
                 self.assertArrayNear(actual_result, expected_result, err=1e-5)
-
-
-
-
