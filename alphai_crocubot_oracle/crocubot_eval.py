@@ -5,7 +5,8 @@ import logging
 import tensorflow as tf
 import numpy as np
 
-from alphai_time_series.calculator import make_diagonal_covariance_matrices
+# FIXME once time_series is updated, uncomment the below and delete the copy in this file
+#from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
 import alphai_crocubot_oracle.crocubot_model as cr
 import alphai_crocubot_oracle.classifier as cl
@@ -65,3 +66,26 @@ def forecast_means_and_variance(outputs, bin_distribution):
         variance = make_diagonal_covariance_matrices(variance)
 
     return mean, variance
+
+
+# FIXME delete me once available in alphai_time_series
+def make_diagonal_covariance_matrices(variances):
+    """ Takes array of variances and makes diagonal covariance matrices
+
+    :param variances: [i, j] holds variance of forecast of sample i and series j
+    :return: Array of covariance matrices [n_samples, n_series, n_series]
+    """
+
+    if variances.ndim != 2:
+        raise ValueError('Dimensionality of the variances matrix {} should be 2'.format(variances.ndim))
+
+    n_samples = variances.shape[0]
+    n_series = variances.shape[1]
+
+    covariance_matrices = np.zeros((n_samples, n_series, n_series))
+
+    for i in range(n_samples):
+        diagonal_terms = variances[i, :]
+        covariance_matrices[i, :, :] = np.diag(diagonal_terms)
+
+    return covariance_matrices

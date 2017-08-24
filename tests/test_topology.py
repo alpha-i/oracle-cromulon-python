@@ -12,8 +12,8 @@ class TestTopology(unittest.TestCase):
         # There are currently two methods for constructing a topology.
         # Here we test passing the predefined list of layers
         layers = [{"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                      {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                      {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
+                  {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+                  {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
 
         new_topology = Topology(layers)
         assert isinstance(new_topology, Topology)
