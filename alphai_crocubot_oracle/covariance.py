@@ -1,3 +1,6 @@
+# Calculate the historical covariance matrix for financial data
+# This is only used by oracle.py
+
 from alphai_finance.metrics.returns import returns_minutes_after_market_open_data_frame
 from alphai_covariance.dynamic_cov import estimate_cov
 

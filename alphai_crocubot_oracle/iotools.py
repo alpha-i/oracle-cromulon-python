@@ -1,3 +1,6 @@
+# Used for retrieving non-financial data, and saving/retrieving non-financial models
+# Will not be used by quant workflow
+
 import tensorflow as tf
 
 from tensorflow.examples.tutorials.mnist import input_data

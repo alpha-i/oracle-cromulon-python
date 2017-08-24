@@ -1,7 +1,12 @@
-import os
+# Interface with quant workflow.
+# Trains the network then uses it to make predictions
+# Also transforms the data before and after the predictions are made
+# This is intended to be a fairly generic code in that it can easily applied to other models
+
+# import os
 import logging
 
-from keras.models import load_model
+# from keras.models import load_model
 import pandas as pd
 import numpy as np
 
@@ -98,8 +103,8 @@ class MvpOracle:
             fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
             # Topology can either be directly constructed from layers, or build from sequence of parameters
             self._topology = tp.Topology(layers=None, n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
-                                              n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
-                                              layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
+                                         n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
+                                         layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
 
     def train(self, historical_universes, train_data, execution_time):
         """
@@ -212,14 +217,15 @@ class MvpOracle:
 
         if latest_train != self._current_train:
             if self._ml_library == 'keras':
-                self._ml_model = load_model(
-                    os.path.join(
-                        self._train_path,
-                        latest_train
-                    )
-                )
+                # self._ml_model = load_model(
+                #     os.path.join(
+                #         self._train_path,
+                #         latest_train
+                #     )
+                # )
                 self._current_train = latest_train
             elif self._ml_library == 'TF':  # Don't load model, just location of save file
                 self._current_train = latest_train
+                raise Warning("Probabiy shouldnt have got here. But lets see what happens...")
             else:
                 raise NotImplementedError

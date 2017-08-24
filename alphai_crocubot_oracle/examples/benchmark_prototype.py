@@ -1,4 +1,5 @@
-# Useful for checking that training & inference works
+# Example usage of crocubot
+# Acts as a useful test that training & inference still works!
 
 from timeit import default_timer as timer
 import numpy as np

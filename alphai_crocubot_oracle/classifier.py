@@ -1,4 +1,7 @@
 # These functions act as interface between point estimates and binned estimates
+# This will probably be moved to a data transformation library at a later point
+# This module is only used by oracle.py and iotools.py
+
 
 import numpy as np
 

@@ -1,3 +1,6 @@
+# Sets the crocubot hyperparameters as flags in tensorflow, based on a configuration dictionary
+# Used by oracle.py
+
 import tensorflow as tf
 import argparse
 FLAGS = tf.app.flags.FLAGS
@@ -20,7 +23,6 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_integer('n_classification_bins', config['n_classification_bins'], """How many bins to use for classification.""")
     tf.app.flags.DEFINE_string('model_save_path', config['model_save_path'], """Path to save graph.""")
 
-
     # Training specific
     tf.app.flags.DEFINE_integer('n_epochs', config['n_epochs'], """How many epochs to be used for training.""")
     tf.app.flags.DEFINE_integer('n_training_samples', config['n_training_samples'], """Total number of data samples to be used for training.""")
@@ -31,7 +33,6 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_integer('n_eval_passes', 100, """Number of passes to average over during evaluation.""")
     tf.app.flags.DEFINE_boolean('resume_training', config['resume_training'],
                                 """Whether to set noise such that its mean and std are exactly the desired values""")
-
     # Initial conditions
     tf.app.flags.DEFINE_float('INITIAL_ALPHA', config['INITIAL_ALPHA'], """Prior on weights.""")
     tf.app.flags.DEFINE_float('INITIAL_WEIGHT_UNCERTAINTY', config['INITIAL_WEIGHT_UNCERTAINTY'], """Initial standard deviation on weights.""")
@@ -40,7 +41,6 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('INITIAL_BIAS_DISPLACEMENT', config['INITIAL_BIAS_DISPLACEMENT'], """Initial offset on bias distributions.""")
     tf.app.flags.DEFINE_boolean('USE_PERFECT_NOISE', config['USE_PERFECT_NOISE'],
                                 """Whether to set noise such that its mean and std are exactly the desired values""")
-
     # Priors
     tf.app.flags.DEFINE_boolean('double_gaussian_weights_prior', config['double_gaussian_weights_prior'],
                                 """Whether to impose a double Gaussian prior.""")

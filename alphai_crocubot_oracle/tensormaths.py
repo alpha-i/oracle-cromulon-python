@@ -1,4 +1,6 @@
 # Library of mathematical functions for use with tensorflow
+# Used by bayesian_cost and crocubot_model
+
 import tensorflow as tf
 import numpy as np
 

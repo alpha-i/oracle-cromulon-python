@@ -1,9 +1,12 @@
+# This module is used to make predictions
+# Only used by oracle.py
+
 import tensorflow as tf
 import numpy as np
 
 from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
-import alphai_crocubot_oracle.crocubot_model as nt
+import alphai_crocubot_oracle.crocubot_model as cr
 import alphai_crocubot_oracle.classifier as cl
 
 FLAGS = tf.app.flags.FLAGS
@@ -20,12 +23,12 @@ def eval_neural_net(data, topology, save_file):
     print("Evaluating with shape", data.shape)
 
     try:
-        nt.initialise_parameters(topology)
+        cr.initialise_parameters(topology)
     except:
         print('Variables already initialised')
 
     saver = tf.train.Saver()
-    y = nt.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
+    y = cr.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
         print("Attempting to recover trained network:", save_file)

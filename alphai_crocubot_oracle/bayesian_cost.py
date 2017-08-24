@@ -1,3 +1,7 @@
+# The cost is used to control the learning process
+# This module is only required by crocubot_train.py
+
+
 import tensorflow as tf
 
 import alphai_crocubot_oracle.tensormaths as tm

@@ -1,3 +1,7 @@
+# Defines the network in tensorflow and allows access to its variables
+# Used by crocubot_train and crocubot_eval
+
+
 import tensorflow as tf
 import numpy as np
 

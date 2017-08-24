@@ -1,3 +1,7 @@
+# Trains the network
+# Used by oracle.py
+
+
 from timeit import default_timer as timer
 
 import tensorflow as tf

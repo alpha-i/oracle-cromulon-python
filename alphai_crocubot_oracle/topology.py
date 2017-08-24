@@ -1,3 +1,6 @@
+# Defines the layout of the network
+# Used by oracle, crocubot_model, and crocubot_train
+
 ACTIVATION_FN_LINEAR = "linear"
 ACTIVATION_FN_SELU = "selu"
 ACTIVATION_FN_RELU = "relu"

@@ -1,3 +1,5 @@
+# Used by oracle.py to keep track of the names of the save files
+
 import os
 import glob
 
