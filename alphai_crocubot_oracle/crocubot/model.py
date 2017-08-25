@@ -8,8 +8,6 @@ import tensorflow as tf
 
 import alphai_crocubot_oracle.tensormaths as tm
 
-FLAGS = tf.app.flags.FLAGS
-
 
 class CrocuBotModel:
 
@@ -29,11 +27,19 @@ class CrocuBotModel:
         self._topology = topology
         self._graph = tf.get_default_graph()
         self._flags = flags
-        self._noise_seed = flags.noise_seed
+        self._random_seed = flags.random_seed
 
     @property
     def graph(self):
         return self._graph
+
+    @property
+    def topology(self):
+        return self._topology
+
+    @property
+    def layers(self):
+        return self._topology.n_layers
 
     def initialize(self):
         
@@ -142,112 +148,79 @@ class CrocuBotModel:
     def reset(self):
         self._graph.reset()
 
-    def increment_noise_seed(self):
-        self._noise_seed += 1
-
-def get_layer_variable(layer_number, var_name, reuse=True):
-    """
-
-    :param layer_number:
-    :param var_name:
-    :param reuse:
-    :return:
-    """
-
-    assert isinstance(layer_number, int)
-    scope_name = str(layer_number)
-    with tf.variable_scope(scope_name, reuse=reuse):
-        v = tf.get_variable(var_name, dtype=tm.DEFAULT_TF_TYPE)
-    return v
+    def increment_random_seed(self):
+        self._random_seed += 1
 
 
-def compute_weights(layer, iteration=0, do_tile_weights=True):
+class Estimator:
 
-    mean = get_layer_variable(layer, 'mu_w')
-    rho = get_layer_variable(layer, 'rho_w')
-    noise = get_noise(layer, iteration)
+    def __init(self, crocubot_model, flags):
+        """
 
-    return mean + tf.exp(rho) * noise
+        :param CrocuBotModel crocubot_model:
+        :param flags:
+        :return:
+        """
+        self.model = crocubot_model
+        self._flags = flags
 
+    def average_multiple_passes(self, data, number_of_passes):
+        """
+        Multiple passes allow us to estimate the posterior distribution.
 
-def compute_biases(layer, iteration):
-    """Bias is Gaussian distributed"""
+        :param data: Mini-batch to be fed into the network
+        :param number_of_passes: How many random realisations of the weights should be sampled
+        :return: Means and variances of the posterior. NB this is not the covariance - see network_covariance.py
+        """
 
-    mean = get_layer_variable(layer, 'mu_b')
-    rho = get_layer_variable(layer, 'rho_b')
-    noise = get_noise(layer, iteration, is_weight=False)
+        collated_outputs = self.collate_multiple_passes(data, number_of_passes)
+        mean, variance = tf.nn.moments(collated_outputs, axes=[0])
 
-    # biases = mean + tf.nn.softplus(rho) * noise
-    biases = mean + tf.exp(rho) * noise
+        if number_of_passes == 1:
+            logging.warning("Using default variance")
+            variance = self._flags.DEFAULT_FORECAST_VARIANCE
 
-    return biases
+        return mean, variance
 
+    def collate_multiple_passes(self, x, number_of_passes=50):
+        """
+        Collate outputs from many realisations of weights from a bayesian network.
 
-def get_noise(layer, iteration, is_weight=True):
+        :param tensor x:
+        :param int number_of_passes:
+        :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
+        """
 
-    if is_weight:
-        noise_type = 'weight_noise'
-    else:
-        noise_type = 'bias_noise'
+        outputs = []
+        for iteration in range(number_of_passes):
+            result = self.forward_pass(x, iteration)
+            outputs.append(result)
 
-    noise = get_layer_variable(layer, noise_type)
-    noise = tm.roll_noise(noise, iteration)
+        stacked_output = tf.stack(outputs, axis=0)
 
-    return noise
+        # Make sure we softmax across the 'bin' dimension, but not across all series!
+        stacked_output = tf.nn.softmax(stacked_output, dim=-1)
 
-def average_multiple_passes(data, number_of_passes, topology):
-    """  Multiple passes allow us to estimate the posterior distribution.
-    :param data: Mini-batch to be fed into the network
-    :param number_of_passes: How many random realisations of the weights should be sampled
-    :return: Means and variances of the posterior. NB this is not the covariance - see network_covariance.py
-    """
+        return stacked_output
 
-    collated_outputs = collate_multiple_passes(data, topology, number_of_passes=number_of_passes)
-    mean, variance = tf.nn.moments(collated_outputs, axes=[0])
+    def forward_pass(self, signal, iteration=0):
+        """
+        Takes input data and returns predictions
 
-    if number_of_passes == 1:
-        logging.warning("Using default variance")
-        variance = FLAGS.DEFAULT_FORECAST_VARIANCE
+        :param tensor signal: signal[i,j] holds input j from sample i, so data.shape = [batch_size, n_inputs]
+        or if classification then   [batch_size, n_series, n_classes]
+        :param int iteration: number of iteration
+        :return:
+        """
 
-    return mean, variance
+        for layer_number in range(self.model.topology.n_layers):
+            weights = self.model.compute_weights(layer_number, iteration)
+            biases = self.model.compute_biases(layer_number, iteration)
 
+            signal = tf.tensordot(signal, weights, axes=2) + biases
+            activation_function = self.model.topology.get_activation_function(layer_number, signal)
+            signal = activation_function(signal)
 
-def collate_multiple_passes(x, topology, number_of_passes=50):
-    """Collate outputs from many realisations of weights from a bayesian network.
-    :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]
-    """
-
-    outputs = []
-    for iter in range(number_of_passes):
-        result = forward_pass(x, topology, iteration=iter)
-        outputs.append(result)
-
-    stacked_output = tf.stack(outputs, axis=0)
-
-    # Make sure we softmax across the 'bin' dimension, but not across all series!
-    stacked_output = tf.nn.softmax(stacked_output, dim=-1)
-
-    return stacked_output
-
-
-def forward_pass(signal, topology, iteration=0):
-    """ Takes input data and returns predictions
-
-    :param tensor signal: signal[i,j] holds input j from sample i, so data.shape = [batch_size, n_inputs]
-    or if classification then   [batch_size, n_series, n_classes]
-    :return: tensor: predictions of length N_OUTPUTS
-    """
-
-    for layer in range(topology.n_layers):
-
-        weights = compute_weights(layer, iteration)
-        biases = compute_biases(layer, iteration)
-
-        signal = tf.tensordot(signal, weights, axes=2) + biases
-        activation_function = topology.get_activation_function(layer, signal)
-        signal = activation_function(signal)
-
-    return signal
-
+        return signal
 
 

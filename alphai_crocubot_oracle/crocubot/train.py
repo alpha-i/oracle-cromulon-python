@@ -9,7 +9,7 @@ import tensorflow as tf
 
 import alphai_crocubot_oracle.bayesian_cost as cost
 import alphai_crocubot_oracle.crocubot.model as cr
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 import alphai_crocubot_oracle.iotools as io
 
 FLAGS = tf.app.flags.FLAGS
@@ -40,7 +40,7 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
         y = tf.placeholder(FLAGS.d_type)
         global_step = tf.Variable(0, trainable=False, name='global_step')
 
-        cost_operator = _set_cost_operator(x, y, topology)
+        cost_operator = _set_cost_operator(model, x, y, topology)
         training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
         model_initialiser = tf.global_variables_initializer()
 
@@ -80,7 +80,7 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
 
                     _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})
                     epoch_loss += batch_loss
-                    model.increment_noise_seed()
+                    model.increment_random_seed()
 
                 time_epoch = timer() - start_time
                 epoch_loss_list.append(epoch_loss)
@@ -94,12 +94,25 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     return epoch_loss_list
 
 
-def _set_cost_operator(x, labels, topology):
+def _set_cost_operator(crocubot_model, x, labels):
+    """
+    Set the cost operator
 
-    cost_object = cost.BayesianCost(topology, FLAGS.double_gaussian_weights_prior, FLAGS.wide_prior_std,
-                                    FLAGS.narrow_prior_std, FLAGS.spike_slab_weighting)
+    :param CrocubotModel crocubot_model:
+    :param data x:
+    :param labels:
+    :return:
+    """
 
-    predictions = cr.average_multiple_passes(x, FLAGS.n_train_passes, topology)
+    cost_object = cost.BayesianCost(crocubot_model.topology,
+                                    FLAGS.double_gaussian_weights_prior,
+                                    FLAGS.wide_prior_std,
+                                    FLAGS.narrow_prior_std,
+                                    FLAGS.spike_slab_weighting
+                                    )
+
+    estimator = Estimator(crocubot_model, FLAGS)
+    predictions = estimator.average_multiple_passes(x, FLAGS.n_train_passes)
 
     if FLAGS.cost_type == 'bayes':
         operator = cost_object.get_bayesian_cost(predictions, labels)

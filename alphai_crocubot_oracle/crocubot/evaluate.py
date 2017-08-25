@@ -10,8 +10,7 @@ import tensorflow as tf
 # from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
 import alphai_crocubot_oracle.classifier as cl
-import alphai_crocubot_oracle.crocubot.model as cr
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -26,14 +25,15 @@ def eval_neural_net(data, topology, save_file):
 
     logging.info("Evaluating with shape", data.shape)
 
+    model = CrocuBotModel(topology, FLAGS)
     try:
-        model = CrocuBotModel(topology, FLAGS)
         model.initialize()
     except:
         logging.info('Variables already initialised')
 
     saver = tf.train.Saver()
-    y = cr.collate_multiple_passes(data, topology, number_of_passes=FLAGS.n_eval_passes)
+    estimator = Estimator(model, FLAGS)
+    y = estimator.collate_multiple_passes(data, FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
         logging.info("Attempting to recover trained network:", save_file)
