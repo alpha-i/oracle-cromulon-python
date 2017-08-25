@@ -9,15 +9,33 @@ import alphai_crocubot_oracle.crocubot_model as cr
 
 
 class BayesianCost(object):
-    def __init__(self, topology, double_gaussian_weights_prior, wide_prior_std, narrow_prior_std,
-                 spike_slab_weighting):
+    def __init__(self, topology, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
+                 spike_slab_weighting=0.5):
+        """
+        A class for computing Bayesian cost.
+        :param topology: A topology object that defines the topology of the network.
+        :param use_double_gaussian_weights_prior:
+        :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian
+        :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian
+        :param spike_slab_weighting: The ratio of the spike to slab standard deviations.
+        """
         self.topology = topology
-        self._double_gaussian_weights_prior = double_gaussian_weights_prior
-        self._wide_prior_std = wide_prior_std
-        self._narrow_prior_std = narrow_prior_std
+        self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
+        self._slab_std_dvn = slab_std_dvn
+        if self._slab_std_dvn <= 0. or self._slab_std_dvn > 100:
+            raise ValueError("The value of slab standard deviation, {} is out of range (0,100)."
+                             .format(self._slab_std_dvn))
+        self._spike_std_dvn = spike_std_dvn
+        if self._spike_std_dvn <= 0. or self._spike_std_dvn > 100:
+            raise ValueError("The value of spike standard deviation, {} is out of range (0,100)."
+                             .format(self._spike_std_dvn))
+        if self._spike_std_dvn >= self._slab_std_dvn:
+            raise ValueError("Spike standard deviation {} should be less that slab standard deviation {}."
+                             .format(self._spike_std_dvn, self._slab_std_dvn))
         self._spike_slab_weighting = spike_slab_weighting
-
-        assert 0.0 < self._spike_slab_weighting < 1.0, " spike_slab_weighting must be between 0 and 1"
+        if self._spike_slab_weighting < 0. or self._spike_slab_weighting > 1.:
+            raise ValueError("The value of spike/slab weighting {} should be in the interval [0,1]."
+                             .format(self._spike_slab_weighting))
 
     def get_bayesian_cost(self, prediction, target):
         log_pw, log_qw = self.calculate_priors()
@@ -55,10 +73,10 @@ class BayesianCost(object):
         :param layer:
         :return:
         """
-        if self._double_gaussian_weights_prior:
+        if self._use_double_gaussian_weights_prior:
 
-            pwide = tm.unit_gaussian(weights / self._wide_prior_std) / self._wide_prior_std
-            pnarrow = tm.unit_gaussian(weights / self._narrow_prior_std) / self._narrow_prior_std
+            pwide = tm.unit_gaussian(weights / self._slab_std_dvn) / self._slab_std_dvn
+            pnarrow = tm.unit_gaussian(weights / self._spike_std_dvn) / self._spike_std_dvn
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:
@@ -74,10 +92,10 @@ class BayesianCost(object):
         :param layer:
         :return:
         """
-        if self._double_gaussian_weights_prior:
+        if self._use_double_gaussian_weights_prior:
 
-            pwide = tf.contrib.distributions.Normal(0., 1.).prob(biases / self._wide_prior_std) / self._wide_prior_std
-            pnarrow = tf.contrib.distributions.Normal(0., 1.).prob(biases / self._narrow_prior_std) / self._narrow_prior_std
+            pwide = tf.contrib.distributions.Normal(0., 1.).prob(biases / self._slab_std_dvn) / self._slab_std_dvn
+            pnarrow = tf.contrib.distributions.Normal(0., 1.).prob(biases / self._spike_std_dvn) / self._spike_std_dvn
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:

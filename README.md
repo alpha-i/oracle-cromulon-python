@@ -35,4 +35,16 @@ We need to install `scipy` and `scikit-learn` using `conda` as it requires some 
 conda install scipy==0.18.1
 conda install scikit-learn==0.18.1
 ```
+We will need to set the variables for the GSL in the environment first. 
+```commandline
+set GSL_INCLUDE_DIR=C:\Users\sree\Documents\Software\gsl\include
+set GSL_LIBRARY_DIR=C:\Users\sree\Documents\Software\gsl\lib
+```
+Now install the requirements using `pip`.
+```commandline
+pip install -U setuptools --ignore-installed --no-cache-dir
+pip install -r requirements.txt --src %CONDA_PREFIX%
+pip install -r requirements_alphai.txt --src %CONDA_PREFIX%
+pip install -r requirements_dev.txt
+```
 
