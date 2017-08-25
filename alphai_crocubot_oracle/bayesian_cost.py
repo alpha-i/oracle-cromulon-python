@@ -54,7 +54,7 @@ class BayesianCost(object):
 
             log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
             log_pw += self.calculate_log_bias_prior(biases, layer)
-            # log_pw += self.calculate_log_hyperprior(layer)
+            log_pw += self.calculate_log_hyperprior(layer)
 
             log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
             log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
