@@ -1,6 +1,3 @@
-# Calculate the historical covariance matrix for financial data
-# This is only used by oracle.py
-
 from alphai_finance.metrics.returns import returns_minutes_after_market_open_data_frame
 from alphai_covariance.dynamic_cov import estimate_cov
 
@@ -17,14 +14,14 @@ def estimate_covariance(data, ndays, minutes_after_open, estimation_method, exch
     :param estimation_method: covariance estimation method either NERCOME or Ledoit
     :param exchange_calendar: pandas_market_calendars
     :param forecast_interval: how many days ahead we should predict?
-    :return:
+    :return: The covariance matrix of the data.
     """
     if forecast_interval != 1:
         raise ValueError('This method is currently hardcoded for 1-day forecasting intervals.')
 
     data = returns_minutes_after_market_open_data_frame(data['close'], exchange_calendar, minutes_after_open)
 
-    assert not data.isnull().any().any()
+    assert not data.isnull().any().any()  # FIXME What are the conditions in which this fails?
 
     nd = data.shape[1]
     sampling_days = nd * DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR
