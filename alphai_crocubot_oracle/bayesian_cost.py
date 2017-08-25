@@ -9,7 +9,7 @@ import alphai_crocubot_oracle.tensormaths as tm
 
 
 class BayesianCost(object):
-    def __init__(self, model, topology, double_gaussian_weights_prior, wide_prior_std, narrow_prior_std,
+    def __init__(self, model, double_gaussian_weights_prior, wide_prior_std, narrow_prior_std,
                  spike_slab_weighting):
         """
 
@@ -21,7 +21,7 @@ class BayesianCost(object):
         :param spike_slab_weighting:
         """
         self._model = model
-        self.topology = topology
+        self.topology = model.topology
         self._double_gaussian_weights_prior = double_gaussian_weights_prior
         self._wide_prior_std = wide_prior_std
         self._narrow_prior_std = narrow_prior_std
@@ -46,7 +46,7 @@ class BayesianCost(object):
             rho_b = self._model.get_variable(layer, 'rho_b')
 
             # Only want to consider independent weights, not the full set, so do_tile_weights=False
-            weights = self._model.compute_weights(layer, iteration=0, do_tile_weights=False)
+            weights = self._model.compute_weights(layer, iteration=0)
             biases = self._model.compute_biases(layer, iteration=0)
 
             log_pw += self.calc_log_weight_prior(weights, layer)  # not needed if we're using many passes
@@ -72,7 +72,7 @@ class BayesianCost(object):
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:
-            log_alpha = self._model.get_variable(layer, self.model.VAR_LOG_ALPHA)
+            log_alpha = self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
             log_pw = tm.log_gaussian_logsigma(weights, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
