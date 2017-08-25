@@ -8,7 +8,6 @@ import alphai_crocubot_oracle.flags as fl
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
-
 from tests.helpers import (
     FIXTURE_DESTINATION_DIR, FIXTURE_DATA_FULLPATH,
     create_fixtures, destroy_fixtures, read_hdf5_into_dict_of_data_frames,
@@ -141,8 +140,9 @@ class TestMvp(TestCase):
             model._current_train
         )
 
-        # FIXME the savefile seems to be created but then deleted before this point
-        # self.assertTrue(os.path.exists(expected_train_path))
+        tf_suffix = '.index'  # TF adds stuff to the end of its save files
+        full_tensorflow_path = expected_train_path + tf_suffix
+        self.assertTrue(os.path.exists(full_tensorflow_path))
         self.assertEqual(
             model.get_current_train(), expected_train_path
         )
