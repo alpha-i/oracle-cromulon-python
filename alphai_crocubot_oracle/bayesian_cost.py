@@ -1,7 +1,10 @@
-# The cost is used to control the learning process
-# This module is only required by train.py
+"""
+This modules contains the implementation of the BayesianCost which is
+the cost function to control the learning process.
 
+It is used during the train of the model, implemented in the module alphai_crocubot_oracle.train:train
 
+"""
 import tensorflow as tf
 
 import alphai_crocubot_oracle.crocubot.model as cr

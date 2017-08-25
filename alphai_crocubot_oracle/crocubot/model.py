@@ -1,5 +1,15 @@
-# Defines the network in tensorflow and allows access to its variables
-# Used by crocubot_train and crocubot_eval
+"""
+This modules contains two classes
+
+1 CrocuBotModel
+    class which wraps all the methods needed to initialize the graph and retrieve its variables
+        The graph in which the class operates is the default tf graph
+2 Estimator
+  This class is an service class which permits to visit the graph of a given estimator and retrieve different passes
+   algrithm
+
+
+"""
 
 import logging
 
