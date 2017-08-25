@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.topology import Topology
@@ -31,7 +32,7 @@ class TestCrocuBotModel(tf.test.TestCase):
                                       layer_number, variable_name
                               )
 
-        with self.test_session(model.graph) as session:
+        with self.test_session() as session:
 
             model.build_layers_variables()
             session.run(tf.global_variables_initializer())
@@ -50,6 +51,7 @@ class TestEstimator(tf.test.TestCase):
     def setUp(self):
 
         initialize_default_flags()
+        tf.reset_default_graph()
 
         layer_number = [
             {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
@@ -57,23 +59,21 @@ class TestEstimator(tf.test.TestCase):
             {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
         ]
         topology = Topology(layer_number)
-        self.crocubot_model = CrocuBotModel(topology, FLAGS)
 
+        self.crocubot_model = CrocuBotModel(topology, FLAGS)
 
     def test_forward_pass(self):
 
         estimator = Estimator(self.crocubot_model, FLAGS)
-        tf.reset_default_graph()
 
-        with self.test_session(self.crocubot_model.graph) as session:
+        self.crocubot_model.build_layers_variables()
 
-            self.crocubot_model.build_layers_variables()
+        data = np.ones(shape=(2, 200, 200), dtype=np.float32)
+        output_signal = estimator.forward_pass(data)
+
+        with self.test_session() as session:
             session.run(tf.global_variables_initializer())
-            output_signal = estimator.forward_pass([])
-
-            self.assertIsInstance(output_signal,  tf.Tensor)
-
+            self.assertIsInstance(output_signal, tf.Tensor)
             value = output_signal.eval()
             print(value)
-
 
