@@ -21,5 +21,7 @@ dependencies:
 
 test:
   override:
-    - flake8 ./
+    - pwd
+    - ls -la
+    - flake8 alphai_crocubot_oracle
     - PYTHONPATH=. pytest --cov=alphai_crocubot_oracle --cov-report html:$CIRCLE_ARTIFACTS tests/
