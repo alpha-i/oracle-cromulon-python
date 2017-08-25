@@ -7,7 +7,6 @@ It is used during the train of the model, implemented in the module alphai_crocu
 """
 import tensorflow as tf
 
-import alphai_crocubot_oracle.crocubot.model as cr
 import alphai_crocubot_oracle.tensormaths as tm
 
 
@@ -44,7 +43,7 @@ class BayesianCost(object):
 
         for layer in range(self.topology.n_layers):
             mu_w = self._model.get_variable(layer, 'mu_w')
-            rho_w  = self._model.get_variable(layer, 'rho_w')
+            rho_w = self._model.get_variable(layer, 'rho_w')
             mu_b = self._model.get_variable(layer, 'mu_b')
             rho_b = self._model.get_variable(layer, 'rho_b')
 

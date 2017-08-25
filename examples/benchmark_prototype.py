@@ -10,7 +10,6 @@ import tensorflow as tf
 import alphai_crocubot_oracle.classifier as cl
 import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as eval
-import alphai_crocubot_oracle.crocubot.model as nt
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
 import alphai_crocubot_oracle.flags as set_flags
 import alphai_crocubot_oracle.iotools as io

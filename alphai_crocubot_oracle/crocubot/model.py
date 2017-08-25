@@ -63,7 +63,7 @@ class CrocuBotModel:
         ]
 
     def build_layers_variables(self):
-        
+
         weight_uncertainty = self._flags.INITIAL_WEIGHT_UNCERTAINTY
         bias_uncertainty = self._flags.INITIAL_BIAS_UNCERTAINTY
         weight_displacement = self._flags.INITIAL_WEIGHT_DISPLACEMENT
@@ -87,7 +87,7 @@ class CrocuBotModel:
             self._create_variable_for_layer(
                 layer_number,
                 self.VAR_WEIGHT_RHO,
-                initial_rho_weights + tm.centred_gaussian(w_shape, np.abs(initial_rho_weights) / 10 )
+                initial_rho_weights + tm.centred_gaussian(w_shape, np.abs(initial_rho_weights) / 10)
             )
 
             self._create_variable_for_layer(
@@ -240,5 +240,3 @@ class Estimator:
             signal = activation_function(signal)
 
         return signal
-
-

@@ -8,7 +8,6 @@ from timeit import default_timer as timer
 import tensorflow as tf
 
 import alphai_crocubot_oracle.bayesian_cost as cost
-import alphai_crocubot_oracle.crocubot.model as cr
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 import alphai_crocubot_oracle.iotools as io
 

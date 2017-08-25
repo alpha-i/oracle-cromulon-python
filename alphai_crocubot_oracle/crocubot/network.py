@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 class LayeredNetwork(object):
     """
 

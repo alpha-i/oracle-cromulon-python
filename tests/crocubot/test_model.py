@@ -13,9 +13,9 @@ class TestCrocuBotModel(tf.test.TestCase):
         initialize_default_flags()
 
         layer_number = [
-                {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
+            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+            {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
         ]
         topology = Topology(layer_number)
 
@@ -27,10 +27,11 @@ class TestCrocuBotModel(tf.test.TestCase):
         with self.test_session() as session:
             for layer_number in range(model.number_of_layers):
                 for variable_name in model.layer_variables_list:
-                    self.assertRaises(ValueError,
-                                      model.get_variable,
-                                      layer_number, variable_name
-                              )
+                    self.assertRaises(
+                        ValueError,
+                        model.get_variable,
+                        layer_number, variable_name
+                    )
 
         with self.test_session() as session:
 
