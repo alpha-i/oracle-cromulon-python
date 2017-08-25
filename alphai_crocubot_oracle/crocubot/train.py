@@ -25,8 +25,8 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     """
 
     # Start from a clean graph
+    tf.reset_default_graph()
     model = CrocuBotModel(topology, flags)
-    model.reset()
     model.build_layers_variables()
 
     if train_x is None:

@@ -32,6 +32,7 @@ class TestCrocuBotModel(tf.test.TestCase):
                               )
 
         with self.test_session(model.graph) as session:
+
             model.build_layers_variables()
             session.run(tf.global_variables_initializer())
 
@@ -57,16 +58,21 @@ class TestEstimator(tf.test.TestCase):
         ]
         topology = Topology(layer_number)
         self.crocubot_model = CrocuBotModel(topology, FLAGS)
-        self.crocubot_model.build_layers_variables()
+
 
     def test_forward_pass(self):
 
         estimator = Estimator(self.crocubot_model, FLAGS)
-        self.crocubot_model.reset()
+        tf.reset_default_graph()
+
         with self.test_session(self.crocubot_model.graph) as session:
+
+            self.crocubot_model.build_layers_variables()
             session.run(tf.global_variables_initializer())
             output_signal = estimator.forward_pass([])
+
             self.assertIsInstance(output_signal,  tf.Tensor)
+
             value = output_signal.eval()
             print(value)
 

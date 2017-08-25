@@ -39,8 +39,8 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training
     if do_training:
         crocubot.train(topology, data_source=data_source, bin_edges=bin_distribution["bin_edges"])
     else:
+        tf.reset_default_graph()
         model = CrocuBotModel(topology)
-        model.reset()
         model.build_layers_variables()
 
     mid_time = timer()

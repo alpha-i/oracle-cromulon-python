@@ -156,9 +156,6 @@ class CrocuBotModel:
 
         return mean + tf.exp(rho) * noise
 
-    def reset(self):
-       tf.reset_default_graph()
-
     def increment_random_seed(self):
         self._random_seed += 1
 
