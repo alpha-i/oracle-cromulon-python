@@ -93,7 +93,8 @@ class TestBayesianCost(tf.test.TestCase):
         with self.test_session():
             layer = 0
             layer_name = str(layer)
-            log_alpha_value = np.log(0.2).astype(np.float32)
+            alpha_value = 0.2
+            log_alpha_value = np.log(alpha_value).astype(np.float32)
             log_alpha_name = 'log_alpha'
             init_log_alpha = tf.constant_initializer(log_alpha_value)
             with tf.variable_scope(layer_name):
@@ -142,4 +143,12 @@ class TestBayesianCost(tf.test.TestCase):
             log_prior_value_expected = np.sum(np.log(spike_slab_weighting * norm.pdf(weights / slab_std_dvn) /
                                                      slab_std_dvn + (1. - spike_slab_weighting) *
                                                      norm.pdf(weights / spike_std_dvn) / spike_std_dvn))
+            self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
+
+            # case 4 no double Gaussian prior
+            use_double_gaussian_weights_prior = False
+            bayes_cost = BayesianCost(topology, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+                                      spike_slab_weighting)
+            log_prior_value_computed = bayes_cost.calculate_log_weight_prior(weights, layer)
+            log_prior_value_expected = np.sum(norm.logpdf(weights, scale=alpha_value))
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)

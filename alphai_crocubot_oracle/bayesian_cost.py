@@ -9,7 +9,7 @@ class BayesianCost(object):
         """
         A class for computing Bayesian cost as described in https://arxiv.org/pdf/1505.05424.pdf .
         :param topology: A topology object that defines the topology of the network.
-        :param use_double_gaussian_weights_prior:
+        :param use_double_gaussian_weights_prior: Enable the double-Gaussian prior?
         :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian. Default value = 1.2.
         :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian. Default value = 0.5
         :param spike_slab_weighting: The ratio of the spike(0) to slab(1) standard deviations. Default value = 0.5.
@@ -54,7 +54,7 @@ class BayesianCost(object):
 
             log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
             log_pw += self.calculate_log_bias_prior(biases, layer)
-            log_pw += self.calculate_log_hyperprior(layer)
+            # log_pw += self.calculate_log_hyperprior(layer)
 
             log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
             log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
@@ -101,7 +101,7 @@ class BayesianCost(object):
         return tf.reduce_sum(log_pw)
 
     @staticmethod
-    def calculate_log_hyperprior(self, layer):
+    def calculate_log_hyperprior(layer):
         return - cr.get_layer_variable(layer, 'log_alpha')  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
 
     @staticmethod
@@ -114,7 +114,7 @@ class BayesianCost(object):
         return tf.reduce_sum(log_qw)
 
     @staticmethod
-    def calculate_likelihood(self, truth, forecast):
+    def calculate_likelihood(truth, forecast):
         tm.MIN_LOG_LIKELIHOOD = -10  # Avoid numerical issues
         true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
         p_forecast = tf.gather(forecast, true_indices)
