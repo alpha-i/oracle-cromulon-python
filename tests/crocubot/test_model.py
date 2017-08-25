@@ -1,18 +1,73 @@
 import tensorflow as tf
 
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.topology import Topology
+from alphai_crocubot_oracle.flags import FLAGS, default as initialize_default_flags
 
-FLAGS = tf.app.flags.FLAGS
 
-class TestCrocubotModel(tf.test.TestCase):
+class TestCrocuBotModel(tf.test.TestCase):
 
     def test_create_model(self):
-        layers = [{"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                  {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-                  {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}]
-        topology = Topology(layers)
+
+        initialize_default_flags()
+
+        layer_number = [
+                {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+                {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+                {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
+        ]
+        topology = Topology(layer_number)
 
         model = CrocuBotModel(topology, FLAGS)
 
-        self.assertEqual(model.layers, 3)
+        self.assertEqual(model.number_of_layers, 2)
+        self.assertEqual(model.topology, topology)
+
+        with self.test_session() as session:
+            for layer_number in range(model.number_of_layers):
+                for variable_name in model.layer_variables_list:
+                    self.assertRaises(ValueError,
+                                      model.get_variable,
+                                      layer_number, variable_name
+                              )
+
+        with self.test_session(model.graph) as session:
+            model.build_layers_variables()
+            session.run(tf.global_variables_initializer())
+
+            self.assertEquals(len(session.run(tf.report_uninitialized_variables())), 0)
+
+            for layer_number in range(model.number_of_layers):
+                for variable_name in model.layer_variables_list:
+                    variable = model.get_variable(layer_number, variable_name)
+                    self.assertIsInstance(variable, tf.Variable)
+                    self.assertIsNotNone(variable.eval())
+
+
+class TestEstimator(tf.test.TestCase):
+
+    def setUp(self):
+
+        initialize_default_flags()
+
+        layer_number = [
+            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
+            {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
+        ]
+        topology = Topology(layer_number)
+        self.crocubot_model = CrocuBotModel(topology, FLAGS)
+        self.crocubot_model.build_layers_variables()
+
+    def test_forward_pass(self):
+
+        estimator = Estimator(self.crocubot_model, FLAGS)
+        self.crocubot_model.reset()
+        with self.test_session(self.crocubot_model.graph) as session:
+            session.run(tf.global_variables_initializer())
+            output_signal = estimator.forward_pass([])
+            self.assertIsInstance(output_signal,  tf.Tensor)
+            value = output_signal.eval()
+            print(value)
+
+

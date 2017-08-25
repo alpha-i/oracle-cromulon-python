@@ -41,7 +41,7 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training
     else:
         model = CrocuBotModel(topology)
         model.reset()
-        model.initialize()
+        model.build_layers_variables()
 
     mid_time = timer()
     train_time = mid_time - start_time

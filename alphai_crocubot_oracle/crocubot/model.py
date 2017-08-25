@@ -11,13 +11,12 @@ import alphai_crocubot_oracle.tensormaths as tm
 
 class CrocuBotModel:
 
-    VAR_RHO_BIAS = 'rho_b'
-    VAR_RHO_WEIGHT = 'rho_w'
-
-    VAR_MU_BIAS = 'mu_b'
-    VAR_MU_WEIGHT = 'mu_w'
-
+    VAR_WEIGHT_RHO = 'rho_w'
+    VAR_WEIGHT_MU = 'mu_w'
     VAR_WEIGHT_NOISE = 'weight_noise'
+
+    VAR_BIAS_RHO = 'rho_b'
+    VAR_BIAS_MU = 'mu_b'
     VAR_BIAS_NOISE = 'bias_noise'
 
     VAR_LOG_ALPHA = 'log_alpha'
@@ -38,10 +37,22 @@ class CrocuBotModel:
         return self._topology
 
     @property
-    def layers(self):
+    def number_of_layers(self):
         return self._topology.n_layers
 
-    def initialize(self):
+    @property
+    def layer_variables_list(self):
+        return [
+            self.VAR_BIAS_RHO,
+            self.VAR_BIAS_MU,
+            self.VAR_BIAS_NOISE,
+            self.VAR_WEIGHT_RHO,
+            self.VAR_WEIGHT_MU,
+            self.VAR_WEIGHT_NOISE,
+            self.VAR_LOG_ALPHA
+        ]
+
+    def build_layers_variables(self):
         
         weight_uncertainty = self._flags.INITIAL_WEIGHT_UNCERTAINTY
         bias_uncertainty = self._flags.INITIAL_BIAS_UNCERTAINTY
@@ -59,25 +70,25 @@ class CrocuBotModel:
 
             self._create_variable_for_layer(
                 layer_number,
-                self.VAR_MU_WEIGHT,
+                self.VAR_WEIGHT_MU,
                 tm.centred_gaussian(w_shape, weight_displacement)
             )
 
             self._create_variable_for_layer(
                 layer_number,
-                self.VAR_RHO_WEIGHT,
+                self.VAR_WEIGHT_RHO,
                 initial_rho_weights + tm.centred_gaussian(w_shape, np.abs(initial_rho_weights) / 10 )
             )
 
             self._create_variable_for_layer(
                 layer_number,
-                self.VAR_MU_BIAS,
+                self.VAR_BIAS_MU,
                 tm.centred_gaussian(b_shape, bias_displacement)
             )
 
             self._create_variable_for_layer(
                 layer_number,
-                self.VAR_RHO_BIAS,
+                self.VAR_BIAS_RHO,
                 initial_rho_bias + tm.centred_gaussian(b_shape, np.abs(initial_rho_bias) / 10)
             )
 
@@ -131,22 +142,22 @@ class CrocuBotModel:
 
     def compute_weights(self, layer_number, iteration=0):
 
-        mean = self.get_variable(layer_number, self.VAR_MU_WEIGHT)
-        rho = self.get_variable(layer_number, self.VAR_RHO_WEIGHT)
+        mean = self.get_variable(layer_number, self.VAR_WEIGHT_MU)
+        rho = self.get_variable(layer_number, self.VAR_WEIGHT_RHO)
         noise = self.get_weight_noise(layer_number, iteration)
 
         return mean + tf.exp(rho) * noise
 
     def compute_biases(self, layer_number, iteration):
         """Bias is Gaussian distributed"""
-        mean = self.get_variable(layer_number, self.VAR_MU_BIAS)
-        rho = self.get_variable(layer_number, self.VAR_RHO_BIAS)
+        mean = self.get_variable(layer_number, self.VAR_BIAS_MU)
+        rho = self.get_variable(layer_number, self.VAR_BIAS_RHO)
         noise = self.get_bias_noise(layer_number, iteration)
 
         return mean + tf.exp(rho) * noise
 
     def reset(self):
-        self._graph.reset()
+       tf.reset_default_graph()
 
     def increment_random_seed(self):
         self._random_seed += 1
@@ -154,14 +165,14 @@ class CrocuBotModel:
 
 class Estimator:
 
-    def __init(self, crocubot_model, flags):
+    def __init__(self, crocubot_model, flags):
         """
 
         :param CrocuBotModel crocubot_model:
         :param flags:
         :return:
         """
-        self.model = crocubot_model
+        self._model = crocubot_model
         self._flags = flags
 
     def average_multiple_passes(self, data, number_of_passes):
@@ -213,12 +224,12 @@ class Estimator:
         :return:
         """
 
-        for layer_number in range(self.model.topology.n_layers):
-            weights = self.model.compute_weights(layer_number, iteration)
-            biases = self.model.compute_biases(layer_number, iteration)
+        for layer_number in range(self._model.topology.n_layers):
+            weights = self._model.compute_weights(layer_number, iteration)
+            biases = self._model.compute_biases(layer_number, iteration)
 
             signal = tf.tensordot(signal, weights, axes=2) + biases
-            activation_function = self.model.topology.get_activation_function(layer_number, signal)
+            activation_function = self._model.topology.get_activation_function(layer_number)
             signal = activation_function(signal)
 
         return signal

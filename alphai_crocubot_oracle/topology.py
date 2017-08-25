@@ -120,7 +120,7 @@ class Topology(object):
 
         return bias_shape
 
-    def get_activation_function(self, layer_number, signal):
+    def get_activation_function(self, layer_number):
 
         function_name = self.layers[layer_number + 1]["activation_func"]
 

@@ -27,7 +27,7 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     # Start from a clean graph
     model = CrocuBotModel(topology, flags)
     model.reset()
-    model.initialize()
+    model.build_layers_variables()
 
     if train_x is None:
         use_data_loader = True

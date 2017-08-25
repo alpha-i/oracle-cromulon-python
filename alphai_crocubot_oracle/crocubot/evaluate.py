@@ -27,7 +27,7 @@ def eval_neural_net(data, topology, save_file):
 
     model = CrocuBotModel(topology, FLAGS)
     try:
-        model.initialize()
+        model.build_layers_variables()
     except:
         logging.info('Variables already initialised')
 
