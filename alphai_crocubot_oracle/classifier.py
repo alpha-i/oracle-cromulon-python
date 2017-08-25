@@ -48,11 +48,12 @@ def compute_bin_widths(bin_edges):
 
 
 def compute_balanced_bin_edges(x, n_bins):
-    """ Finds the bins needed such that they equally divied the data.
+    """ Finds the bins needed such that they equally divided the data.
     """
 
+    assert x.ndim == 1, "Currently only supports one dimensional input"
     n_xvals = len(x)
-    xrange = np.linspace(0, n_xvals, n_bins + 1)
+    xrange = np.linspace(0, n_xvals - 1, n_bins + 1)
     n_array = np.arange(n_xvals)
     logging.info("Assigning", str(x.shape), "to", n_bins, "bins")
     return np.interp(xrange, n_array, np.sort(x))
