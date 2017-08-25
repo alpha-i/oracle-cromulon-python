@@ -42,10 +42,10 @@ class BayesianCost(object):
         log_qw = 0.
 
         for layer in range(self.topology.n_layers):
-            mu_w = self._model.get_variable(layer, 'mu_w')
-            rho_w = self._model.get_variable(layer, 'rho_w')
-            mu_b = self._model.get_variable(layer, 'mu_b')
-            rho_b = self._model.get_variable(layer, 'rho_b')
+            mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
+            rho_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO)
+            mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
+            rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
             # Only want to consider independent weights, not the full set, so do_tile_weights=False
             weights = self._model.compute_weights(layer, iteration=0)
@@ -93,7 +93,7 @@ class BayesianCost(object):
 
             log_pw = tf.log(self._spike_slab_weighting * pwide + (1 - self._spike_slab_weighting) * pnarrow)
         else:
-            log_alpha = self._model.get_variable(layer, 'log_alpha')
+            log_alpha = self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
             log_pw = tm.log_gaussian_logsigma(biases, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
