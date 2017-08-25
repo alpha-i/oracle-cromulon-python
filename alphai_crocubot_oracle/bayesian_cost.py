@@ -64,9 +64,9 @@ class BayesianCost(object):
     def calculate_log_weight_prior(self, weights, layer):  # TODO can we make these two into a single function?
         """
         See Equation 7 in https://arxiv.org/pdf/1505.05424.pdf
-        :param weights:
-        :param layer:
-        :return:
+        :param weights: The weights of the layer for which the prior value is to be calculated
+        :param layer: The layer number for which the weights are given.
+        :return: The log-probability value.
         """
         if self._use_double_gaussian_weights_prior:
 
@@ -84,9 +84,9 @@ class BayesianCost(object):
     def calculate_log_bias_prior(self, biases, layer):  # TODO can we make these two into a single function?
         """
         See Equation 7 in https://arxiv.org/pdf/1505.05424.pdf
-        :param biases:
-        :param layer:
-        :return:
+        :param biases: The biases of the layer for which the prior value is to be calculated
+        :param layer: The layer number for which the weights are given.
+        :return: The log-probability value.
         """
         if self._use_double_gaussian_weights_prior:
 
@@ -102,19 +102,38 @@ class BayesianCost(object):
 
     @staticmethod
     def calculate_log_hyperprior(layer):
+        """
+        Compute the hyper prior for a layer. Does make any difference to the optimizer in the current form.
+        :param layer: The layer number for which the hyper prior is to be calculated.
+        :return: The log-probability value.
+        """
         return - cr.get_layer_variable(layer, 'log_alpha')  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
 
     @staticmethod
     def calculate_log_q_prior(theta, mu, rho):
+        """
+        Calculate the log probability at theta, given mu and rho = log(sigma) of a Gaussian distribution.
+        :param theta: The point at which the log-probability is to be calculated.
+        :param mu: The mean of the Gaussian distribution.
+        :param rho: The logarithm of the standard deviation of the Gaussian distribution.
+        :return: The log-probability value.
+        """
 
         # sigma = tf.nn.softplus(rho) #
         sigma = tf.exp(rho)
-        log_qw = tm.log_gaussian(theta, mu, sigma)
+        log_qw = tm.log_gaussian(theta, mu, sigma)  # these 2 lines gives better accuracy than the one line below!!
+        # log_qw = tm.log_gaussian_logsigma(theta, mu, rho)
 
         return tf.reduce_sum(log_qw)
 
     @staticmethod
     def calculate_likelihood(truth, forecast):
+        """
+        Compute the Gaussian likelihood given truth and forecasts.
+        :param truth: The true or target values.
+        :param forecast: The forecasted values to be compared with truth
+        :return: The log-likelihood value.
+        """
         tm.MIN_LOG_LIKELIHOOD = -10  # Avoid numerical issues
         true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
         p_forecast = tf.gather(forecast, true_indices)
