@@ -12,12 +12,12 @@ class BayesianCost(object):
     def __init__(self, topology, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
                  spike_slab_weighting=0.5):
         """
-        A class for computing Bayesian cost.
+        A class for computing Bayesian cost ad described in https://arxiv.org/pdf/1505.05424.pdf .
         :param topology: A topology object that defines the topology of the network.
         :param use_double_gaussian_weights_prior:
-        :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian
-        :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian
-        :param spike_slab_weighting: The ratio of the spike to slab standard deviations.
+        :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian. Default value = 1.2.
+        :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian. Default value = 0.5
+        :param spike_slab_weighting: The ratio of the spike to slab standard deviations. Default value = 0.5
         """
         self.topology = topology
         self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
