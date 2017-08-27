@@ -47,7 +47,7 @@ class TestMvp(TestCase):
                                                   )
         return historical_universes, data
 
-    def test_mvp_model_init(self):
+    def test_mvp_train_and_predict(self):
 
         historical_universes, data = self._prepare_data_for_test()
 
@@ -89,6 +89,11 @@ class TestMvp(TestCase):
 
         train_time = datetime.now() - timedelta(minutes=1)
         model.train(historical_universes, data, train_time)
+
+        execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
+        _, predict_data = self._prepare_data_for_test()
+
+        model.predict(predict_data, execution_time)
 
     def test_mvp_train_and_save_file(self):
 
@@ -184,12 +189,12 @@ class TestMvp(TestCase):
         configuration.update(tf_config)
 
         model = DummyMvpOracle(configuration)
-        prediction_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
+        execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 
-        _, data = self._prepare_data_for_test()
+        _, predict_data = self._prepare_data_for_test()
         self.assertRaises(
             ValueError,
             model.predict,
-            data,
-            prediction_time
+            predict_data,
+            execution_time
         )

@@ -166,7 +166,7 @@ class MvpOracle:
         logging.info('MVP Oracle prediction on {}.'.format(
             execution_time,
         ))
-        if self._ml_model is None:
+        if self._ml_library == 'keras' and self._ml_model is None:
             raise ValueError('No trained ML model available for prediction.')
 
         # Call the covariance library
