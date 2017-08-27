@@ -71,7 +71,7 @@ class TestMvp(TestCase):
             },
             'train_path': FIXTURE_DESTINATION_DIR,
             'covariance_method': 'NERCOME',
-            'covariance_ndays': 30,
+            'covariance_ndays': 9,
             'epochs': 10,
             'learning_rate': 0.001,
             'verbose': False,
