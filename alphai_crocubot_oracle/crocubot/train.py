@@ -78,7 +78,6 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
 
                 _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
-                model.increment_random_seed()
 
             time_epoch = timer() - start_time
             epoch_loss_list.append(epoch_loss)
