@@ -1,20 +1,29 @@
+"""
+This modules contains the implementation of the BayesianCost which is
+the cost function to control the learning process.
+
+It is used during the train of the model, implemented in the module alphai_crocubot_oracle.train:train
+
+"""
+
 import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
-import alphai_crocubot_oracle.crocubot_model as cr
 
 
 class BayesianCost(object):
-    def __init__(self, topology, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
+
+    def __init__(self, model, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
                  spike_slab_weighting=0.5):
         """
         A class for computing Bayesian cost as described in https://arxiv.org/pdf/1505.05424.pdf .
-        :param topology: A topology object that defines the topology of the network.
+        :param alphai_crocubot_oracle.crocubot.model.CrocuBotModel model: A crocubot object that defines the network.
         :param use_double_gaussian_weights_prior: Enable the double-Gaussian prior?
         :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian. Default value = 1.2.
         :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian. Default value = 0.5
         :param spike_slab_weighting: The ratio of the spike(0) to slab(1) standard deviations. Default value = 0.5.
         """
-        self.topology = topology
+        self._model = model
+        self.topology = model.topology
         self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
         self._slab_std_dvn = slab_std_dvn
         if self._slab_std_dvn <= 0. or self._slab_std_dvn > 100:
@@ -27,6 +36,7 @@ class BayesianCost(object):
         if self._spike_std_dvn >= self._slab_std_dvn:
             raise ValueError("Spike standard deviation {} should be less that slab standard deviation {}."
                              .format(self._spike_std_dvn, self._slab_std_dvn))
+
         self._spike_slab_weighting = spike_slab_weighting
         if self._spike_slab_weighting < 0. or self._spike_slab_weighting > 1.:
             raise ValueError("The value of spike/slab weighting {} should be in the interval [0,1]."
@@ -43,14 +53,14 @@ class BayesianCost(object):
         log_qw = 0.
 
         for layer in range(self.topology.n_layers):
-            mu_w = cr.get_layer_variable(layer, 'mu_w')
-            rho_w = cr.get_layer_variable(layer, 'rho_w')
-            mu_b = cr.get_layer_variable(layer, 'mu_b')
-            rho_b = cr.get_layer_variable(layer, 'rho_b')
+            mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
+            rho_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO)
+            mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
+            rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
             # Only want to consider independent weights, not the full set, so do_tile_weights=False
-            weights = cr.compute_weights(layer, iteration=0, do_tile_weights=False)
-            biases = cr.compute_biases(layer, iteration=0)
+            weights = self._model.compute_weights(layer, iteration=0)
+            biases = self._model.compute_biases(layer, iteration=0)
 
             log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
             log_pw += self.calculate_log_bias_prior(biases, layer)
@@ -76,7 +86,7 @@ class BayesianCost(object):
             log_pw = tf.log(self._spike_slab_weighting * p_slab + (1 - self._spike_slab_weighting) * p_spike)
         else:
             # FIXME this may be removed in the future as the double Gaussian is a better way to do things!
-            log_alpha = cr.get_layer_variable(layer, 'log_alpha')
+            log_alpha = self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
             log_pw = tm.log_gaussian_logsigma(weights, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
@@ -95,19 +105,18 @@ class BayesianCost(object):
 
             log_pw = tf.log(self._spike_slab_weighting * p_slab + (1 - self._spike_slab_weighting) * p_spike)
         else:
-            log_alpha = cr.get_layer_variable(layer, 'log_alpha')
+            log_alpha = self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
             log_pw = tm.log_gaussian_logsigma(biases, 0., log_alpha)
 
         return tf.reduce_sum(log_pw)
 
-    @staticmethod
-    def calculate_log_hyperprior(layer):
+    def calculate_log_hyperprior(self, layer):
         """
         Compute the hyper prior for a layer. Does make any difference to the optimizer in the current form.
         :param layer: The layer number for which the hyper prior is to be calculated.
         :return: The log-probability value.
         """
-        return - cr.get_layer_variable(layer, 'log_alpha')  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
+        return - self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
 
     @staticmethod
     def calculate_log_q_prior(theta, mu, rho):
