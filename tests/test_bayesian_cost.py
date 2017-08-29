@@ -22,7 +22,7 @@ class TestBayesianCost(tf.test.TestCase):
                 self.assertAlmostEqual(
                     actual_result,
                     expected_result,
-                    places=6
+                    places=4
                 )
 
     def test_init(self):
