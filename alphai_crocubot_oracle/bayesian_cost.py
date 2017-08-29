@@ -134,7 +134,7 @@ class BayesianCost(object):
         :param forecast: The forecasted values to be compared with truth
         :return: The log-likelihood value.
         """
-        tm.MIN_LOG_LIKELIHOOD = -10  # Avoid numerical issues
+
         true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
         p_forecast = tf.gather(forecast, true_indices)
         log_likelihood = tf.maximum(tf.log(p_forecast), tm.MIN_LOG_LIKELIHOOD)
