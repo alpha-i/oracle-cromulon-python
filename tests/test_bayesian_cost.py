@@ -253,33 +253,3 @@ class TestBayesianCost(tf.test.TestCase):
             log_prior_value_computed = bayes_cost.calculate_log_hyperprior(layer)
             log_prior_value_expected = - log_alpha_value
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
-
-    def test_calculate_priors(self):
-        n_input_series = 10
-        n_features_per_series = 100
-        n_output_series = 10
-        n_classification_bins = 12
-        topology = Topology(layers=None, n_series=n_input_series, n_features_per_series=n_features_per_series,
-                            n_forecasts=n_output_series, n_classification_bins=n_classification_bins)
-        alpha_value = 0.2
-        log_alpha_value = np.log(alpha_value).astype(np.float32)
-        log_alpha_name = 'log_alpha'
-        mu_w_value = 0.1
-        mu_w_name = 'mu_w'
-        rho_w_value = 0.2
-        rho_w_name = 'rho_w'
-        with self.test_session():
-            for layer in range(topology.n_layers):
-                layer_name = str(layer)
-                init_log_alpha = tf.constant_initializer(log_alpha_value)
-                init_mu_w = tf.constant_initializer(mu_w_value)
-                init_rho_w = tf.constant_initializer(rho_w_value)
-                with tf.variable_scope(layer_name):
-                    log_alpha = tf.get_variable(log_alpha_name, shape=(), initializer=init_log_alpha)
-                    mu_w = tf.get_variable(mu_w_name, shape=(), initializer=init_mu_w)
-                    rho_w = tf.get_variable(rho_w_name, shape=(), initializer=init_rho_w)
-
-
-
-
-
