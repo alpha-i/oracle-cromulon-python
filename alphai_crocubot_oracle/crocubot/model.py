@@ -36,7 +36,6 @@ class CrocuBotModel:
         self._topology = topology
         self._graph = tf.get_default_graph()
         self._flags = flags
-        self._random_seed = flags.random_seed
 
     @property
     def graph(self):
@@ -165,9 +164,6 @@ class CrocuBotModel:
         noise = self.get_bias_noise(layer_number, iteration)
 
         return mean + tf.exp(rho) * noise
-
-    def increment_random_seed(self):
-        self._random_seed += 1
 
 
 class Estimator:
