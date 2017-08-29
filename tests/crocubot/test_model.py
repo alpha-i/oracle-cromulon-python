@@ -12,12 +12,12 @@ class TestCrocuBotModel(tf.test.TestCase):
 
         initialize_default_flags()
 
-        layer_number = [
+        layer_dict = [
             {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
             {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
             {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
         ]
-        topology = Topology(layer_number)
+        topology = Topology(layer_dict)
 
         model = CrocuBotModel(topology, FLAGS)
 

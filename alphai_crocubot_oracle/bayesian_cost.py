@@ -22,7 +22,8 @@ class BayesianCost(object):
         :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian. Default value = 0.5
         :param spike_slab_weighting: The ratio of the spike(0) to slab(1) standard deviations. Default value = 0.5.
         """
-        self.model = model
+        self._model = model
+        self.topology = model.topology
         self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
         self._slab_std_dvn = slab_std_dvn
         if self._slab_std_dvn <= 0. or self._slab_std_dvn > 100:
@@ -115,7 +116,7 @@ class BayesianCost(object):
         :param layer: The layer number for which the hyper prior is to be calculated.
         :return: The log-probability value.
         """
-        return - self._model.get_layer_variable(layer, self._model.VAR_LOG_ALPHA)  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
+        return - self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)  # p(alpha) = 1 / alpha so log(p(alpha)) = - log(alpha)
 
     @staticmethod
     def calculate_log_q_prior(theta, mu, rho):
