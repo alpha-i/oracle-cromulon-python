@@ -18,7 +18,7 @@ import alphai_crocubot_oracle.topology as topo
 FLAGS = tf.app.flags.FLAGS
 DEFAULT_DATA_SOURCE = 'stochasticwalk'
 TIME_LIMIT = 600
-DEFAULT_N_EPOCHS = 1
+DEFAULT_N_EPOCHS = 100
 
 
 def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training=True, n_labels_per_series=1):

@@ -137,7 +137,8 @@ class MvpOracle:
 
         if self._ml_library == 'TF':
 
-            train_x = np.squeeze(train_x, axis=3)
+            train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
+            train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
             # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
             bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
@@ -167,7 +168,7 @@ class MvpOracle:
         logging.info('MVP Oracle prediction on {}.'.format(
             execution_time,
         ))
-        if self._ml_model is None:
+        if self._ml_library == 'keras' and self._ml_model is None:
             raise ValueError('No trained ML model available for prediction.')
 
         # Call the covariance library
@@ -192,12 +193,15 @@ class MvpOracle:
             means = self._ml_model.predict(predict_x)
             forecast_covariance = None
         elif self._ml_library == 'TF':
+            predict_x = predict_x.astype(np.float32)  # FIXME: temporary fix, to be added to data transform
             binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
             # FIXME: The de-classification operation will be moved inside _data_transformation
-            means, forecast_cov = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
-            if not np.isfinite(forecast_cov).all():
+            means, forecast_cov_array = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
+            if not np.isfinite(forecast_cov_array).all():
                 raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
 
+            # Crocubot returns one covariance matrix for each forecast. Currently only a single forecast (1 day) so pick out first matrix
+            forecast_cov = forecast_cov_array[0, :, :]
             forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
                                                index=predict_data['close'].columns)
         else:
