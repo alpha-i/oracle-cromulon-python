@@ -136,7 +136,7 @@ class MvpOracle:
 
         if self._ml_library == 'TF':
 
-            train_x = np.squeeze(train_x, axis=3).astype(np.float32) # FIXME: prob do this in data transform, conditional on config file
+            train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
             train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
             # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
@@ -200,7 +200,7 @@ class MvpOracle:
                 raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
 
             # Crocubot returns one covariance matrix for each forecast. Currently only a single forecast (1 day) so pick out first matrix
-            forecast_cov  = forecast_cov_array[0,:,:]
+            forecast_cov = forecast_cov_array[0, :, :]
             forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
                                                index=predict_data['close'].columns)
         else:
