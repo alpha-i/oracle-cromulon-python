@@ -42,9 +42,9 @@ class BayesianCost(object):
             raise ValueError("The value of spike/slab weighting {} should be in the interval [0,1]."
                              .format(self._spike_slab_weighting))
 
-    def get_bayesian_cost(self, prediction, target):
+    def get_bayesian_cost(self, prediction, truth):
         log_pw, log_qw = self.calculate_priors()
-        log_likelihood = self.calculate_likelihood(prediction, target)
+        log_likelihood = self.calculate_likelihood(truth, prediction)
 
         return log_qw - log_pw - log_likelihood
 
@@ -145,7 +145,7 @@ class BayesianCost(object):
         """
 
         true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
-        p_forecast = tf.gather(forecast, true_indices)
+        p_forecast = tf.gather(forecast, true_indices, axis=2)
         log_likelihood = tf.maximum(tf.log(p_forecast), tm.MIN_LOG_LIKELIHOOD)
 
         return tf.reduce_sum(log_likelihood)
