@@ -3,7 +3,6 @@
 # Also transforms the data before and after the predictions are made
 
 # A fairly generic interface, in that it can easily applied to other models
-# Keras/pb specific calls are commented out to avoid introducing extra dependencies
 
 import logging
 
@@ -16,7 +15,7 @@ from alphai_finance.data.transformation import FinancialDataTransformation
 import alphai_crocubot_oracle.classifier as cl
 import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
-import alphai_crocubot_oracle.flags as fl
+from alphai_crocubot_oracle.flags import set_training_flags
 import alphai_crocubot_oracle.topology as tp
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
@@ -84,7 +83,6 @@ class CrocubotOracle:
         self._l2 = configuration['l2']
         self._n_hidden = configuration['n_hidden']
         self._save_model = configuration['save_model']
-        self._ml_library = configuration['ml_library']
 
         self._train_file_manager = TrainFileManager(
             self._train_path,
@@ -96,15 +94,21 @@ class CrocubotOracle:
         self._ml_model = None
         self._est_cov = None
         self._current_train = None
+        self._bin_distribution = None
 
-        assert self._ml_library in ['keras', 'TF'], 'ml_library needs to be in [keras, TF]'
+        set_training_flags(configuration)  # Perhaps use separate config dict here?
 
-        if self._ml_library == 'TF':
-            fl.set_training_flags(configuration)  # Perhaps use separate config dict here?
-            # Topology can either be directly constructed from layers, or build from sequence of parameters
-            self._topology = tp.Topology(layers=None, n_series=configuration['n_series'], n_features_per_series=configuration['n_features_per_series'], n_forecasts=configuration['n_forecasts'],
-                                         n_classification_bins=configuration['n_classification_bins'], layer_heights=configuration['layer_heights'],
-                                         layer_widths=configuration['layer_widths'], activation_functions=configuration['activation_functions'])
+        # Topology can either be directly constructed from layers, or build from sequence of parameters
+        self._topology = tp.Topology(
+            layers=None,
+            n_series=configuration['n_series'],
+            n_features_per_series=configuration['n_features_per_series'],
+            n_forecasts=configuration['n_forecasts'],
+            n_classification_bins=configuration['n_classification_bins'],
+            layer_heights=configuration['layer_heights'],
+            layer_widths=configuration['layer_widths'],
+            activation_functions=configuration['activation_functions']
+        )
 
     def train(self, historical_universes, train_data, execution_time):
         """
@@ -124,35 +128,19 @@ class CrocubotOracle:
         train_x = train_x.swapaxes(2, 3).swapaxes(1, 3)  # FIXME probably clearer to use np.tranpose
         train_y = train_y.reshape(train_y.shape[0], train_y.shape[2])
 
-        # if self._ml_library == 'keras':
-        # model, history = pb.train_model(train_x, train_y, epochs=self._epochs, lr=self._learning_rate,
-        #                                 verbose=self._verbose, batch_size=self._batch_size, do=self._drop_out,
-        #                                 l2=self._l2, n_hidden=self._n_hidden)
-        # self._ml_model = model
-        #
-        # if self._save_model:
-        #     train_path = self._train_file_manager.new_filename(execution_time)
-        #     self._current_train = train_path
-        #     model.save(train_path)
+        train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
+        train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
-        if self._ml_library == 'TF':
+        # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
+        bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
+        train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
 
-            train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
-            train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
+        train_path = self._train_file_manager.new_filename(execution_time)
+        data_source = 'financial_stuff'
+        crocubot.train(self._topology, data_source, FLAGS, train_x, train_y, save_path=train_path)
 
-            # Classify the training labels - FIXME: These two lines will be moved inside _data_transformation
-            bin_distribution = cl.make_template_distribution(train_y, self._n_classification_bins)
-            train_y = cl.classify_labels(bin_distribution["bin_edges"], train_y)
-
-            train_path = self._train_file_manager.new_filename(execution_time)
-            data_source = 'financial_stuff'
-            crocubot.train(self._topology, data_source, FLAGS, train_x, train_y, save_path=train_path)
-
-            self._current_train = train_path
-            self._bin_distribution = bin_distribution
-
-        else:
-            raise NotImplementedError
+        self._current_train = train_path
+        self._bin_distribution = bin_distribution
 
     def predict(self, predict_data, execution_time):
         """
@@ -168,8 +156,6 @@ class CrocubotOracle:
         logging.info('Crocubot Oracle prediction on {}.'.format(
             execution_time,
         ))
-        if self._ml_library == 'keras' and self._ml_model is None:
-            raise ValueError('No trained ML model available for prediction.')
 
         # Call the covariance library
         logging.info('Estimating historical covariance matrix.')
@@ -189,23 +175,18 @@ class CrocubotOracle:
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
-        if self._ml_library == 'keras':
-            means = self._ml_model.predict(predict_x)
-            forecast_covariance = None
-        elif self._ml_library == 'TF':
-            predict_x = predict_x.astype(np.float32)  # FIXME: temporary fix, to be added to data transform
-            binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
-            # FIXME: The de-classification operation will be moved inside _data_transformation
-            means, forecast_cov_array = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
-            if not np.isfinite(forecast_cov_array).all():
-                raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
 
-            # Crocubot returns one covariance matrix for each forecast. Currently only a single forecast (1 day) so pick out first matrix
-            forecast_cov = forecast_cov_array[0, :, :]
-            forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
-                                               index=predict_data['close'].columns)
-        else:
-            raise NotImplementedError
+        predict_x = predict_x.astype(np.float32)  # FIXME: temporary fix, to be added to data transform
+        binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
+        # FIXME: The de-classification operation will be moved inside _data_transformation
+        means, forecast_cov_array = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
+        if not np.isfinite(forecast_cov_array).all():
+            raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
+
+        # Crocubot returns one covariance matrix for each forecast. Currently only a single forecast (1 day) so pick out first matrix
+        forecast_cov = forecast_cov_array[0, :, :]
+        forecast_covariance = pd.DataFrame(data=forecast_cov, columns=predict_data['close'].columns,
+                                           index=predict_data['close'].columns)
 
         if not np.isfinite(means).all():
             raise ValueError('Prediction of means failed. Contains non-finite values.')
@@ -214,22 +195,7 @@ class CrocubotOracle:
         return means, historical_covariance, forecast_covariance
 
     def _load_latest_train(self, execution_time):
-
         latest_train = self._train_file_manager.latest_train_filename(
             execution_time
         )
-
-        if latest_train != self._current_train:
-            if self._ml_library == 'keras':
-                # self._ml_model = load_model(
-                #     os.path.join(
-                #         self._train_path,
-                #         latest_train
-                #     )
-                # )
-                self._current_train = latest_train
-            elif self._ml_library == 'TF':  # Don't load model, just location of save file
-                self._current_train = latest_train
-                raise Warning("Probabiy shouldnt have got here. But lets see what happens...")
-            else:
-                raise NotImplementedError
+        assert latest_train == self._current_train, "Shouldn't have got here."

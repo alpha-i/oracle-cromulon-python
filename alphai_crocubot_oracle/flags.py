@@ -6,12 +6,6 @@ import argparse
 FLAGS = tf.app.flags.FLAGS
 
 
-def default():
-
-    default_config = load_default_config()
-    set_training_flags(default_config)
-
-
 def set_training_flags(config):
     """ Assigns flags based on entries in dictionary"""
 
@@ -48,51 +42,6 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('narrow_prior_std', config['narrow_prior_std'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('spike_slab_weighting', config['spike_slab_weighting'], """Initial standard deviation on weights.""")
     FLAGS._parse_flags()
-
-
-def load_default_config():
-
-    config = {}
-    config['ml_library'] = 'TF'  # Informs Oracle we're using tensorflow
-    config['model_save_path'] = '/tmp/crocubot/'
-    config['d_type'] = 'float32'
-    config['tf_type'] = 32
-    config['random_seed'] = 0
-
-    # Training specific
-    config['n_epochs'] = 1
-    config['n_training_samples'] = 1000
-    config['learning_rate'] = 2e-3
-    config['batch_size'] = 100
-    config['cost_type'] = 'bayes'
-    config['n_train_passes'] = 30
-    config['n_eval_passes'] = 100
-    config['resume_training'] = False
-
-    # Topology
-    config['n_series'] = 3
-    config['n_features_per_series'] = 271
-    config['n_forecasts'] = 3
-    config['n_classification_bins'] = 12
-    config['layer_heights'] = [3, 271]
-    config['layer_widths'] = [3, 3]
-    config['activation_functions'] = ['relu', 'relu']
-
-    # Initial conditions
-    config['INITIAL_ALPHA'] = 0.2
-    config['INITIAL_WEIGHT_UNCERTAINTY'] = 0.4
-    config['INITIAL_BIAS_UNCERTAINTY'] = 0.4
-    config['INITIAL_WEIGHT_DISPLACEMENT'] = 0.1
-    config['INITIAL_BIAS_DISPLACEMENT'] = 0.4
-    config['USE_PERFECT_NOISE'] = True,
-
-    # Priors
-    config['double_gaussian_weights_prior'] = False
-    config['wide_prior_std'] = 1.2
-    config['narrow_prior_std'] = 0.05
-    config['spike_slab_weighting'] = 0.5
-
-    return config
 
 
 def dtype_from_tf_type(tf_dtype):
