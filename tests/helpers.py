@@ -5,7 +5,7 @@ import pandas_market_calendars as mcal
 from alphai_finance.data.cleaning import convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv
 from alphai_finance.data.read_from_hdf5 import read_feature_data_dict_from_hdf5
 
-from alphai_crocubot_oracle.oracle import MvpOracle
+from alphai_crocubot_oracle.oracle import CrocubotOracle
 
 DATA_FILENAME = 'sample_hdf5.h5'
 
@@ -53,7 +53,7 @@ def read_hdf5_into_dict_of_data_frames(start_date, end_date, symbols, file_path,
     return data_dict
 
 
-class DummyMvpOracle(MvpOracle):
+class DummyCrocubotOracle(CrocubotOracle):
     def __init__(self, configuration):
         super().__init__(configuration)
 

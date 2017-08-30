@@ -28,7 +28,7 @@ FLAGS = tf.app.flags.FLAGS
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class MvpOracle:
+class CrocubotOracle:
     def __init__(self, configuration):
         """
         :param configuration: dictionary containing all the parameters
@@ -69,7 +69,7 @@ class MvpOracle:
             save_model: If true, save every trained model.
         """
 
-        logging.info('Initialising MVP Oracle.')
+        logging.info('Initialising Crocubot Oracle.')
 
         self._data_transformation = FinancialDataTransformation(configuration['data_transformation'])
         self._train_path = configuration['train_path']
@@ -165,7 +165,7 @@ class MvpOracle:
         if self._save_model:
             self._load_latest_train(execution_time)
 
-        logging.info('MVP Oracle prediction on {}.'.format(
+        logging.info('Crocubot Oracle prediction on {}.'.format(
             execution_time,
         ))
         if self._ml_library == 'keras' and self._ml_model is None:

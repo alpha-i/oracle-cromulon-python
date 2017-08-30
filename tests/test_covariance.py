@@ -8,7 +8,7 @@ from sklearn.covariance import GraphLassoCV
 import numpy as np
 
 
-class TestMvp(TestCase):
+class TestCrocubot(TestCase):
     def setUp(self):
         create_fixtures()
 

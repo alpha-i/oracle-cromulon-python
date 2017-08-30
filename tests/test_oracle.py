@@ -11,11 +11,11 @@ from alphai_crocubot_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 from tests.helpers import (
     FIXTURE_DESTINATION_DIR, FIXTURE_DATA_FULLPATH,
     create_fixtures, destroy_fixtures, read_hdf5_into_dict_of_data_frames,
-    DummyMvpOracle
+    DummyCrocubotOracle
 )
 
 
-class TestMvp(TestCase):
+class TestCrocubot(TestCase):
 
     def setUp(self):
         create_fixtures()
@@ -47,7 +47,7 @@ class TestMvp(TestCase):
                                                   )
         return historical_universes, data
 
-    def test_mvp_train_and_predict(self):
+    def test_crocubot_train_and_predict(self):
 
         historical_universes, data = self._prepare_data_for_test()
 
@@ -85,7 +85,7 @@ class TestMvp(TestCase):
         tf_config = fl.load_default_config()
         configuration.update(tf_config)
 
-        model = DummyMvpOracle(configuration)
+        model = DummyCrocubotOracle(configuration)
 
         train_time = datetime.now() - timedelta(minutes=1)
         model.train(historical_universes, data, train_time)
@@ -95,7 +95,7 @@ class TestMvp(TestCase):
 
         model.predict(predict_data, execution_time)
 
-    def test_mvp_train_and_save_file(self):
+    def test_crocubot_train_and_save_file(self):
 
         train_time = datetime.now()
         train_filename = TRAIN_FILE_NAME_TEMPLATE.format(train_time.strftime(DATETIME_FORMAT_COMPACT))
@@ -138,7 +138,7 @@ class TestMvp(TestCase):
         tf_config = fl.load_default_config()
         configuration.update(tf_config)
 
-        model = DummyMvpOracle(configuration)
+        model = DummyCrocubotOracle(configuration)
         model.train(historical_universes, data, train_time)
         self.assertEqual(
             expected_train_path,
@@ -152,7 +152,7 @@ class TestMvp(TestCase):
             model.get_current_train(), expected_train_path
         )
 
-    def test_mvp_predict_without_train_file(self):
+    def test_crocubot_predict_without_train_file(self):
 
         configuration = {
             'data_transformation': {
@@ -188,7 +188,7 @@ class TestMvp(TestCase):
         tf_config = fl.load_default_config()
         configuration.update(tf_config)
 
-        model = DummyMvpOracle(configuration)
+        model = DummyCrocubotOracle(configuration)
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 
         _, predict_data = self._prepare_data_for_test()
