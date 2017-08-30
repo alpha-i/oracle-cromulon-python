@@ -21,7 +21,7 @@ from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot.hd5"
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -93,7 +93,6 @@ class CrocubotOracle:
         self._train_file_manager.ensure_path_exists()
         self._ml_model = None
         self._est_cov = None
-        self._current_train = None
         self._bin_distribution = None
 
         set_training_flags(configuration)  # Perhaps use separate config dict here?
@@ -139,7 +138,6 @@ class CrocubotOracle:
         data_source = 'financial_stuff'
         crocubot.train(self._topology, data_source, FLAGS, train_x, train_y, save_path=train_path)
 
-        self._current_train = train_path
         self._bin_distribution = bin_distribution
 
     def predict(self, predict_data, execution_time):
@@ -150,8 +148,7 @@ class CrocubotOracle:
 
         :return : mean vector (pd.Series) and two covariance matrices (pd.DF)
         """
-        if self._save_model:
-            self._load_latest_train(execution_time)
+        latest_train = self._train_file_manager.latest_train_filename(execution_time)
 
         logging.info('Crocubot Oracle prediction on {}.'.format(
             execution_time,
@@ -177,7 +174,7 @@ class CrocubotOracle:
         logging.info('Predicting mean values.')
 
         predict_x = predict_x.astype(np.float32)  # FIXME: temporary fix, to be added to data transform
-        binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=self._current_train)
+        binned_forecasts = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=latest_train)
         # FIXME: The de-classification operation will be moved inside _data_transformation
         means, forecast_cov_array = crocubot_eval.forecast_means_and_variance(binned_forecasts, self._bin_distribution)
         if not np.isfinite(forecast_cov_array).all():
@@ -193,9 +190,3 @@ class CrocubotOracle:
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
         return means, historical_covariance, forecast_covariance
-
-    def _load_latest_train(self, execution_time):
-        latest_train = self._train_file_manager.latest_train_filename(
-            execution_time
-        )
-        assert latest_train == self._current_train, "Shouldn't have got here."

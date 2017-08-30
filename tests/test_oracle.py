@@ -57,16 +57,16 @@ class TestCrocubot(TestCase):
         configuration = load_default_config()
         model = DummyCrocubotOracle(configuration)
 
-        train_time = datetime.now() - timedelta(minutes=1)
+        train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
+        prediction_time = train_time + timedelta(minutes=1)
+
         model.train(historical_universes, data, train_time)
 
-        execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         _, predict_data = self._prepare_data_for_test()
-
-        model.predict(predict_data, execution_time)
+        model.predict(predict_data, prediction_time)
 
     def test_crocubot_train_and_save_file(self):
-        train_time = datetime.now()
+        train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         train_filename = TRAIN_FILE_NAME_TEMPLATE.format(train_time.strftime(DATETIME_FORMAT_COMPACT))
 
         expected_train_path = os.path.join(FIXTURE_DESTINATION_DIR, train_filename)
@@ -77,17 +77,10 @@ class TestCrocubot(TestCase):
         model = DummyCrocubotOracle(configuration)
 
         model.train(historical_universes, data, train_time)
-        self.assertEqual(
-            expected_train_path,
-            model._current_train
-        )
 
         tf_suffix = '.index'  # TF adds stuff to the end of its save files
         full_tensorflow_path = expected_train_path + tf_suffix
         self.assertTrue(os.path.exists(full_tensorflow_path))
-        self.assertEqual(
-            model.get_current_train(), expected_train_path
-        )
 
     def test_crocubot_predict_without_train_file(self):
         configuration = load_default_config()

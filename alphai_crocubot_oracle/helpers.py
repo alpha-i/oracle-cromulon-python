@@ -3,7 +3,10 @@
 import os
 import glob
 
-from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
+from alphai_crocubot_oracle.constants import (
+    DATETIME_FORMAT_COMPACT,
+    TIMESTAMP_NCARACTERS,
+)
 
 
 class TrainFileManager:
@@ -47,14 +50,13 @@ class TrainFileManager:
 
         :return string:
         """
-        calibration_files = glob.glob1(self._path, self._file_name_template.format("*"))
-        replace_string = self._file_name_template.format("")
+        calibration_files = glob.glob1(self._path, self._file_name_template.format("*") + "*")
         execution_timestamp = int(execution_time.strftime(self._datetime_format))
         latest_calibration = None
         for calibration_file_name in sorted(calibration_files):
-            calibration_timestamp = int(calibration_file_name.replace(replace_string, ""))
+            calibration_timestamp = int(calibration_file_name[:TIMESTAMP_NCARACTERS])
             if execution_timestamp >= calibration_timestamp:
-                latest_calibration = calibration_file_name
+                latest_calibration = calibration_file_name.split('.')[0]
             else:
                 break
 

@@ -61,9 +61,6 @@ class DummyCrocubotOracle(CrocubotOracle):
     def get_train_file_manager(self):
         return self._train_file_manager
 
-    def get_current_train(self):
-        return self._current_train
-
 
 def load_default_config():
     configuration = {
