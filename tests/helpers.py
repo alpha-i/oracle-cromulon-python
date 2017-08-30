@@ -65,31 +65,27 @@ class DummyCrocubotOracle(CrocubotOracle):
 def load_default_config():
     configuration = {
         'data_transformation': {
-            'features_dict': {
-                'close': {
+            'feature_config_list': [
+                {
+                    'name': 'close',
                     'order': 'log-return',
                     'normalization': 'standard',
-                    'resample_minutes': 15,
-                    'ndays': 10,
-                    'start_min_after_market_open': 60,
+                    'nbins': 12,
                     'is_target': True,
                 },
-            },
+            ],
             'exchange_name': 'NYSE',
+            'features_ndays': 10,
+            'features_resample_minutes': 15,
+            'features_start_market_minute': 60,
             'prediction_frequency_ndays': 1,
-            'prediction_min_after_market_open': 60,
+            'prediction_market_minute': 60,
             'target_delta_ndays': 1,
-            'target_min_after_market_open': 60,
+            'target_market_minute': 60,
         },
         'train_path': FIXTURE_DESTINATION_DIR,
         'covariance_method': 'NERCOME',
         'covariance_ndays': 9,
-        'epochs': 10,
-        'verbose': False,
-        'drop_out': 0.5,
-        'l2': 0.00001,
-        'n_hidden': 100,
-        'save_model': False,
         'model_save_path': '/tmp/crocubot/',
         'd_type': 'float32',
         'tf_type': 32,
