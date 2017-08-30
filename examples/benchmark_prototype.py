@@ -1,45 +1,29 @@
+# Example usage of crocubot
+# Acts as a useful test that training & inference still works!
+
 from timeit import default_timer as timer
+
+import alphai_time_series.performance_trials as pt
 import numpy as np
 import tensorflow as tf
 
-import alphai_crocubot_oracle.crocubot_train as crocubot
-import alphai_crocubot_oracle.crocubot_eval as eval
-import alphai_crocubot_oracle.topology as topo
 import alphai_crocubot_oracle.classifier as cl
+import alphai_crocubot_oracle.crocubot.train as crocubot
+import alphai_crocubot_oracle.crocubot.evaluate as eval
+from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+import alphai_crocubot_oracle.flags as set_flags
 import alphai_crocubot_oracle.iotools as io
-import alphai_crocubot_oracle.network as nt
-import alphai_time_series.performance_trials as pt
-
+import alphai_crocubot_oracle.topology as topo
 
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_string('save_path', '/tmp/', """Path to save graph.""")
-tf.app.flags.DEFINE_string('D_TYPE', 'float32', """Data type for numpy.""")
-tf.app.flags.DEFINE_integer('TF_TYPE', 32, """Data type for tensorflow.""")
-tf.app.flags.DEFINE_integer('n_training_samples', 1000, """Number of data samples to use for training.""")
-tf.app.flags.DEFINE_integer('random_seed', 0, """Seed used to identify random noise realisiation.""")
-tf.app.flags.DEFINE_float('INITIAL_WEIGHT_UNCERTAINTY', 0.4, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('INITIAL_BIAS_UNCERTAINTY', 0.4, """Initial standard deviation on bias.""")
-tf.app.flags.DEFINE_float('INITIAL_WEIGHT_DISPLACEMENT', 0.1, """Initial offset on weight distributions.""")
-tf.app.flags.DEFINE_float('INITIAL_BIAS_DISPLACEMENT', 0.4, """Initial offset on bias distributions.""")
-tf.app.flags.DEFINE_float('INITIAL_ALPHA', 0.2, """Prior on weights.""")
-tf.app.flags.DEFINE_boolean('USE_PERFECT_NOISE', True, """Whether to set noise such that its mean and std are exactly the desired values""")
-tf.app.flags.DEFINE_boolean('double_gaussian_weights_prior', False, """Whether to impose a double Gaussian prior.""")
-tf.app.flags.DEFINE_float('wide_prior_std', 1.2, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('narrow_prior_std', 0.05, """Initial standard deviation on weights.""")
-tf.app.flags.DEFINE_float('spike_slab_weighting', 0.5, """Initial standard deviation on weights.""")
-FLAGS._parse_flags()
-
 DEFAULT_DATA_SOURCE = 'stochasticwalk'
-DEFAULT_ARCHITECTURE = 'full'
-EVAL_NUMBER_PASSES = 100
-TRAIN_NUMBER_PASSES = 50
-EVAL_COVARIANCE_PASSES = 100
 TIME_LIMIT = 600
-DEFAULT_N_EPOCHS = 1
+DEFAULT_N_EPOCHS = 100
 
 
-def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DEFAULT_N_EPOCHS, do_training=True, n_labels_per_series=1):
+def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training=True, n_labels_per_series=1):
 
+    set_flags.default()
     topology = load_default_topology(data_source)
 
     # First need to establish bin edges using full training set
@@ -50,12 +34,13 @@ def run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DE
     bin_distribution = cl.make_template_distribution(training_labels, topology.n_classification_bins)
 
     start_time = timer()
+
     if do_training:
-        crocubot.train(topology, data_source=data_source, n_epochs=n_epochs, do_load_model=False,
-                       bin_distribution=bin_distribution, n_passes=TRAIN_NUMBER_PASSES)
+        crocubot.train(topology, data_source=data_source, bin_edges=bin_distribution["bin_edges"])
     else:
-        nt.reset()
-        nt.initialise_parameters(topology)
+        tf.reset_default_graph()
+        model = CrocuBotModel(topology)
+        model.build_layers_variables()
 
     mid_time = timer()
     train_time = mid_time - start_time
@@ -102,11 +87,11 @@ def load_default_topology(data_source):
     else:
         raise NotImplementedError
 
-    return topo.Topology(n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
+    return topo.Topology(layers=None, n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
                          n_classification_bins=n_classification_bins)
 
 
 if __name__ == '__main__':
 
     # Data_source:  'low_noise' 'randomwalk' 'weightedwalk' 'correlatedwalk' 'stochasticwalk
-    run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, n_epochs=DEFAULT_N_EPOCHS, do_training=True)
+    run_timed_performance_benchmark(data_source=DEFAULT_DATA_SOURCE, do_training=True)
