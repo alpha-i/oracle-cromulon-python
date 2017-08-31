@@ -10,7 +10,7 @@ setup(
     author_email='sreekumar.balan@alpha-i.co, christopher.bonnett@alpha-i.co, fergus.simpson@alpha-i.co',
     packages=find_packages(exclude=['doc', 'tests*']),
     install_requires=[
-        'alphai-time-series>=0.0.2',
+        'alphai-time-series>=0.0.3',
         'alphai-finance>=1.2.0',
         'tensorflow==1.3.0',
         'numpy==1.13.1',
