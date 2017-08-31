@@ -43,7 +43,6 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
     model_initialiser = tf.global_variables_initializer()
 
-
     if save_path is None:
         save_path = io.load_file_name(data_source, topology)
     saver = tf.train.Saver()

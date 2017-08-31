@@ -18,7 +18,7 @@ import alphai_crocubot_oracle.iotools as io
 import alphai_crocubot_oracle.topology as topo
 
 FLAGS = tf.app.flags.FLAGS
-DEFAULT_DATA_SOURCE = 'MNIST' # MNIST, stochasticwalk
+DEFAULT_DATA_SOURCE = 'MNIST'
 TIME_LIMIT = 600
 
 
@@ -26,11 +26,11 @@ def run_timed_performance_benchmark(flags, data_source=DEFAULT_DATA_SOURCE, do_t
 
     topology = load_default_topology(data_source, flags)
 
-    # First need to establish bin edges using full training set
+    #  First need to establish bin edges using full training set
     template_sample_size = np.minimum(flags.n_training_samples, 10000)
     _, training_labels = io.load_training_batch(data_source, batch_number=0, batch_size=template_sample_size,
                                                 labels_per_series=n_labels_per_series)
-    # Ideally may use a template for each series
+    #  Ideally may use a template for each series
     if data_source == 'MNIST':
         bin_distribution = None
         bin_edges = None
@@ -91,6 +91,7 @@ def evaluate_network(topology, data_source, bin_distribution):
 
     return metrics
 
+
 def load_default_topology(data_source, flags):
     """The input and output layers must adhere to the dimensions of the features and labels.
     """
@@ -116,6 +117,7 @@ def load_default_topology(data_source, flags):
     return topo.Topology(layers=None, n_series=n_input_series, n_features_per_series=n_features_per_series, n_forecasts=n_output_series,
                          n_classification_bins=n_classification_bins)
 
+
 def print_MNIST_accuracy(metrics):
 
     total_tests = len(metrics)
@@ -127,19 +129,19 @@ def print_MNIST_accuracy(metrics):
 
     return accuracy
 
+
 def run_MNIST_test():
 
     config = fl.load_default_config()
     config["n_epochs"] = 1
-
-    config["learning_rate"] = 3e-3  # use high learning rate for testing purposes
-    config["cost_type"] = 'softmax' # 'bayes'; 'softmax'; 'hellinger'
+    config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
+    config["cost_type"] = 'softmax'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
     config['n_training_samples'] = 50000
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
-    config['activation_functions'] = ['linear', 'selu','selu']
+    config['activation_functions'] = ['linear', 'selu', 'selu']
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
@@ -147,11 +149,13 @@ def run_MNIST_test():
 
     return accuracy
 
+
 def run_stochastic_test():
     config = fl.load_default_config()
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
     run_timed_performance_benchmark(FLAGS, data_source='stochasticwalk', do_training=True)
+
 
 if __name__ == '__main__':
 
