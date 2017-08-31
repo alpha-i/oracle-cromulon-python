@@ -13,7 +13,7 @@ import alphai_crocubot_oracle.tensormaths as tm
 class BayesianCost(object):
 
     def __init__(self, model, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
-                 spike_slab_weighting=0.5):
+                 spike_slab_weighting=0.5, n_batches=100):
         """
         A class for computing Bayesian cost as described in https://arxiv.org/pdf/1505.05424.pdf .
         :param alphai_crocubot_oracle.crocubot.model.CrocuBotModel model: A crocubot object that defines the network.
@@ -25,6 +25,7 @@ class BayesianCost(object):
         self._model = model
         self.topology = model.topology
         self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
+        self._epoch_fraction = 1 / n_batches
         self._slab_std_dvn = slab_std_dvn
         if self._slab_std_dvn <= 0. or self._slab_std_dvn > 100:
             raise ValueError("The value of slab standard deviation, {} is out of range (0,100)."
@@ -42,11 +43,11 @@ class BayesianCost(object):
             raise ValueError("The value of spike/slab weighting {} should be in the interval [0,1]."
                              .format(self._spike_slab_weighting))
 
-    def get_bayesian_cost(self, prediction, target):
+    def get_bayesian_cost(self, prediction, truth):
         log_pw, log_qw = self.calculate_priors()
-        log_likelihood = self.calculate_likelihood(prediction, target)
+        log_likelihood = self.calculate_likelihood(truth, prediction)
 
-        return log_qw - log_pw - log_likelihood
+        return (log_qw - log_pw) * self._epoch_fraction - log_likelihood
 
     def calculate_priors(self):
         log_pw = 0.
@@ -145,7 +146,7 @@ class BayesianCost(object):
         """
 
         true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
-        p_forecast = tf.gather(forecast, true_indices)
+        p_forecast = tf.gather(forecast, true_indices, axis=2)
         log_likelihood = tf.maximum(tf.log(p_forecast), tm.MIN_LOG_LIKELIHOOD)
 
         return tf.reduce_sum(log_likelihood)

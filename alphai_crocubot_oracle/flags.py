@@ -23,8 +23,8 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('learning_rate', config['learning_rate'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_integer('batch_size', config['batch_size'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_string('cost_type', config['cost_type'], """Total number of data samples to be used for training.""")
-    tf.app.flags.DEFINE_integer('n_train_passes', 50, """Number of passes to average over during training.""")
-    tf.app.flags.DEFINE_integer('n_eval_passes', 100, """Number of passes to average over during evaluation.""")
+    tf.app.flags.DEFINE_integer('n_train_passes', config['n_train_passes'], """Number of passes to average over during training.""")
+    tf.app.flags.DEFINE_integer('n_eval_passes', config['n_eval_passes'], """Number of passes to average over during evaluation.""")
     tf.app.flags.DEFINE_boolean('resume_training', config['resume_training'],
                                 """Whether to set noise such that its mean and std are exactly the desired values""")
     # Initial conditions
