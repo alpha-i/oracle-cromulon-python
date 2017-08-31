@@ -9,17 +9,16 @@ from alphai_crocubot_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
 from tests.helpers import (
     load_default_config,
-    FIXTURE_DESTINATION_DIR, 
+    FIXTURE_DESTINATION_DIR,
     FIXTURE_DATA_FULLPATH,
-    create_fixtures, 
-    destroy_fixtures, 
+    create_fixtures,
+    destroy_fixtures,
     read_hdf5_into_dict_of_data_frames,
-    DummyCrocubotOracle
+    DummyCrocubotOracle,
 )
 
 
 class TestCrocubot(TestCase):
-
     def setUp(self):
         create_fixtures()
 
@@ -53,7 +52,7 @@ class TestCrocubot(TestCase):
 
     def test_crocubot_train_and_predict(self):
         historical_universes, data = self._prepare_data_for_test()
-        
+
         configuration = load_default_config()
         model = DummyCrocubotOracle(configuration)
 
