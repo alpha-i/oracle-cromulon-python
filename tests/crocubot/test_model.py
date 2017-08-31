@@ -3,7 +3,8 @@ import numpy as np
 
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.topology import Topology
-from alphai_crocubot_oracle.flags import FLAGS, default as initialize_default_flags
+from alphai_crocubot_oracle.flags import FLAGS
+from tests.helpers import default as initialize_default_flags
 
 
 class TestCrocuBotModel(tf.test.TestCase):

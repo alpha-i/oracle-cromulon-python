@@ -1,10 +1,12 @@
 import tensorflow as tf
 import numpy as np
+from scipy.stats import norm
+
 from alphai_crocubot_oracle.bayesian_cost import BayesianCost
 from alphai_crocubot_oracle.topology import Topology
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
-from alphai_crocubot_oracle.flags import FLAGS, default as initialize_default_flags
-from scipy.stats import norm
+from alphai_crocubot_oracle.flags import FLAGS
+from tests.helpers import default as initialize_default_flags
 
 
 class TestBayesianCost(tf.test.TestCase):

@@ -3,27 +3,30 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 import pandas as pd
-import alphai_crocubot_oracle.flags as fl
 
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
 from tests.helpers import (
-    FIXTURE_DESTINATION_DIR, FIXTURE_DATA_FULLPATH,
-    create_fixtures, destroy_fixtures, read_hdf5_into_dict_of_data_frames,
-    DummyMvpOracle
+    load_default_config,
+    FIXTURE_DESTINATION_DIR,
+    FIXTURE_DATA_FULLPATH,
+    create_fixtures,
+    destroy_fixtures,
+    read_hdf5_into_dict_of_data_frames,
+    DummyCrocubotOracle,
 )
 
 
-class TestMvp(TestCase):
-
+class TestCrocubot(TestCase):
     def setUp(self):
         create_fixtures()
 
     def tearDown(self):
         destroy_fixtures()
 
-    def _prepare_data_for_test(self):
+    @staticmethod
+    def _prepare_data_for_test():
         start_date = '20140102'  # these are values for the resources/sample_hdf5.h5
         end_date = '20140228'
         symbols = ['AAPL', 'INTC', 'MSFT']
@@ -47,148 +50,41 @@ class TestMvp(TestCase):
                                                   )
         return historical_universes, data
 
-    def test_mvp_train_and_predict(self):
-
+    def test_crocubot_train_and_predict(self):
         historical_universes, data = self._prepare_data_for_test()
 
-        configuration = {
-            'data_transformation': {
-                'features_dict': {
-                    'close': {
-                        'order': 'log-return',
-                        'normalization': 'standard',
-                        'resample_minutes': 15,
-                        'ndays': 10,
-                        'start_min_after_market_open': 60,
-                        'is_target': True,
-                    },
-                },
-                'exchange_name': 'NYSE',
-                'prediction_frequency_ndays': 1,
-                'prediction_min_after_market_open': 60,
-                'target_delta_ndays': 1,
-                'target_min_after_market_open': 60,
-            },
-            'train_path': FIXTURE_DESTINATION_DIR,
-            'covariance_method': 'NERCOME',
-            'covariance_ndays': 9,
-            'epochs': 10,
-            'learning_rate': 0.001,
-            'verbose': False,
-            'batch_size': 32,
-            'drop_out': 0.5,
-            'l2': 0.00001,
-            'n_hidden': 100,
-            'save_model': False
-        }
+        configuration = load_default_config()
+        model = DummyCrocubotOracle(configuration)
 
-        tf_config = fl.load_default_config()
-        configuration.update(tf_config)
+        train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
+        prediction_time = train_time + timedelta(minutes=1)
 
-        model = DummyMvpOracle(configuration)
-
-        train_time = datetime.now() - timedelta(minutes=1)
         model.train(historical_universes, data, train_time)
 
-        execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         _, predict_data = self._prepare_data_for_test()
+        model.predict(predict_data, prediction_time)
 
-        model.predict(predict_data, execution_time)
-
-    def test_mvp_train_and_save_file(self):
-
-        train_time = datetime.now()
+    def test_crocubot_train_and_save_file(self):
+        train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         train_filename = TRAIN_FILE_NAME_TEMPLATE.format(train_time.strftime(DATETIME_FORMAT_COMPACT))
 
         expected_train_path = os.path.join(FIXTURE_DESTINATION_DIR, train_filename)
 
         historical_universes, data = self._prepare_data_for_test()
 
-        configuration = {
-            'data_transformation': {
-                'features_dict': {
-                    'close': {
-                        'order': 'log-return',
-                        'normalization': 'standard',
-                        'resample_minutes': 15,
-                        'ndays': 10,
-                        'start_min_after_market_open': 60,
-                        'is_target': True,
-                    },
-                },
-                'exchange_name': 'NYSE',
-                'prediction_frequency_ndays': 1,
-                'prediction_min_after_market_open': 60,
-                'target_delta_ndays': 1,
-                'target_min_after_market_open': 60,
-            },
-            'train_path': FIXTURE_DESTINATION_DIR,
-            'covariance_method': 'NERCOME',
-            'covariance_ndays': 30,
-            'epochs': 10,
-            'learning_rate': 0.001,
-            'verbose': False,
-            'batch_size': 32,
-            'drop_out': 0.5,
-            'l2': 0.00001,
-            'n_hidden': 100,
-            'save_model': True
-        }
+        configuration = load_default_config()
+        model = DummyCrocubotOracle(configuration)
 
-        tf_config = fl.load_default_config()
-        configuration.update(tf_config)
-
-        model = DummyMvpOracle(configuration)
         model.train(historical_universes, data, train_time)
-        self.assertEqual(
-            expected_train_path,
-            model._current_train
-        )
 
         tf_suffix = '.index'  # TF adds stuff to the end of its save files
         full_tensorflow_path = expected_train_path + tf_suffix
         self.assertTrue(os.path.exists(full_tensorflow_path))
-        self.assertEqual(
-            model.get_current_train(), expected_train_path
-        )
 
-    def test_mvp_predict_without_train_file(self):
+    def test_crocubot_predict_without_train_file(self):
+        configuration = load_default_config()
+        model = DummyCrocubotOracle(configuration)
 
-        configuration = {
-            'data_transformation': {
-                'features_dict': {
-                    'close': {
-                        'order': 'log-return',
-                        'normalization': 'standard',
-                        'resample_minutes': 15,
-                        'ndays': 10,
-                        'start_min_after_market_open': 60,
-                        'is_target': True,
-                    },
-                },
-                'exchange_name': 'NYSE',
-                'prediction_frequency_ndays': 1,
-                'prediction_min_after_market_open': 60,
-                'target_delta_ndays': 1,
-                'target_min_after_market_open': 60,
-            },
-            'train_path': FIXTURE_DESTINATION_DIR,
-            'covariance_method': 'NERCOME',
-            'covariance_ndays': 30,
-            'epochs': 10,
-            'learning_rate': 0.001,
-            'verbose': False,
-            'batch_size': 32,
-            'drop_out': 0.5,
-            'l2': 0.00001,
-            'n_hidden': 100,
-            'save_model': True
-        }
-
-        tf_config = fl.load_default_config()
-        configuration.update(tf_config)
-
-        model = DummyMvpOracle(configuration)
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 
         _, predict_data = self._prepare_data_for_test()

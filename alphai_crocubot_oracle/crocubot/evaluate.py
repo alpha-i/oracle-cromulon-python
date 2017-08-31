@@ -20,6 +20,7 @@ def eval_neural_net(data, topology, save_file):
 
     :param data:  Mini-batch to be fed into the network
     :param topology: Specifies layout of network, also used to identify save file
+    :param save_file:
     :return: 3D array with dimensions [n_passes, n_samples, n_labels]
     """
 

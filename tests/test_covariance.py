@@ -8,7 +8,7 @@ from sklearn.covariance import GraphLassoCV
 import numpy as np
 
 
-class TestMvp(TestCase):
+class TestCrocubot(TestCase):
     def setUp(self):
         create_fixtures()
 
@@ -31,34 +31,36 @@ class TestMvp(TestCase):
 
     def test_estimate_covariance(self):
         configuration = {
-            'features_dict': {
-                'close': {
+            'feature_config_list': [
+                {
+                    'name': 'close',
                     'order': 'log-return',
                     'normalization': 'standard',
-                    'resample_minutes': 15,
-                    'ndays': 10,
-                    'start_min_after_market_open': 60,
-                    'is_target': False,
+                    'nbins': 12,
+                    'is_target': True,
                 },
-            },
+            ],
             'exchange_name': 'NYSE',
+            'features_ndays': 9,
+            'features_resample_minutes': 15,
+            'features_start_market_minute': 60,
             'prediction_frequency_ndays': 1,
-            'prediction_min_after_market_open': 60,
+            'prediction_market_minute': 60,
             'target_delta_ndays': 1,
-            'target_min_after_market_open': 60,
+            'target_market_minute': 60,
         }
 
         data_transformation = FinancialDataTransformation(configuration)
         universe, data = self._prepare_data_for_test()
-        ndays = 9  # FIXME this is the only value that works now.
-        minutes_after_open = data_transformation.target_min_after_market_open
         estimation_method = "Ledoit"
         exchange_calendar = data_transformation.exchange_calendar
+        ndays = data_transformation.features_ndays  # FIXME this is the only value that works now.
         forecast_interval = data_transformation.target_delta_ndays
-        covariance_matrix = estimate_covariance(data, ndays, minutes_after_open, estimation_method, exchange_calendar,
+        target_market_minute = data_transformation.target_market_minute
+        covariance_matrix = estimate_covariance(data, ndays, target_market_minute, estimation_method, exchange_calendar,
                                                 forecast_interval)
 
-        ret_data = returns_minutes_after_market_open_data_frame(data['close'], exchange_calendar, minutes_after_open)
+        ret_data = returns_minutes_after_market_open_data_frame(data['close'], exchange_calendar, target_market_minute)
         print(ret_data.shape)
         nd = ret_data.shape[1]
         sampling_days = nd * DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR
