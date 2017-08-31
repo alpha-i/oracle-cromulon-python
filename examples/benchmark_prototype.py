@@ -152,6 +152,19 @@ def run_MNIST_test():
 
 def run_stochastic_test():
     config = fl.load_default_config()
+
+    config["n_epochs"] = 10   # -3 per sample after 10 epochs
+    config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
+    config["cost_type"] = 'softmax'  # 'bayes'; 'softmax'; 'hellinger'
+    config['batch_size'] = 200
+    config['n_training_samples'] = 1000
+    config['n_series'] = 10
+    config['n_features_per_series'] = 100
+    config['resume_training'] = False  # Make sure we start from scratch
+    config['activation_functions'] = ['linear', 'selu', 'selu', 'selu']
+    config["layer_heights"] = 200
+    config["layer_widths"] = 1
+
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
     run_timed_performance_benchmark(FLAGS, data_source='stochasticwalk', do_training=True)
@@ -161,5 +174,6 @@ if __name__ == '__main__':
 
     logger = logging.getLogger('tipper')
     logger.addHandler(logging.StreamHandler())
-    # run_stochastic_test()
-    run_MNIST_test()
+    logging.basicConfig(level=logging.DEBUG)
+    run_stochastic_test()
+    #  run_MNIST_test()
