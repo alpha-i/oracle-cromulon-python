@@ -38,11 +38,12 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     y = tf.placeholder(FLAGS.d_type)
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
-    cost_operator = _set_cost_operator(model, x, y)
+    n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
+    cost_operator = _set_cost_operator(model, x, y, n_batches)
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
     model_initialiser = tf.global_variables_initializer()
 
-    n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
+
     if save_path is None:
         save_path = io.load_file_name(data_source, topology)
     saver = tf.train.Saver()
@@ -91,7 +92,7 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
     return epoch_loss_list
 
 
-def _set_cost_operator(crocubot_model, x, labels):
+def _set_cost_operator(crocubot_model, x, labels, n_batches):
     """
     Set the cost operator
 
@@ -105,11 +106,12 @@ def _set_cost_operator(crocubot_model, x, labels):
                                     FLAGS.double_gaussian_weights_prior,
                                     FLAGS.wide_prior_std,
                                     FLAGS.narrow_prior_std,
-                                    FLAGS.spike_slab_weighting
+                                    FLAGS.spike_slab_weighting,
+                                    n_batches
                                     )
 
     estimator = Estimator(crocubot_model, FLAGS)
-    predictions = estimator.average_multiple_passes(x, FLAGS.n_train_passes)
+    predictions, _ = estimator.average_multiple_passes(x, FLAGS.n_train_passes)
 
     if FLAGS.cost_type == 'bayes':
         operator = cost_object.get_bayesian_cost(predictions, labels)

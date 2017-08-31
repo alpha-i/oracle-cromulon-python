@@ -14,7 +14,7 @@ N_TEST_SAMPLES = 100
 DEFAULT_SAVE_PATH = "/tmp/"
 MNIST = None
 DO_DIFF = True
-RESHAPE_MNIST = True
+RESHAPE_MNIST = False
 
 
 def initialise_MNIST():
@@ -37,8 +37,15 @@ def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, lab
 
         if RESHAPE_MNIST:
             N_CLASSIFICATION_BINS = 10
-            features = features.reshape(features.shape[0], 28, 28)
-            labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
+            N_SERIES = 28
+            N_FEAT_PER_SERIES = 28
+        else:
+            N_CLASSIFICATION_BINS = 10
+            N_SERIES = 1
+            N_FEAT_PER_SERIES = 784
+
+        features = features.reshape(features.shape[0], N_FEAT_PER_SERIES, N_SERIES)
+        labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
 
     else:
         features, labels = pt.get_training_batch(series_name=data_source, batch_size=batch_size, batch_number=batch_number,
@@ -65,8 +72,15 @@ def load_test_samples(data_source="MNIST", labels_per_series=1, do_differential_
 
         if RESHAPE_MNIST:
             N_CLASSIFICATION_BINS = 10
-            features = features.reshape(features.shape[0], 28, 28)
-            labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
+            N_SERIES = 28
+            N_FEAT_PER_SERIES = 28
+        else:
+            N_CLASSIFICATION_BINS = 10
+            N_SERIES = 1
+            N_FEAT_PER_SERIES = 784
+
+        features = features.reshape(features.shape[0], N_FEAT_PER_SERIES, N_SERIES)
+        labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
     else:
         features, labels = pt.get_test_batch(batch_size=N_TEST_SAMPLES, series_name=data_source, do_differential_forecast=do_differential_forecast,
                                              label_timesteps=labels_per_series, dtype=FLAGS.d_type)
