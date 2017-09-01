@@ -24,7 +24,7 @@ def eval_neural_net(data, topology, save_file):
     :return: 3D array with dimensions [n_passes, n_samples, n_labels]
     """
 
-    logging.info("Evaluating with shape", data.shape)
+    logging.info("Evaluating with shape" + str(data.shape))
 
     model = CrocuBotModel(topology, FLAGS)
     try:
@@ -37,7 +37,7 @@ def eval_neural_net(data, topology, save_file):
     y = estimator.collate_multiple_passes(data, FLAGS.n_eval_passes)
 
     with tf.Session() as sess:
-        logging.info("Attempting to recover trained network:", save_file)
+        logging.info("Attempting to recover trained network:" + save_file)
         saver.restore(sess, save_file)
 
         return y.eval()
