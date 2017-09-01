@@ -10,7 +10,7 @@ A library for predicting returns using Bayes by Backprop
 
 ### Create conda environment
 ```bash
-$ conda create -n crocubot-env python=3.6
+$ conda create -n crocubot-env python=3.5
 $ source activate crocubot-env
 ```
 
