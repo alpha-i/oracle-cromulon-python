@@ -51,8 +51,8 @@ class TestTensormath(tf.test.TestCase):
     def test_perfect_centred_guassian(self):
         shapes = [(3,), (2, 2)]
         results = [
-            np.array([9.67421591e-01, 8.88391564e-18, -9.67421591e-01]),
-            np.array([[1.15034938, -1.15034938], [0.31863937, -0.31863937]])
+            np.array([1.22474492e+00, 2.26148963e-17, -1.22474492e+00]),
+            np.array([[1.36289537, -1.36289537], [0.37751323, -0.37751323]])
         ]
 
         for shape, expected_result in zip(shapes, results):
