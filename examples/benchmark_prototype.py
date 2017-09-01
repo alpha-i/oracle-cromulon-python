@@ -132,10 +132,10 @@ def print_MNIST_accuracy(metrics):
 
 def run_MNIST_test():
 
-    config = fl.load_default_config()
+    config = load_default_config()
     config["n_epochs"] = 1
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
-    config["cost_type"] = 'softmax'  # 'bayes'; 'softmax'; 'hellinger'
+    config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
     config['n_training_samples'] = 50000
     config['n_series'] = 1
@@ -151,11 +151,11 @@ def run_MNIST_test():
 
 
 def run_stochastic_test():
-    config = fl.load_default_config()
+    config = load_default_config()
 
     config["n_epochs"] = 10   # -3 per sample after 10 epochs
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
-    config["cost_type"] = 'softmax'  # 'bayes'; 'softmax'; 'hellinger'
+    config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
     config['n_training_samples'] = 1000
     config['n_series'] = 10
@@ -170,10 +170,76 @@ def run_stochastic_test():
     run_timed_performance_benchmark(FLAGS, data_source='stochasticwalk', do_training=True)
 
 
+def load_default_config():
+    configuration = {
+        'data_transformation': {
+            'feature_config_list': [
+                {
+                    'name': 'close',
+                    'order': 'log-return',
+                    'normalization': 'standard',
+                    'nbins': 12,
+                    'is_target': True,
+                },
+            ],
+            'exchange_name': 'NYSE',
+            'features_ndays': 10,
+            'features_resample_minutes': 15,
+            'features_start_market_minute': 60,
+            'prediction_frequency_ndays': 1,
+            'prediction_market_minute': 60,
+            'target_delta_ndays': 1,
+            'target_market_minute': 60,
+        },
+        'train_path': '/tmp/crocubot/',
+        'covariance_method': 'NERCOME',
+        'covariance_ndays': 9,
+        'model_save_path': '/tmp/crocubot/',
+        'd_type': 'float32',
+        'tf_type': 32,
+        'random_seed': 0,
+
+        # Training specific
+        'n_epochs': 1,
+        'n_training_samples': 1000,
+        'learning_rate': 2e-3,
+        'batch_size': 100,
+        'cost_type': 'bayes',
+        'n_train_passes': 30,
+        'n_eval_passes': 30,
+        'resume_training': False,
+
+        # Topology
+        'n_series': 1,
+        'n_features_per_series': 271,
+        'n_forecasts': 1,
+        'n_classification_bins': 12,
+        'layer_heights': [200, 200, 200],
+        'layer_widths': [1, 1, 1],
+        'activation_functions': ['relu', 'relu', 'relu'],
+
+        # Initial conditions
+        'INITIAL_ALPHA': 0.2,
+        'INITIAL_WEIGHT_UNCERTAINTY': 0.05,
+        'INITIAL_BIAS_UNCERTAINTY': 0.005,
+        'INITIAL_WEIGHT_DISPLACEMENT': 0.02,
+        'INITIAL_BIAS_DISPLACEMENT': 0.0005,
+        'USE_PERFECT_NOISE': False,
+
+        # Priors
+        'double_gaussian_weights_prior': False,
+        'wide_prior_std': 1.2,
+        'narrow_prior_std': 0.05,
+        'spike_slab_weighting': 0.5
+    }
+
+    return configuration
+
+
 if __name__ == '__main__':
 
     logger = logging.getLogger('tipper')
     logger.addHandler(logging.StreamHandler())
     logging.basicConfig(level=logging.DEBUG)
-    run_stochastic_test()
-    #  run_MNIST_test()
+    # run_stochastic_test()
+    run_MNIST_test()
