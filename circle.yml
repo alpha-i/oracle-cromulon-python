@@ -1,6 +1,4 @@
 machine:
-  python:
-    version: 3.6.0
   post:
     - sudo apt-get update
     - sudo apt-get install gcc libgsl0-dev
