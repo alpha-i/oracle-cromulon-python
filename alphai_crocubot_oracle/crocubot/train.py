@@ -88,7 +88,7 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
                 logging.info(msg)
 
         out_path = saver.save(sess, save_path)
-        logging.info("Model saved in file:" + out_path)
+        logging.info("Model saved in file:{}".format(out_path))
 
     return epoch_loss_list
 
