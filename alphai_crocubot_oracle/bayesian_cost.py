@@ -141,12 +141,8 @@ class BayesianCost(object):
         """
         Compute the Gaussian likelihood given truth and forecasts.
         :param truth: The true or target values.
-        :param forecast: The forecasted values to be compared with truth
-        :return: The log-likelihood value.
+        :param forecast: The forecast values to be compared with truth
+        :return: The total log likelihood value.
         """
 
-        true_indices = tf.argmax(truth, axis=2)  # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
-        p_forecast = tf.gather(forecast, true_indices, axis=2)
-        log_likelihood = tf.maximum(tf.log(p_forecast), tm.MIN_LOG_LIKELIHOOD)
-
-        return tf.reduce_sum(log_likelihood)
+        return tf.reduce_sum(truth * tf.log(forecast))   # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]

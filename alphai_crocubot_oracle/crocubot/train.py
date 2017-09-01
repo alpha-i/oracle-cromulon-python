@@ -61,15 +61,16 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
         else:
             sess.run(model_initialiser)
 
+        epoch_loss_list = []
+
         for epoch in range(FLAGS.n_epochs):
 
             epoch_loss = 0.
-            epoch_loss_list = []
             start_time = timer()
 
             for b in range(n_batches):  # The randomly sampled weights are fixed within single batch
                 if use_data_loader:
-                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, labels_per_series=topology.n_classification_bins, bin_edges=bin_edges)
+                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, bin_edges=bin_edges)
                 else:
                     lo_index = b * FLAGS.batch_size
                     hi_index = lo_index + FLAGS.batch_size
@@ -83,10 +84,11 @@ def train(topology, data_source, flags, train_x=None, train_y=None, bin_edges=No
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                logging.info('Epoch', epoch, "loss:", str.format('{0:.2e}', epoch_loss), "in", str.format('{0:.2f}', time_epoch), "seconds")
+                msg = ['Epoch' + str(epoch) + "loss:" + str.format('{0:.2e}', epoch_loss) + "in" + str.format('{0:.2f}', time_epoch) + "seconds"]
+                logging.info(msg)
 
         out_path = saver.save(sess, save_path)
-        logging.info("Model saved in file:", out_path)
+        logging.info("Model saved in file:{}".format(out_path))
 
     return epoch_loss_list
 
