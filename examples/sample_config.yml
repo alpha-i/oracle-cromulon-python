@@ -41,7 +41,7 @@ quant_workflow:
   open_order_timeout: 3600.
   oracle:
     method: library
-    module_path: alphai_oracle_crocubot.oracle
+    module_path: alphai_crocubot_oracle.oracle
     oracle_class_name: CrocubotOracle
     oracle_arguments:
       forecast_interval: 1
