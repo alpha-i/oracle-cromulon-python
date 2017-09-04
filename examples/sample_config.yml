@@ -24,14 +24,14 @@ quant_workflow:
   results_path: 'D:\Zipline\20100101_20150101_10S\results'
   fill_limit: 5
   trade_resample_rule: '15T'
-  trade_history_ndays: 30
-  trade_frequency: 'daily'
-  trade_days_offset: 0
+  trade_history_ndays: 31
+  trade_frequency: 'weekly'
+  trade_days_offset: 1
   trade_minutes_offset: 60
   trade_horizon_ncycles: 1
   train_resample_rule: '15T'
-  train_history_ndays: 250
-  train_frequency: 'never'
+  train_history_ndays: 100
+  train_frequency: 'weekly'
   train_days_offset: 0
   train_minutes_offset: 60
   alert_level: 'NONE'
@@ -65,7 +65,7 @@ quant_workflow:
       d_type: float32
       tf_type: 32
       random_seed: 0
-      n_epochs: 1
+      n_epochs: 10
       n_training_samples: 1000
       learning_rate: 2e-3
       batch_size: 100
@@ -73,9 +73,9 @@ quant_workflow:
       n_train_passes: 30
       n_eval_passes: 100
       resume_training: False
-      n_series: 3
+      n_series: 10
       n_features_per_series: 271
-      n_forecasts: 3
+      n_forecasts: 10
       n_classification_bins: 12
       layer_heights: [3, 271]
       layer_widths: [3, 3]
@@ -98,11 +98,11 @@ quant_workflow:
     max_annualised_std: 0.3
   universe:
     method: 'fixed'
-    symbol_list: ['AAPL', 'MSFT', 'GOOG']
+    symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
 zipline:
   zipline_root: 'D:\Zipline\20100101_20150101_10S\zipline_root'
-  start_date: '20100101'
-  end_date: '20150101'
+  start_date: '20110401'
+  end_date: '20110430'
   capital_base: 1000000.
   data_frequency: 'minute'
   data_bundle: 'test_bundle'

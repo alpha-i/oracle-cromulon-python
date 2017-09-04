@@ -169,4 +169,5 @@ class CrocubotOracle:
             raise ValueError('Prediction of means failed. Contains non-finite values.')
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
-        return means, historical_covariance, forecast_covariance
+        # return means, historical_covariance, forecast_covariance
+        return means, forecast_covariance
