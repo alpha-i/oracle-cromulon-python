@@ -170,7 +170,6 @@ class CrocubotOracle:
         eval_time = end_time - start_time
         logging.info("Crocubot evaluation took:{}".format(eval_time))
 
-
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
 
