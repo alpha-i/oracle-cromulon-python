@@ -1,0 +1,97 @@
+logging:
+  version: 1
+  formatters:
+    formatter:
+        format: '%(asctime)s - %(levelname)s [%(name)s:%(module)s]: %(message)s'
+        datefmt: '%Y/%m/%d %H:%M:%S'
+
+  handlers:
+      #these handlers say: for ERROR an higher, log on console. for DEBUG log on file
+      console:
+          class: 'logging.StreamHandler'
+          formatter: 'formatter'
+          level: 'DEBUG'
+          stream: 'ext://sys.stdout'
+      file:
+          class : 'logging.FileHandler'
+          formatter: 'formatter'
+          level: 'DEBUG'
+          filename: 'D:\Zipline\20100101_20150101_10S\logs\quant_workflow-debug.log'
+  root:
+      level: 'DEBUG'
+      handlers: ['file', 'console']
+
+quant_workflow:
+  run_mode: 'backtest'
+  results_path: 'D:\Zipline\20100101_20150101_10S\results'
+  fill_limit: 5
+  trade_resample_rule: '15T'
+  trade_history_ndays: 30
+  trade_frequency: 'daily'
+  trade_days_offset: 0
+  trade_minutes_offset: 60
+  trade_horizon_ncycles: 1
+  train_resample_rule: '15T'
+  train_history_ndays: 250
+  train_frequency: 'never'
+  train_days_offset: 0
+  train_minutes_offset: 60
+  alert_level: 'NONE'
+  execution_timeout: 180.
+  open_order_timeout: 3600.
+  oracle:
+    method: library
+    module_path: alphai_oracle_crocubot.oracle
+    oracle_class_name: CrocubotOracle
+    oracle_arguments:
+      forecast_interval: 1
+      train_path: 'D:\Zipline\20100101_20150101_10S\train'
+      resample_frequency: 15
+      exchange_name: 'NYSE'
+      minutes_after_open: 60
+      covariance_method: 'NERCOME'
+      covariance_ndays: 30
+      feature_ndays: 10
+      epochs: 10
+      learning_rate: 0.001
+      verbose: True
+      batch_size: 32
+      drop_out: 0.5
+      l2: 0.00001
+      n_hidden: 100
+      feature_start_minutes_after_market_open: 0
+      feature_end_minutes_after_market_open: 60
+      target_delta_ndays: 1
+      target_minutes_after_market_open: 60
+  portfolio:
+    max_abs_individual_weight: 0.2
+    max_abs_pos_gross_exposure: 0.75
+    max_abs_neg_gross_exposure: 0.75
+    margin_ratio: 1.0
+    max_annualised_std: 0.3
+  universe:
+    method: 'fixed'
+    symbol_list: ['AAPL', 'MSFT', 'GOOG']
+#    method: 'annual'
+#    universe_file: 'D:\Zipline\20100101_20150101_10S\universe.json'
+
+zipline:
+    zipline_root: 'D:\Zipline\20100101_20150101_10S\zipline_root'
+    start_date: '20100101'
+    end_date: '20150101'
+    capital_base: 1000000.
+    data_frequency: 'minute'
+    data_bundle: 'test_bundle'
+    slippage_type: 'TradeAtTheOpenSlippageModel'
+    spread: 0.
+    open_close_fraction: 0.
+    volume_limit: 0.
+    price_impact: 0.
+    commission_type: 'PerShare'
+    cost: 0.0005
+    min_trade_cost: 1.
+
+live_clock_configuration:
+  host: 'localhost'
+  port: 45672
+  queue_name: 'clock-pulse'
