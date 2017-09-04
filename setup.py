@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 
 setup(
-    name='alphai_oracle_crocubot',
+    name='alphai_crocubot_oracle',
     version='0.0.1',
     description='Alpha-I Crocubot',
     author='Sreekumar Thaithara Balan, Christopher Bonnett, Fergus Simpson',
