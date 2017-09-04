@@ -154,7 +154,7 @@ class CrocubotOracle:
         if not np.isfinite(cov).all():
             raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
         # Convert the array into a dataframe
-        historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
+        # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
