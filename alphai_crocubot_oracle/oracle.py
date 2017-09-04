@@ -5,6 +5,7 @@
 # A fairly generic interface, in that it can easily applied to other models
 
 import logging
+from timeit import default_timer as timer
 
 import numpy as np
 import pandas as pd
@@ -116,7 +117,11 @@ class CrocubotOracle:
 
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
+        start_time = timer()
         crocubot.train(self._topology, data_source, FLAGS, train_x, train_y, save_path=train_path)
+        end_time = timer()
+        train_time = end_time - start_time
+        logging.info("Training took:{}".format(train_time))
 
     def predict(self, predict_data, execution_time):
         """
@@ -134,6 +139,7 @@ class CrocubotOracle:
 
         # Call the covariance library
         logging.info('Estimating historical covariance matrix.')
+        start_time = timer()
         cov = estimate_covariance(
             predict_data,
             self._covariance_ndays,
@@ -142,6 +148,9 @@ class CrocubotOracle:
             self._data_transformation.exchange_calendar,
             self._data_transformation.target_delta_ndays
         )
+        end_time = timer()
+        cov_time = end_time - start_time
+        logging.info("Historical covariance estimation took:{}".format(cov_time))
         if not np.isfinite(cov).all():
             raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
         # Convert the array into a dataframe
@@ -154,8 +163,14 @@ class CrocubotOracle:
         # FIXME: temporary fix, to be added to data transform
         predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
 
+        start_time = timer()
         predict_y = crocubot_eval.eval_neural_net(predict_x.reshape((1,) + predict_x.shape),
                                                   topology=self._topology, save_file=latest_train)
+        end_time = timer()
+        eval_time = end_time - start_time
+        logging.info("Crocubot evaluation took:{}".format(eval_time))
+
+
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
 
