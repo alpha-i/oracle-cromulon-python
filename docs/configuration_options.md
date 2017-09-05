@@ -114,4 +114,111 @@ e.g. `60` implies an hour after.
 Parameters are specified as sub dictionary.
 + `universe`: This key is used to specify the parameters relating to the universe of stocks.
 
-For example, if we are using the ``
+For example, if we are using the `http` this section will look like the one below:
+```yaml
+quant_workflow:
+  run_mode: 'backtest'
+  results_path: 'D:\Zipline\20100101_20150101_10S\results'
+  fill_limit: 5
+  trade_resample_rule: '15T'
+  trade_history_ndays: 31
+  trade_frequency: 'weekly'
+  trade_days_offset: 1
+  trade_minutes_offset: 60
+  trade_horizon_ncycles: 1
+  train_resample_rule: '15T'
+  train_history_ndays: 100
+  train_frequency: 'weekly'
+  train_days_offset: 0
+  train_minutes_offset: 60
+  alert_level: 'NONE'
+  execution_timeout: 180.
+  open_order_timeout: 3600.
+  oracle:
+    method: 'http'
+    protocol: 'http'
+    host: '0.0.0.0'
+    port: 8080
+```
+
+The `oracle` section will have the following sections:
++ `method`: specifies whether we are using a library or an http based communication. possible value are
+    + `'library'`
+    + `'http'`
+
+If `'http'` is specified as the `method` we need further keys 
++ `protocol: 'http'`
++ `host: '0.0.0.0'`
++ `port: 8080`
+
+For example, if using the `http`, the `oracle` section will look like:
+```yaml
+oracle:
+  method: 'http'
+  protocol: 'http'
+  host: '0.0.0.0'
+  port: 8080
+```
+
+If on the other hand we are using the `library` option for the `oracle` we need to specify the following keys.
++ `module_path`: a path to the module that is being used as the oracle. e.g. `alphai_crocubot_oracle.oracle`
++ `oracle_class_name`: name of the oracle python class. e.g. `CrocubotOracle`.
++ `oracle_arguments`: This subsection will specify *all* the arguments required to create a `oracle` class.
+
+For example, if we are using `alphai_crocubot_oracle.oracle`, the `oracle` section will look like:
+```yaml
+oracle:
+method: library
+module_path: alphai_crocubot_oracle.oracle
+oracle_class_name: CrocubotOracle
+oracle_arguments:
+  data_transformation:
+    feature_config_list:
+      -
+        name: close
+        order: 'log-return'
+        normalization: standard
+        nbins: 12
+        is_target: True
+    exchange_name: 'NYSE'
+    features_ndays: 10
+    features_resample_minutes: 15
+    features_start_market_minute: 60
+    prediction_frequency_ndays: 1
+    prediction_market_minute: 60
+    target_delta_ndays: 1
+    target_market_minute: 60
+  train_path: 'D:\Zipline\20100101_20150101_10S\train'
+  covariance_method: 'NERCOME'
+  covariance_ndays: 9
+  model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
+  d_type: float32
+  tf_type: 32
+  random_seed: 0
+  n_epochs: 10
+  n_training_samples: 1000
+  learning_rate: 2e-3
+  batch_size: 100
+  cost_type: 'bayes'
+  n_train_passes: 30
+  n_eval_passes: 100
+  resume_training: False
+  n_series: 10
+  n_features_per_series: 271
+  n_forecasts: 10
+  n_classification_bins: 12
+  layer_heights: [3, 271]
+  layer_widths: [3, 3]
+  activation_functions: ["relu", "relu"]
+  INITIAL_ALPHA: 0.2
+  INITIAL_WEIGHT_UNCERTAINTY: 0.4
+  INITIAL_BIAS_UNCERTAINTY: 0.4
+  INITIAL_WEIGHT_DISPLACEMENT: 0.1
+  INITIAL_BIAS_DISPLACEMENT: 0.4
+  USE_PERFECT_NOISE: True
+  double_gaussian_weights_prior: False
+  wide_prior_std: 1.2
+  narrow_prior_std: 0.05
+  spike_slab_weighting: 0.5
+
+```
