@@ -19,49 +19,6 @@ Defining the crocubot-oracle is separately discussed in the [crocubot_options](c
 We will explain the options to configure a backtest.
 
 ## `logging`
-+ `version`: ??
-+ `formatters`: specifies the formatting related parameters
-+ `handlers`: keys for specifying the logging handlers
-+ `root`: ??
-
-The `formatters` lists a set of different formatters. These are defined as subsections. Then, each of these formatter 
-subsections can be defined using the following keys
-+ `format`: Specify the format in which the logging is done. 
-e.g. `'%(asctime)s - %(levelname)s [%(name)s:%(module)s]: %(message)s'` 
-+ `datefmt`: the format of the time stamps of the logs. e.g. `'%Y/%m/%d %H:%M:%S'`
-
-The `handlers` has the following subsection. 
-+ `console`: specifies the logging parameters for the console output
-+ `file`: specifies the logging parameters for the file output
-
-`console` parameter itself is another section with the following parameters:
-+ `class`: specify the python class which handles the logging. e.g. `'logging.StreamHandler'`.
-+ `formatter`: Specify the `format`. The value of this key should correspond to one of the formatters defined under the
-section `formatters`.
-+ `level`: the level of logging required. The possible values are:
-    + `INFO`
-    + `DEBUG`
-    + `ERROR`
-+ `stream`: ?? e.g. `'ext://sys.stdout'`.
-
-`file`  parameter itself is another section with the following parameters:
-+ `class`: specify the class that handles the file output. e.g `'logging.FileHandler'`
-+ `formatter`: Specify the `format`. The value of this key should correspond to one of the formatters defined under the
-section `formatters`.
-+ `level`:  the level of logging required. The possible values are:
-    + `INFO`
-    + `DEBUG`
-    + `ERROR`
-+ `filename`: The file to which the logs are to be written. 
-e.g. `'D:\Zipline\20100101_20150101_10S\logs\quant_workflow-debug.log'`. Note that the path should be writable for this
-to properly work.
-
-`root` subsection can be specified with the following keys:
-+ `level`: the level of logging required. The possible values are:
-    + `INFO`
-    + `DEBUG`
-    + `ERROR`
-+ `handlers`: A list of handlers defined in the `handlers` subsection. e.g. `['file', 'console']`.
 
 For example, a full definition of the logging section might look like.
 ```yaml
@@ -87,6 +44,57 @@ logging:
     handlers: ['file', 'console']
 ```
 
+The following table explains the keys.
+
+| key | description |
+| --- | --- |
+| `version` | ?? |
+| `formatters` | specifies the formatting related parameters |
+| `handlers` | keys for specifying the logging handlers |
+| `root` | ?? |
+Each fo these keys are subsections themselves. They are explained below.
+
+### `formatters`
+The `formatters` lists a set of different formatters. These are defined as subsections. Then, each of these formatter 
+subsections can be defined using the following keys
+
+| key | description |
+| --- | --- |
+| `format` | Specify the format in which the logging is done. e.g. `'%(asctime)s - %(levelname)s [%(name)s:%(module)s]: %(message)s'`  |
+| `datefmt` | the format of the time stamps of the logs. e.g. `'%Y/%m/%d %H:%M:%S'` |
+
+### `handlers`
+The `handlers` has the following subsection specifiction. 
+
+| key | description |
+| --- | --- |
+| `console` | specifies the logging parameters for the console output |
+| `file` | specifies the logging parameters for the file output |
+
+#### `console`
+
+| key | description |
+| --- | --- |
+| `class` | specify the python class which handles the logging. e.g. `'logging.StreamHandler'`. |
+| `formatter` | Specify the `format`. The value of this key should correspond to one of the formatters defined under the section `formatters`. |
+| `level` | the level of logging required. The possible values are: `INFO`, `DEBUG` and `ERROR` |
+
+
+#### `file`
+
+| key | description |
+| --- | --- |
+| `class` | specify the class that handles the file output. e.g `'logging.FileHandler'` |
+| `formatter` | specify the `format`. The value of this key should correspond to one of the formatters defined under the section `formatters`. |
+| `level` |  the level of logging required. The possible values are: `INFO`, `DEBUG` and `ERROR` |
+| `filename` | The file to which the logs are to be written. Note that the path should be writable for this to properly work.|
+
+### `root`
+
+| key | description |
+| --- | --- |
+| `level` | the level of logging required. The possible values are: `INFO`, `DEBUG`, `ERROR` |
+| `handlers` | a list of handlers defined in the `handlers` subsection. e.g. `['file', 'console']`.|
 
 ## `quant_workflow`
 
