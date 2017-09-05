@@ -139,6 +139,15 @@ quant_workflow:
     protocol: 'http'
     host: '0.0.0.0'
     port: 8080
+  portfolio:
+    max_abs_individual_weight: 0.2
+    max_abs_pos_gross_exposure: 0.75
+    max_abs_neg_gross_exposure: 0.75
+    margin_ratio: 1.0
+    max_annualised_std: 0.3
+  universe:
+    method: 'fixed'
+    symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
 ```
 
 The `oracle` section will have the following sections:
@@ -168,57 +177,77 @@ If on the other hand we are using the `library` option for the `oracle` we need 
 For example, if we are using `alphai_crocubot_oracle.oracle`, the `oracle` section will look like:
 ```yaml
 oracle:
-method: library
-module_path: alphai_crocubot_oracle.oracle
-oracle_class_name: CrocubotOracle
-oracle_arguments:
-  data_transformation:
-    feature_config_list:
-      -
-        name: close
-        order: 'log-return'
-        normalization: standard
-        nbins: 12
-        is_target: True
-    exchange_name: 'NYSE'
-    features_ndays: 10
-    features_resample_minutes: 15
-    features_start_market_minute: 60
-    prediction_frequency_ndays: 1
-    prediction_market_minute: 60
-    target_delta_ndays: 1
-    target_market_minute: 60
-  train_path: 'D:\Zipline\20100101_20150101_10S\train'
-  covariance_method: 'NERCOME'
-  covariance_ndays: 9
-  model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
-  d_type: float32
-  tf_type: 32
-  random_seed: 0
-  n_epochs: 10
-  n_training_samples: 1000
-  learning_rate: 2e-3
-  batch_size: 100
-  cost_type: 'bayes'
-  n_train_passes: 30
-  n_eval_passes: 100
-  resume_training: False
-  n_series: 10
-  n_features_per_series: 271
-  n_forecasts: 10
-  n_classification_bins: 12
-  layer_heights: [3, 271]
-  layer_widths: [3, 3]
-  activation_functions: ["relu", "relu"]
-  INITIAL_ALPHA: 0.2
-  INITIAL_WEIGHT_UNCERTAINTY: 0.4
-  INITIAL_BIAS_UNCERTAINTY: 0.4
-  INITIAL_WEIGHT_DISPLACEMENT: 0.1
-  INITIAL_BIAS_DISPLACEMENT: 0.4
-  USE_PERFECT_NOISE: True
-  double_gaussian_weights_prior: False
-  wide_prior_std: 1.2
-  narrow_prior_std: 0.05
-  spike_slab_weighting: 0.5
-
+  method: library
+  module_path: alphai_crocubot_oracle.oracle
+  oracle_class_name: CrocubotOracle
+  oracle_arguments:
+    data_transformation:
+      feature_config_list:
+        -
+          name: close
+          order: 'log-return'
+          normalization: standard
+          nbins: 12
+          is_target: True
+      exchange_name: 'NYSE'
+      features_ndays: 10
+      features_resample_minutes: 15
+      features_start_market_minute: 60
+      prediction_frequency_ndays: 1
+      prediction_market_minute: 60
+      target_delta_ndays: 1
+      target_market_minute: 60
+    train_path: 'D:\Zipline\20100101_20150101_10S\train'
+    covariance_method: 'NERCOME'
+    covariance_ndays: 9
+    model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
+    d_type: float32
+    tf_type: 32
+    random_seed: 0
+    n_epochs: 10
+    n_training_samples: 1000
+    learning_rate: 2e-3
+    batch_size: 100
+    cost_type: 'bayes'
+    n_train_passes: 30
+    n_eval_passes: 100
+    resume_training: False
+    n_series: 10
+    n_features_per_series: 271
+    n_forecasts: 10
+    n_classification_bins: 12
+    layer_heights: [3, 271]
+    layer_widths: [3, 3]
+    activation_functions: ["relu", "relu"]
+    INITIAL_ALPHA: 0.2
+    INITIAL_WEIGHT_UNCERTAINTY: 0.4
+    INITIAL_BIAS_UNCERTAINTY: 0.4
+    INITIAL_WEIGHT_DISPLACEMENT: 0.1
+    INITIAL_BIAS_DISPLACEMENT: 0.4
+    USE_PERFECT_NOISE: True
+    double_gaussian_weights_prior: False
+    wide_prior_std: 1.2
+    narrow_prior_std: 0.05
+    spike_slab_weighting: 0.5
 ```
+
+The `portfolio` section can be used to specify the portfolio creation. The following keys are valid.
++ `max_abs_individual_weight`: ??
++ `max_abs_pos_gross_exposure`: ??
++ `max_abs_neg_gross_exposure`: ??
++ `margin_ratio`: ??
++ `max_annualised_std`: ??
+
+The `universe` section deals with the universe creation. The valid keys are below:
++ `method`: This specifies the method for universe creation. Possible values are
+    + `'fixed'`
+    + `'liquidity'`
+
+Depending on the method we will need to specify more keys to complete the `universe` section. If `method'fixed'`, 
+the we need to give a list ot stocks to specify the universe. So the section will look like
+```yaml
+  universe:
+    method: 'fixed'
+    symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
+```
+*Note that your ingested data bundle should contain these stocks for this specification to work!*
