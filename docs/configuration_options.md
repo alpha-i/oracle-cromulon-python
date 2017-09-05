@@ -297,3 +297,11 @@ This section is used to define the details about the live clock.
 + `host`: defines the host. e.g. `localhost`
 + `port`: port for communication. e.g. `45672`
 + `queue_name`: name of the queue. e.g. `'clock-pulse'`. 
+
+For example, using the above values, this section can be written a
+```yaml
+live_clock_configuration:
+  host: 'localhost'
+  port: 45672
+  queue_name: 'clock-pulse'
+```
