@@ -48,10 +48,10 @@ The following table explains the keys.
 
 | key | description |
 | --- | --- |
-| `version` | ?? |
+| `version` | :exclamation: ?? |
 | `formatters` | specifies the formatting related parameters |
 | `handlers` | keys for specifying the logging handlers |
-| `root` | ?? |
+| `root` | :exclamation: ? |
 Each fo these keys are subsections themselves. They are explained below.
 
 ### `formatters`
@@ -97,47 +97,6 @@ The `handlers` has the following subsection specifiction.
 | `handlers` | a list of handlers defined in the `handlers` subsection. e.g. `['file', 'console']`.|
 
 ## `quant_workflow`
-
-The main keys under `quant_workflow` are:
-
-+ `run_mode`: This key specifies the mode in which the `quant_workflow` is run. The possible options are:
-    + `'backtest'`: The backtesting mode. 
-    + `'oracle'`: dry run or just run the oracle and no trading strategy.
-    + `'live'`: run the workflow in the live trading mode.
-+ `results_path`: specifies the path in which results files are to be written. 
-e.g `'D:\Zipline\20100101_20150101_10S\results'`
-+ `fill_limit`: specifies the maximum number of time stamps in which missing data can be filled using 
-previous values. e.g. `5`
-+ `trade_resample_rule`: the period with which the data is to be re-sampled before passing to the oracle. 
-We use `pandas` notation. .e.g `'15T'` 
-+ `trade_history_ndays`: the number days of historical data provided for the inference part. .e.g `31`.  
-+ `trade_frequency`: how often we trade. options are:
-    + `'weekly'`: trade every week
-    + `'daily'`: trade every day
-+ `trade_days_offset`: *ONLY IF* `trade_frequency: 'weekly'`. Specifies the day we are trading. 
-`0` implies Monday and so on. 
-+ `trade_minutes_offset`: specifies the time at which the trade happens after the market opens. 
-e.g. `60` implies an hour after. 
-+ `trade_horizon_ncycles`: The number units of `trade_frequency` at which the oracle should do the prediction. 
-e.g. `trade_frequency:'weekly'` and  `trade_horizon_ncycles: 1` and implies we are predicting one week ahead.
-+ `train_resample_rule`: *THIS SHOULD BE IDENTICAL TO* `trade_resample_rule`. e.g `'15T'`
-+ `train_history_ndays`: the number days of historical data provided for the training part. .e.g `100`.
-+ `train_frequency`: specifies how often we train the network. This can be different from the `trade_frequency`.
-    + `'weekly'`: trade every week
-    + `'daily'`: trade every day
-+ `train_days_offset`: *ONLY IF* `train_frequency: 'weekly'`. Specifies the day we are trading. 
-`0` implies Monday and so on. 
-+ `train_minutes_offset`: specifies the time at which the training happens after the market opens. 
-e.g. `60` implies an hour after. 
-+ `alert_level`: specifies the level of alert messages. Possible values are
-    + `'NONE'` No alert
-+ `execution_timeout`: specifies the time out in *seconds* after which the execution will be killed. e.g. `180.`
-+ `open_order_timeout`: specifies the time out in *seconds* after which the open orders will be killed. e.g. `3600.`
-+ `oracle:` This key specifies the configuration parameters for oracle. Parameters are specified as sub dictionary.
-+ `portfolio`: This key specifies the parameters relating to the to portfolio creation. 
-Parameters are specified as sub dictionary.
-+ `universe`: This key is used to specify the parameters relating to the universe of stocks.
-
 For example, if we are using the `http` this section will look like the one below:
 ```yaml
 quant_workflow:
@@ -173,6 +132,33 @@ quant_workflow:
     method: 'fixed'
     symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
 ```
+The main keys under `quant_workflow` are:
+
+| key | description |
+| --- | --- |
+| `run_mode` | This key specifies the mode in which the `quant_workflow` is run. The possible options are `'backtest'`, `'oracle'` and `'live'`.
+| `results_path` | specifies the path in which results files are to be written. e.g `'D:\Zipline\20100101_20150101_10S\results'` |
+| `fill_limit` | specifies the maximum number of time stamps in which missing data can be filled using previous values. |
+| `trade_resample_rule` | the period with which the data is to be re-sampled before passing to the oracle. We use `pandas` notation. |
+| `trade_history_ndays` | the number days of historical data provided for the inference part. |
+| `trade_frequency` | how often we trade. options are `'weekly'` and `'daily'` |
+| `trade_days_offset` | Specifies the day we are trading. `0` implies Monday and so on. :exclamation: ONLY IF `trade_frequency: 'weekly'`. |
+| `trade_minutes_offset` | specifies the time at which the trade happens after the market opens. e.g. `60` implies an hour after. |
+| `trade_horizon_ncycles` | The number units of `trade_frequency` at which the oracle should do the prediction.  |
+| `train_resample_rule` | :exclamation: THIS SHOULD BE IDENTICAL TO `trade_resample_rule`. e.g `'15T'` |
+| `train_history_ndays` | the number days of historical data provided for the training part. .e.g `100`. |
+| `train_frequency` | specifies how often we train the network. This can be different from the `trade_frequency`. `'weekly'` and `'daily'` |
+| `train_days_offset` | :exclamation: ONLY IF `train_frequency: 'weekly'`. Specifies the day we are trading |
+| `train_minutes_offset` | specifies the time at which the training happens after the market opens. |
+| `alert_level` | specifies the level of alert messages. Possible values are `'NONE'` :exclamation: OTHERS? |
+| `execution_timeout` | specifies the time out in *seconds* after which the execution will be killed. |
+| `open_order_timeout` | specifies the time out in *seconds* after which the open orders will be killed. |
+| `oracle` | This key specifies the configuration parameters for oracle. Parameters are specified as sub dictionary. See the section on `oracle`. |
+| `portfolio` | This key specifies the parameters relating to the to portfolio creation. See the section on `portfolio` for more details. |
+| `universe` | This key is used to specify the parameters relating to the universe of stocks. |
+
+
+
 
 The `oracle` section will have the following sections:
 + `method`: specifies whether we are using a library or an http based communication. possible value are
