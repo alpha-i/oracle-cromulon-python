@@ -115,10 +115,18 @@ class CrocubotOracle:
         train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
         train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
+        logging.info('Training features of shape: {}.'.format(
+            train_x.shape,
+        ))
+        logging.info('Training labels of shape: {}.'.format(
+            train_y.shape,
+        ))
+
+        latest_train = self._train_file_manager.latest_train_filename(execution_time)
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
         start_time = timer()
-        crocubot.train(self._topology, data_source, FLAGS, train_x, train_y, save_path=train_path)
+        crocubot.train(self._topology, data_source, train_x, train_y, save_path=train_path, restore_path=latest_train)
         end_time = timer()
         train_time = end_time - start_time
         logging.info("Training took:{}".format(train_time))
@@ -154,7 +162,7 @@ class CrocubotOracle:
         if not np.isfinite(cov).all():
             raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
         # Convert the array into a dataframe
-        historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
+        # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
