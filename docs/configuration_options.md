@@ -256,9 +256,12 @@ zipline:
 
 ## `live_clock_configuration`
 This section is used to define the details about the live clock.
-+ `host`: defines the host. e.g. `localhost`
-+ `port`: port for communication. e.g. `45672`
-+ `queue_name`: name of the queue. e.g. `'clock-pulse'`. 
+
+| key | description |
+| --- | --- |
+|  `host` | defines the host. |
+| `port` | port for communication.|
+| `queue_name` | name of the queue. |
 
 For example, using the above values, this section can be written as
 ```yaml
