@@ -243,11 +243,51 @@ The `universe` section deals with the universe creation. The valid keys are belo
     + `'fixed'`
     + `'liquidity'`
 
-Depending on the method we will need to specify more keys to complete the `universe` section. If `method'fixed'`, 
-the we need to give a list ot stocks to specify the universe. So the section will look like
+Depending on the method we will need to specify more keys to complete the `universe` section. If `method: 'fixed'` 
+is set, then we need to give a list ot stocks to specify the universe. So the section will look like
 ```yaml
   universe:
     method: 'fixed'
     symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
 ```
 *Note that your ingested data bundle should contain these stocks for this specification to work!*
+
+## `zipline`
+
+This section defines the parameters related to `zipline` library. The following keys are required.
++ `zipline_root`: Tha path to `zipline` root where the `extension.py` and the `data` folder resides.
+e.g. `'D:\Zipline\20100101_20150101_10S\zipline_root'`.
++ `start_date`: start date of the run. e.g. `'20110401'`.
++ `end_date`: end date of the run. e.g. `20110430`.
++ `capital_base`: The amount of capital available. e.g. `1000000.`
++ `data_frequency`: ?? The data frequency of the ingested data. e.g. `'minute'`.
++ `data_bundle`: the name of the data bundle. This should be defined in the `extension.py` in the `zipline_root`.
++ `slippage_type`: the type of slippage to be used in the backtest. The possible options are:
+    + `'TradeAtTheOpenSlippageModel'` ??
++ `spread`: ?? e.g. `0.`
++ `open_close_fraction`: ?? e.g. `0.`
++ `volume_limit`: ?? e.g. `0.`
++ `price_impact`: ?? `0.`
++ `commission_type`: The type of commission model. Possible options are:
+    + `'PerShare'`: ??
++ `cost`: Defines the cost of each transaction. e.g. `0.0005` ??
++ `min_trade_cost`: ?? e.g. `1.`.
+
+Thus a fully specified `zipline` section will look like
+```yaml
+zipline:
+  zipline_root: 'D:\Zipline\20100101_20150101_10S\zipline_root'
+  start_date: '20110401'
+  end_date: '20110430'
+  capital_base: 1000000.
+  data_frequency: 'minute'
+  data_bundle: 'test_bundle'
+  slippage_type: 'TradeAtTheOpenSlippageModel'
+  spread: 0.
+  open_close_fraction: 0.
+  volume_limit: 0.
+  price_impact: 0.
+  commission_type: 'PerShare'
+  cost: 0.0005
+  min_trade_cost: 1.
+```
