@@ -1,8 +1,24 @@
 # Configuration Options
 
+The main sections of the configuration file are:
++ [`logging`](#logging)
++ [`quant_workflow`](#quant_workflow)
++ [`zipline`](#zipline)
++ [`live_clock_configuration`](#live_clock_configuration)
+
+The `yaml` will look like:
+```yaml
+logging:
+quant_workflow:
+zipline:
+live_clock_configuration:
+```
+
+Defining the crocubot-oracle is separately discussed in the [crocubot_options](crocubot_options.md)
+
 We will explain the options to configure a backtest.
 
-## `logging` section
+## `logging`
 + `version`: ??
 + `formatters`: specifies the formatting related parameters
 + `handlers`: keys for specifying the logging handlers
@@ -72,7 +88,7 @@ logging:
 ```
 
 
-## `quant_workflow` section
+## `quant_workflow`
 
 The main keys under `quant_workflow` are:
 
@@ -298,7 +314,7 @@ This section is used to define the details about the live clock.
 + `port`: port for communication. e.g. `45672`
 + `queue_name`: name of the queue. e.g. `'clock-pulse'`. 
 
-For example, using the above values, this section can be written a
+For example, using the above values, this section can be written as
 ```yaml
 live_clock_configuration:
   host: 'localhost'
