@@ -157,20 +157,9 @@ The main keys under `quant_workflow` are:
 | `portfolio` | This key specifies the parameters relating to the to portfolio creation. See the section on `portfolio` for more details. |
 | `universe` | This key is used to specify the parameters relating to the universe of stocks. |
 
-
-
-
-The `oracle` section will have the following sections:
-+ `method`: specifies whether we are using a library or an http based communication. possible value are
-    + `'library'`
-    + `'http'`
-
-If `'http'` is specified as the `method` we need further keys 
-+ `protocol: 'http'`
-+ `host: '0.0.0.0'`
-+ `port: 8080`
-
-For example, if using the `http`, the `oracle` section will look like:
+## `oracle`
+The `oracle` section should contain a key called `method` which can either be `'http'` or `'library'`.
+If `'http'` is specified as the `method` we need further keys as follows:
 ```yaml
 oracle:
   method: 'http'
@@ -179,10 +168,20 @@ oracle:
   port: 8080
 ```
 
-If on the other hand we are using the `library` option for the `oracle` we need to specify the following keys.
-+ `module_path`: a path to the module that is being used as the oracle. e.g. `alphai_crocubot_oracle.oracle`
-+ `oracle_class_name`: name of the oracle python class. e.g. `CrocubotOracle`.
-+ `oracle_arguments`: This subsection will specify *all* the arguments required to create a `oracle` class.
+| key | description |
+| --- | --- |
+| `protocol` | what protocol to use for communication. e.g. `'http'` |
+| `host` | hostname e.g. `'0.0.0.0'` |
+| `port` | the port for communication `8080` |
+
+
+If we are using the `library` option for the `oracle` we need to specify the following keys.
+
+| key | description |
+| --- | --- |
+| `module_path` | a path to the module that is being used as the oracle. e.g. `alphai_crocubot_oracle.oracle` |
+| `oracle_class_name` | name of the oracle python class. e.g. `CrocubotOracle`. |
+| `oracle_arguments` | This subsection will specify *all* the arguments required to create a `oracle` class. |
 
 For example, if we are using `alphai_crocubot_oracle.oracle`, the `oracle` section will look like:
 ```yaml
@@ -190,71 +189,25 @@ oracle:
   method: library
   module_path: alphai_crocubot_oracle.oracle
   oracle_class_name: CrocubotOracle
-  oracle_arguments:
-    data_transformation:
-      feature_config_list:
-        -
-          name: close
-          order: 'log-return'
-          normalization: standard
-          nbins: 12
-          is_target: True
-      exchange_name: 'NYSE'
-      features_ndays: 10
-      features_resample_minutes: 15
-      features_start_market_minute: 60
-      prediction_frequency_ndays: 1
-      prediction_market_minute: 60
-      target_delta_ndays: 1
-      target_market_minute: 60
-    train_path: 'D:\Zipline\20100101_20150101_10S\train'
-    covariance_method: 'NERCOME'
-    covariance_ndays: 9
-    model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
-    d_type: float32
-    tf_type: 32
-    random_seed: 0
-    n_epochs: 10
-    n_training_samples: 1000
-    learning_rate: 2e-3
-    batch_size: 100
-    cost_type: 'bayes'
-    n_train_passes: 30
-    n_eval_passes: 100
-    resume_training: False
-    n_series: 10
-    n_features_per_series: 271
-    n_forecasts: 10
-    n_classification_bins: 12
-    layer_heights: [3, 271]
-    layer_widths: [3, 3]
-    activation_functions: ["relu", "relu"]
-    INITIAL_ALPHA: 0.2
-    INITIAL_WEIGHT_UNCERTAINTY: 0.4
-    INITIAL_BIAS_UNCERTAINTY: 0.4
-    INITIAL_WEIGHT_DISPLACEMENT: 0.1
-    INITIAL_BIAS_DISPLACEMENT: 0.4
-    USE_PERFECT_NOISE: True
-    double_gaussian_weights_prior: False
-    wide_prior_std: 1.2
-    narrow_prior_std: 0.05
-    spike_slab_weighting: 0.5
+  oracle_arguments: ***
 ```
+For more details on the oracle arguments see the [crocubot options](crocubot_options.md) page.
 
+### `portfolio`
 The `portfolio` section can be used to specify the portfolio creation. The following keys are valid.
-+ `max_abs_individual_weight`: ??
-+ `max_abs_pos_gross_exposure`: ??
-+ `max_abs_neg_gross_exposure`: ??
-+ `margin_ratio`: ??
-+ `max_annualised_std`: ??
 
-The `universe` section deals with the universe creation. The valid keys are below:
-+ `method`: This specifies the method for universe creation. Possible values are
-    + `'fixed'`
-    + `'liquidity'`
+| key | description |
+| --- | --- |
+| `max_abs_individual_weight` | :exclamation: ?? |
+| `max_abs_pos_gross_exposure` | :exclamation: ?? |
+| `max_abs_neg_gross_exposure` | :exclamation: ?? |
+| `margin_ratio` |:exclamation: ?? |
+| `max_annualised_std` | :exclamation: ?? |
 
-Depending on the method we will need to specify more keys to complete the `universe` section. If `method: 'fixed'` 
-is set, then we need to give a list ot stocks to specify the universe. So the section will look like
+### `universe` 
+The `universe` section deals with the universe creation. This section requires the key `method` to be specified. It 
+can either be `'fixed'` or `'liquidity'`. If `method: 'fixed'` is set, then we need to give a list ot stocks to specify the universe. 
+So the section will look like
 ```yaml
   universe:
     method: 'fixed'
@@ -263,25 +216,24 @@ is set, then we need to give a list ot stocks to specify the universe. So the se
 *Note that your ingested data bundle should contain these stocks for this specification to work!*
 
 ## `zipline`
-
 This section defines the parameters related to `zipline` library. The following keys are required.
-+ `zipline_root`: Tha path to `zipline` root where the `extension.py` and the `data` folder resides.
-e.g. `'D:\Zipline\20100101_20150101_10S\zipline_root'`.
-+ `start_date`: start date of the run. e.g. `'20110401'`.
-+ `end_date`: end date of the run. e.g. `20110430`.
-+ `capital_base`: The amount of capital available. e.g. `1000000.`
-+ `data_frequency`: ?? The data frequency of the ingested data. e.g. `'minute'`.
-+ `data_bundle`: the name of the data bundle. This should be defined in the `extension.py` in the `zipline_root`.
-+ `slippage_type`: the type of slippage to be used in the backtest. The possible options are:
-    + `'TradeAtTheOpenSlippageModel'` ??
-+ `spread`: ?? e.g. `0.`
-+ `open_close_fraction`: ?? e.g. `0.`
-+ `volume_limit`: ?? e.g. `0.`
-+ `price_impact`: ?? `0.`
-+ `commission_type`: The type of commission model. Possible options are:
-    + `'PerShare'`: ??
-+ `cost`: Defines the cost of each transaction. e.g. `0.0005` ??
-+ `min_trade_cost`: ?? e.g. `1.`.
+
+| key | description |
+| --- | --- |
+|  `zipline_root` | Tha path to `zipline` root where the `extension.py` and the `data` folder resides. e.g. `'D:\Zipline\20100101_20150101_10S\zipline_root'`. |
+| `start_date` | start date of the run. e.g. `'20110401'`.|
+| `end_date` | end date of the run. |
+| `capital_base` | The amount of capital available. |
+| `data_frequency` |  :exclamation: ?? The data frequency of the ingested data. e.g. `'minute'`. |
+| `data_bundle` | the name of the data bundle. This should be defined in the `extension.py` in the `zipline_root`.
+| `slippage_type` | the type of slippage to be used in the backtest. The possible options are `'TradeAtTheOpenSlippageModel'` :exclamation: ??|
+| `spread` | :exclamation: ?? e.g. `0.` |
+| `open_close_fraction` | :exclamation ?? e.g. `0.` |
+| `volume_limit`| :exclamation: ?? e.g. `0.` |
+| `price_impact`| :exclamation: ?? e.g. `0.` |
+| `commission_type` | The type of commission model. Possible options are `'PerShare'` :exclamation: ?? |
+| `cost` | Defines the cost of each transaction. e.g. `0.0005` :exclamation: ?? |
+| `min_trade_cost` | :exclamation: ?? e.g. `1.`. |
 
 Thus a fully specified `zipline` section will look like
 ```yaml
