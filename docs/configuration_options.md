@@ -291,3 +291,9 @@ zipline:
   cost: 0.0005
   min_trade_cost: 1.
 ```
+
+## `live_clock_configuration`
+This section is used to define the details about the live clock.
++ `host`: defines the host. e.g. `localhost`
++ `port`: port for communication. e.g. `45672`
++ `queue_name`: name of the queue. e.g. `'clock-pulse'`. 
