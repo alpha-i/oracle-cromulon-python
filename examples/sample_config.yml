@@ -15,16 +15,16 @@ logging:
       class : 'logging.FileHandler'
       formatter: 'formatter'
       level: 'DEBUG'
-      filename: 'D:\Zipline\20100101_20150101_10S\logs\quant_workflow-debug.log'
+      filename: 'D:\Zipline\20100101_20150101_500S\logs\quant_workflow-debug.log'
   root:
     level: 'DEBUG'
     handlers: ['file', 'console']
 quant_workflow:
   run_mode: 'backtest'
-  results_path: 'D:\Zipline\20100101_20150101_10S\results'
+  results_path: 'D:\Zipline\20100101_20150101_500S\results'
   fill_limit: 5
   trade_resample_rule: '15T'
-  trade_history_ndays: 31
+  trade_history_ndays: 20
   trade_frequency: 'weekly'
   trade_days_offset: 1
   trade_minutes_offset: 60
@@ -51,44 +51,45 @@ quant_workflow:
             nbins: 12
             is_target: True
         exchange_name: 'NYSE'
-        features_ndays: 10
+        features_ndays: 100
         features_resample_minutes: 15
         features_start_market_minute: 60
         prediction_frequency_ndays: 1
         prediction_market_minute: 60
         target_delta_ndays: 1
         target_market_minute: 60
-      train_path: 'D:\Zipline\20100101_20150101_10S\train'
-      covariance_method: 'NERCOME'
+      train_path: 'D:\Zipline\20100101_20150101_500S\train'
+      covariance_method: 'Ledoit'
       covariance_ndays: 9
-      model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
+      model_save_path: 'D:\Zipline\20100101_20150101_500S\model'
       d_type: float32
       tf_type: 32
       random_seed: 0
-      n_epochs: 10
-      n_training_samples: 1000
-      learning_rate: 2e-3
-      batch_size: 100
+      n_epochs: 100
+      n_retrain_epochs: 5
+      n_training_samples: 79
+      learning_rate: 1e-3
+      batch_size: 8
       cost_type: 'bayes'
-      n_train_passes: 30
-      n_eval_passes: 100
-      resume_training: False
-      n_series: 10
+      n_train_passes: 16
+      n_eval_passes: 16
+      resume_training: True
+      n_series: 200
       n_features_per_series: 271
-      n_forecasts: 10
+      n_forecasts: 200
       n_classification_bins: 12
-      layer_heights: [3, 271]
-      layer_widths: [3, 3]
-      activation_functions: ["relu", "relu"]
-      INITIAL_ALPHA: 0.2
-      INITIAL_WEIGHT_UNCERTAINTY: 0.4
-      INITIAL_BIAS_UNCERTAINTY: 0.4
-      INITIAL_WEIGHT_DISPLACEMENT: 0.1
-      INITIAL_BIAS_DISPLACEMENT: 0.4
+      layer_heights: [3, 200, 200, 200]
+      layer_widths: [3, 1, 1, 1]
+      activation_functions: ["relu", "relu", "relu", "relu"]
+      INITIAL_ALPHA: 0.01
+      INITIAL_WEIGHT_UNCERTAINTY: 0.005
+      INITIAL_BIAS_UNCERTAINTY: 0.005
+      INITIAL_WEIGHT_DISPLACEMENT: 0.0005
+      INITIAL_BIAS_DISPLACEMENT: 0.0005
       USE_PERFECT_NOISE: True
       double_gaussian_weights_prior: False
-      wide_prior_std: 1.2
-      narrow_prior_std: 0.05
+      wide_prior_std: 0.8
+      narrow_prior_std: 0.0001
       spike_slab_weighting: 0.5
   portfolio:
     max_abs_individual_weight: 0.2
@@ -97,10 +98,14 @@ quant_workflow:
     margin_ratio: 1.0
     max_annualised_std: 0.3
   universe:
-    method: 'fixed'
-    symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
+    method: 'liquidity'
+    nassets: 200
+    ndays_window: 100
+    update_frequency: 'monthly'
+    avg_function: 'median'
+    fill_limit: 5
 zipline:
-  zipline_root: 'D:\Zipline\20100101_20150101_10S\zipline_root'
+  zipline_root: 'D:\Zipline\20100101_20150101_500S\zipline_root'
   start_date: '20110401'
   end_date: '20110430'
   capital_base: 1000000.
