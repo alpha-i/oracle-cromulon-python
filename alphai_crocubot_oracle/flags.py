@@ -11,7 +11,7 @@ def set_training_flags(config):
 
     tf.flags._global_parser = argparse.ArgumentParser()
 
-    tf.app.flags.DEFINE_string('log_path', '/tmp/tensorboard', """Path for storing tensorboard log.""")
+    tf.app.flags.DEFINE_string('log_path', config['tensorboard_path'], """Path for storing tensorboard log.""")
 
     tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
     tf.app.flags.DEFINE_integer('TF_TYPE', config['tf_type'], """Data type for tensorflow.""")
