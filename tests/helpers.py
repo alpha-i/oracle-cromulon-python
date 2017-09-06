@@ -86,13 +86,15 @@ def load_default_config():
         'train_path': FIXTURE_DESTINATION_DIR,
         'covariance_method': 'NERCOME',
         'covariance_ndays': 9,
-        'model_save_path': '/tmp/crocubot/',
+        'model_save_path': FIXTURE_DESTINATION_DIR,
+        'tensorboard_path': FIXTURE_DESTINATION_DIR,
         'd_type': 'float32',
         'tf_type': 32,
         'random_seed': 0,
 
         # Training specific
         'n_epochs': 1,
+        'n_retrain_epochs': 1,
         'n_training_samples': 1000,
         'learning_rate': 2e-3,
         'batch_size': 100,
