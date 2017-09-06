@@ -13,6 +13,7 @@ import alphai_crocubot_oracle.iotools as io
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
+PRINT_SUMMARY_INTERVAL = 5
 
 
 def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, save_path=None, restore_path=None):
@@ -23,7 +24,10 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     :return: epoch_loss_list
     """
 
-    verify_topology(topology)
+    if topology.n_parameters > 1e7:
+        logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
+    else:
+        logging.info("Number of parameters: {}".format(topology.n_parameters))
 
     # Start from a clean graph
     tf.reset_default_graph()
@@ -105,6 +109,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
                 msg = 'Epoch ' + str(epoch) + " loss:" + str.format('{0:.2e}', epoch_loss) + " in " + str.format('{0:.2f}', time_epoch) + " seconds"
                 logging.info(msg)
 
+            if (epoch % PRINT_SUMMARY_INTERVAL) == 0:
                 summary_str = sess.run(summary_op)
                 summary_writer.add_summary(summary_str, epoch)
 
@@ -145,21 +150,3 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches):
         raise NotImplementedError
 
     return tf.reduce_mean(operator)
-
-
-def verify_topology(topology):
-
-    layers = topology.layers
-
-    logging.info("Requested topology {}".format(layers))
-
-    # Get number of pars:
-    n_pars = 0
-    for i in range(topology.n_layers):
-        j = i + 1
-        n_pars += layers[i]["width"] * layers[i]["height"] * layers[j]["height"] * layers[j]["width"]
-
-    if n_pars > 1e7:
-        logging.warning("Ambitious number of parameters: {}".format(n_pars))
-    else:
-        logging.info("Number of parameters: {}".format(n_pars))
