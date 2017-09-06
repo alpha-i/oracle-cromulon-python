@@ -32,7 +32,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
 
     summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
     for var in tf.trainable_variables():   # Add histograms for trainable variables
-      summaries.append(tf.summary.histogram(var.op.name, var))
+        summaries.append(tf.summary.histogram(var.op.name, var))
 
     use_data_loader = True if train_x is None else False
 
