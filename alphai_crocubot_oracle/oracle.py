@@ -122,14 +122,20 @@ class CrocubotOracle:
             train_y.shape,
         ))
 
-        latest_train = self._train_file_manager.latest_train_filename(execution_time)
+        resume_train_path = None
+
+        if FLAGS.resume_training:
+            try:
+                resume_train_path = self._train_file_manager.latest_train_filename(execution_time)
+            except:
+                pass
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
         start_time = timer()
-        crocubot.train(self._topology, data_source, train_x, train_y, save_path=train_path, restore_path=latest_train)
+        crocubot.train(self._topology, data_source, train_x, train_y, save_path=train_path, restore_path=resume_train_path)
         end_time = timer()
         train_time = end_time - start_time
-        logging.info("Training took:{}".format(train_time))
+        logging.info("Training took: {} seconds".format(train_time))
 
     def predict(self, predict_data, execution_time):
         """
@@ -171,12 +177,17 @@ class CrocubotOracle:
         # FIXME: temporary fix, to be added to data transform
         predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
 
+        # Verify data is the correct shape
+        topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
+        if predict_x.shape != topology_shape:
+            raise ValueError('Data shape' + str(predict_x.shape) + " doesnt match network input " + str(topology_shape))
+
         start_time = timer()
         predict_y = crocubot_eval.eval_neural_net(predict_x.reshape((1,) + predict_x.shape),
                                                   topology=self._topology, save_file=latest_train)
         end_time = timer()
         eval_time = end_time - start_time
-        logging.info("Crocubot evaluation took:{}".format(eval_time))
+        logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
 
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
