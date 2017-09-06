@@ -30,10 +30,11 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     model = CrocuBotModel(topology, FLAGS)
     model.build_layers_variables()
 
-    if train_x is None:
-        use_data_loader = True
-    else:
-        use_data_loader = False
+    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
+    for var in tf.trainable_variables():   # Add histograms for trainable variables
+      summaries.append(tf.summary.histogram(var.op.name, var))
+
+    use_data_loader = True if train_x is None else False
 
     # Placeholders for the inputs and outputs of neural networks
     x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series])
@@ -43,6 +44,8 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
     cost_operator = _set_cost_operator(model, x, y, n_batches)
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
+    summary_op = tf.summary.merge(summaries)
+
     model_initialiser = tf.global_variables_initializer()
 
     if save_path is None:
@@ -53,7 +56,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     logging.info("Launching Graph.")
     with tf.Session() as sess:
 
-        if FLAGS.resume_training:
+        if restore_path is not None:
             try:
                 logging.info("Attempting to load model from {}".format(restore_path))
                 saver.restore(sess, restore_path)
@@ -68,8 +71,11 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             n_epochs = FLAGS.n_epochs
             sess.run(model_initialiser)
 
-        epoch_loss_list = []
+        summary_writer = tf.summary.FileWriter(
+            FLAGS.log_path,
+            graph=sess.graph)
 
+        epoch_loss_list = []
         for epoch in range(n_epochs):
 
             epoch_loss = 0.
@@ -98,6 +104,9 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
                 msg = 'Epoch ' + str(epoch) + " loss:" + str.format('{0:.2e}', epoch_loss) + " in " + str.format('{0:.2f}', time_epoch) + " seconds"
                 logging.info(msg)
+
+                summary_str = sess.run(summary_op)
+                summary_writer.add_summary(summary_str, epoch)
 
         out_path = saver.save(sess, save_path)
         logging.info("Model saved in file:{}".format(out_path))
