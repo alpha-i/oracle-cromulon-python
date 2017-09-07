@@ -13,7 +13,10 @@ import alphai_crocubot_oracle.iotools as io
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
-PRINT_SUMMARY_INTERVAL = 5
+PRINT_SUMMARY_INTERVAL = 1
+
+def make_hparam_string(learning_rate, batch_size):
+    return "lr={}_bs={}".format(learning_rate, batch_size)
 
 
 def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, save_path=None, restore_path=None):
@@ -23,6 +26,14 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     :param str data_source:
     :return: epoch_loss_list
     """
+
+    split_save_path = save_path.split("/")
+    run_id = split_save_path[-1]
+    hparam_string = make_hparam_string(FLAGS.learning_rate, FLAGS.batch_size)
+
+    log_dir = "{}/{}/{}".format(FLAGS.log_path, hparam_string, run_id)
+
+    logging.info("Starting run for hyperparameters: {}".format(hparam_string))
 
     if topology.n_parameters > 1e7:
         logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
@@ -34,21 +45,22 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     model = CrocuBotModel(topology, FLAGS)
     model.build_layers_variables()
 
-    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-    for var in tf.trainable_variables():   # Add histograms for trainable variables
-        summaries.append(tf.summary.histogram(var.op.name, var))
-
     use_data_loader = True if train_x is None else False
 
     # Placeholders for the inputs and outputs of neural networks
-    x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series])
-    y = tf.placeholder(FLAGS.d_type)
+    x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series], name="x")
+    y = tf.placeholder(FLAGS.d_type, name="y")
+
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
     n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
+
     cost_operator = _set_cost_operator(model, x, y, n_batches)
+    tf.summary.scalar("cost", cost_operator)
+
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
-    summary_op = tf.summary.merge(summaries)
+
+    all_summaries = tf.summary.merge_all()
 
     model_initialiser = tf.global_variables_initializer()
 
@@ -75,9 +87,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             n_epochs = FLAGS.n_epochs
             sess.run(model_initialiser)
 
-        summary_writer = tf.summary.FileWriter(
-            FLAGS.log_path,
-            graph=sess.graph)
+        summary_writer = tf.summary.FileWriter(log_dir)
 
         epoch_loss_list = []
         for epoch in range(n_epochs):
@@ -99,19 +109,20 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
                 if b == 0 and epoch == 0:
                     logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
 
-                _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})
+                _, batch_loss, summ = sess.run([training_operator, cost_operator, all_summaries], feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
 
+                index = epoch * n_batches + b
+                summary_writer.add_summary(summ, index)
+
             time_epoch = timer() - start_time
+
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
                 msg = 'Epoch ' + str(epoch) + " loss:" + str.format('{0:.2e}', epoch_loss) + " in " + str.format('{0:.2f}', time_epoch) + " seconds"
                 logging.info(msg)
 
-            if (epoch % PRINT_SUMMARY_INTERVAL) == 0:
-                summary_str = sess.run(summary_op)
-                summary_writer.add_summary(summary_str, epoch)
 
         out_path = saver.save(sess, save_path)
         logging.info("Model saved in file:{}".format(out_path))
