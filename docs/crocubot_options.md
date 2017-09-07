@@ -96,11 +96,11 @@ The data transformation needs to be specified as a subsection with the following
 | --- | --- |
 | `feature_config_list` | specified as a subsection containing `name`, `order`, `normalization`, `nbins` and `is_target` |
 | `exchange_name` | name of the stock-exchange |
-| `features_ndays` | :exclamation: THIS SHOULD BE IDENTICAL TO `trade_history_ndays` ? OR `train_history_ndays` |
-| `features_resample_minutes` | re-sample frequency of the data :exclamation: THIS SHOULD BE IDENTICAL TO `trade_resample_rule` AND `train_resample_rule` |
-| `features_start_market_minute` | the minute at which features start :exclamation: IS THERE ANY RELATION TO `train_minutes_offset`? |
-| `prediction_frequency_ndays` | at what point in future we try to predict ? :exclamation: IS THERE ANY RELATION TO `trade_frequency`, `train_frequency`, AND `trade_horizon_ncycles` |
-| `prediction_market_minute` | the minute at which the prediction is done. :exclamation: IS THERE ANY RELATION TO `trade_minutes_offset`? |
-| `target_delta_ndays` | the number of days in the future the prediction is made aimed for. :exclamation: IS THERE ANY RELATION TO `trade_horizon_ncycles`? |
-| `target_market_minute` | the minute at which the prediction in the future is made :exclamation: IS THERE ANY RELATION TO `trade_minutes_offset` | 
+| `features_ndays` | the number days of historical data used for inference. :exclamation: SHOULD BE <= `trade_history_ndays` |
+| `features_resample_minutes` | re-sample frequency of the data :exclamation: SHOULD BE IDENTICAL TO `trade_resample_rule` AND `train_resample_rule` |
+| `features_start_market_minute` | the minute at which features start |
+| `prediction_frequency_ndays` | at what point in future we try to predict :exclamation: SHOULD BE IN LINE WITH `trade_frequency` |
+| `prediction_market_minute` | the minute at which the prediction is done. :exclamation: SHOULD BE IDENTICAL TO `trade_minutes_offset` |
+| `target_delta_ndays` | the number of days in the future the prediction is made aimed for. :exclamation: SHOULD BE IN LINE WITH `trade_frequency` and `trade_horizon_ncycles` |
+| `target_market_minute` | the minute after market open the prediction in the future is made for. | 
 
