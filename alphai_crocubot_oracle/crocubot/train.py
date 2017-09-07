@@ -76,7 +76,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             sess.run(model_initialiser)
 
         summary_writer = tf.summary.FileWriter(
-            FLAGS.log_path,
+            FLAGS.tensorboard_log_path,
             graph=sess.graph)
 
         epoch_loss_list = []
@@ -86,17 +86,18 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             start_time = timer()
             logging.info("Training epoch {} of {}".format(epoch, n_epochs))
 
-            for b in range(n_batches):  # The randomly sampled weights are fixed within single batch
+            for batch_number in range(n_batches):  # The randomly sampled weights are fixed within single batch
 
                 if use_data_loader:
-                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=b, batch_size=FLAGS.batch_size, bin_edges=bin_edges)
+                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=batch_number,
+                                                              batch_size=FLAGS.batch_size, bin_edges=bin_edges)
                 else:
-                    lo_index = b * FLAGS.batch_size
+                    lo_index = batch_number * FLAGS.batch_size
                     hi_index = lo_index + FLAGS.batch_size
                     batch_x = train_x[lo_index:hi_index, :]
                     batch_y = train_y[lo_index:hi_index, :]
 
-                if b == 0 and epoch == 0:
+                if batch_number == 0 and epoch == 0:
                     logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
 
                 _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})

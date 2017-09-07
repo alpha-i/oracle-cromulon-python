@@ -131,7 +131,7 @@ class CrocubotOracle:
                 pass
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
-        start_time = timer()
+        start_time = timer()  # FIXME we should find a way to make some function 'temporizable' with a python decorator
         crocubot.train(self._topology, data_source, train_x, train_y, save_path=train_path, restore_path=resume_train_path)
         end_time = timer()
         train_time = end_time - start_time

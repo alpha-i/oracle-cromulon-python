@@ -156,7 +156,6 @@ class CrocuBotModel:
         noise = self.get_weight_noise(layer_number, iteration)
 
         return mean + tf.nn.softplus(rho) * noise
-        #  return mean + tf.exp(rho) * noise
 
     def compute_biases(self, layer_number, iteration):
         """Bias is Gaussian distributed"""
@@ -165,7 +164,6 @@ class CrocuBotModel:
         noise = self.get_bias_noise(layer_number, iteration)
 
         return mean + tf.nn.softplus(rho) * noise
-        #  return mean + tf.exp(rho) * noise
 
 
 class Estimator:

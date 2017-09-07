@@ -87,7 +87,7 @@ def load_default_config():
         'covariance_method': 'NERCOME',
         'covariance_ndays': 9,
         'model_save_path': FIXTURE_DESTINATION_DIR,
-        'tensorboard_path': FIXTURE_DESTINATION_DIR,
+        'tensorboard_log_path': FIXTURE_DESTINATION_DIR,
         'd_type': 'float32',
         'tf_type': 32,
         'random_seed': 0,

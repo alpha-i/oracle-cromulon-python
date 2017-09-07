@@ -41,8 +41,8 @@ def eval_neural_net(data, topology, save_file):
         start_time = timer()
         saver.restore(sess, save_file)
         end_time = timer()
-        detla_time = end_time - start_time
-        logging.info("Loading the model from disk took:{}".format(detla_time))
+        delta_time = end_time - start_time
+        logging.info("Loading the model from disk took:{}".format(delta_time))
 
         return y.eval()
 

@@ -59,7 +59,7 @@ quant_workflow:
         target_delta_ndays: 1
         target_market_minute: 60
       train_path: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/train'
-      tensorboard_path: '/tmp/tensorboard'
+      tensorboard_log_path: '/tmp/tensorboard'
       covariance_method: 'Ledoit'
       covariance_ndays: 9
       model_save_path: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/model'

@@ -130,10 +130,7 @@ class BayesianCost(object):
         """
 
         sigma = tf.nn.softplus(rho)
-        # sigma = tf.exp(rho)
         log_qw = tm.log_gaussian(theta, mu, sigma)
-        # log_qw = tm.log_gaussian_logsigma(theta, mu, rho)
-
         return tf.reduce_sum(log_qw)
 
     @staticmethod

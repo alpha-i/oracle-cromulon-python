@@ -16,85 +16,12 @@ live_clock_configuration:
 
 Defining the crocubot-oracle is separately discussed in the [crocubot_options](crocubot_options.md)
 
-We will explain the options to configure a backtest.
+We will now explain the options to configure a backtest.
 
 ## `logging`
-
-For example, a full definition of the logging section might look like.
-```yaml
-logging:
-  version: 1
-  formatters:
-    formatter:
-      format: '%(asctime)s - %(levelname)s [%(name)s:%(module)s]: %(message)s'
-      datefmt: '%Y/%m/%d %H:%M:%S'
-  handlers:
-    console:
-      class: 'logging.StreamHandler'
-      formatter: 'formatter'
-      level: 'DEBUG'
-      stream: 'ext://sys.stdout'
-    file:
-      class : 'logging.FileHandler'
-      formatter: 'formatter'
-      level: 'DEBUG'
-      filename: 'D:\Zipline\20100101_20150101_10S\logs\quant_workflow-debug.log'
-  root:
-    level: 'DEBUG'
-    handlers: ['file', 'console']
-```
-
-The following table explains the keys.
-
-| key | description |
-| --- | --- |
-| `version` | :exclamation: ?? |
-| `formatters` | specifies the formatting related parameters |
-| `handlers` | keys for specifying the logging handlers |
-| `root` | :exclamation: ? |
-Each fo these keys are subsections themselves. They are explained below.
-
-### `formatters`
-The `formatters` lists a set of different formatters. These are defined as subsections. Then, each of these formatter 
-subsections can be defined using the following keys
-
-| key | description |
-| --- | --- |
-| `format` | Specify the format in which the logging is done. e.g. `'%(asctime)s - %(levelname)s [%(name)s:%(module)s]: %(message)s'`  |
-| `datefmt` | the format of the time stamps of the logs. e.g. `'%Y/%m/%d %H:%M:%S'` |
-
-### `handlers`
-The `handlers` has the following subsection specifiction. 
-
-| key | description |
-| --- | --- |
-| `console` | specifies the logging parameters for the console output |
-| `file` | specifies the logging parameters for the file output |
-
-#### `console`
-
-| key | description |
-| --- | --- |
-| `class` | specify the python class which handles the logging. e.g. `'logging.StreamHandler'`. |
-| `formatter` | Specify the `format`. The value of this key should correspond to one of the formatters defined under the section `formatters`. |
-| `level` | the level of logging required. The possible values are: `INFO`, `DEBUG` and `ERROR` |
-
-
-#### `file`
-
-| key | description |
-| --- | --- |
-| `class` | specify the class that handles the file output. e.g `'logging.FileHandler'` |
-| `formatter` | specify the `format`. The value of this key should correspond to one of the formatters defined under the section `formatters`. |
-| `level` |  the level of logging required. The possible values are: `INFO`, `DEBUG` and `ERROR` |
-| `filename` | The file to which the logs are to be written. Note that the path should be writable for this to properly work.|
-
-### `root`
-
-| key | description |
-| --- | --- |
-| `level` | the level of logging required. The possible values are: `INFO`, `DEBUG`, `ERROR` |
-| `handlers` | a list of handlers defined in the `handlers` subsection. e.g. `['file', 'console']`.|
+This section specifies the logging options for the backtest. For more information about the keys here
+please see the official python 
+[documentation](https://docs.python.org/3/library/logging.config.html#dictionary-schema-details).
 
 ## `quant_workflow`
 For example, if we are using the `http` this section will look like the one below:
@@ -255,7 +182,8 @@ zipline:
 ```
 
 ## `live_clock_configuration`
-This section is used to define the details about the live clock.
+This section is used to define the details about the live clock. This section is only used in the `live` mode. 
+No need to change these options in other modes. 
 
 | key | description |
 | --- | --- |
