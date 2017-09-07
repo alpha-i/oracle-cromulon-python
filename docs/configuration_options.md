@@ -65,25 +65,25 @@ The main keys under `quant_workflow` are:
 | --- | --- |
 | `run_mode` | This key specifies the mode in which the `quant_workflow` is run. The possible options are `'backtest'`, `'oracle'` and `'live'`.
 | `results_path` | specifies the path in which results files are to be written. e.g `'D:\Zipline\20100101_20150101_10S\results'` |
-| `fill_limit` | specifies the maximum number of time stamps in which missing data can be filled using previous values. |
-| `trade_resample_rule` | the period with which the data is to be re-sampled before passing to the oracle. We use `pandas` notation. |
-| `trade_history_ndays` | the number days of historical data provided for the inference part. |
-| `trade_frequency` | how often we trade. options are `'weekly'` and `'daily'` |
-| `trade_days_offset` | Specifies the day we are trading. `0` implies Monday and so on. :exclamation: ONLY IF `trade_frequency: 'weekly'`. |
+| `fill_limit` | specifies the maximum number of 1-minute time stamps in which missing data can be filled using previous values. |
+| `trade_resample_rule` | the period with which the data is to be re-sampled before passing to the oracle. We use `pandas` notation. e.g `'15T'`|
+| `trade_history_ndays` | the number days of historical data provided for inference. |
+| `trade_frequency` | how often we trade. Options are `'weekly'` and `'daily'` |
+| `trade_days_offset` | Specifies the day we trade. `0` implies Monday and so on. :exclamation: ONLY USED IF `trade_frequency: 'weekly'`. |
 | `trade_minutes_offset` | specifies the time at which the trade happens after the market opens. e.g. `60` implies an hour after. |
-| `trade_horizon_ncycles` | The number units of `trade_frequency` at which the oracle should do the prediction.  |
+| `trade_horizon_ncycles` | The number units of `trade_frequency` at which the oracle should do the prediction. |
 | `train_resample_rule` | :exclamation: THIS SHOULD BE IDENTICAL TO `trade_resample_rule`. e.g `'15T'` |
-| `train_history_ndays` | the number days of historical data provided for the training part. .e.g `100`. |
-| `train_frequency` | specifies how often we train the network. This can be different from the `trade_frequency`. `'weekly'` and `'daily'` |
-| `train_days_offset` | :exclamation: ONLY IF `train_frequency: 'weekly'`. Specifies the day we are trading |
+| `train_history_ndays` | the number days of historical data provided for training. .e.g `100`. |
+| `train_frequency` | specifies how often we train the network. Can be different from the `trade_frequency`. Options are `'weekly'` and `'daily'` |
+| `train_days_offset` | Specifies the day we train. `0` implies Monday and so on. :exclamation: ONLY USED IF `train_frequency: 'weekly'`. | 
 | `train_minutes_offset` | specifies the time at which the training happens after the market opens. |
-| `alert_level` | specifies the level of alert messages. Possible values are `'NONE'` :exclamation: OTHERS? |
-| `execution_timeout` | specifies the time out in *seconds* after which the execution will be killed. |
-| `open_order_timeout` | specifies the time out in *seconds* after which the open orders will be killed. |
-| `oracle` | This key specifies the configuration parameters for oracle. Parameters are specified as sub dictionary. See the section on `oracle`. |
-| `portfolio` | This key specifies the parameters relating to the to portfolio creation. See the section on `portfolio` for more details. |
-| `universe` | This key is used to specify the parameters relating to the universe of stocks. |
-
+| `alert_level` | specifies the level of alert messages. Possible values are `'NONE'` :exclamation: NOT USED FOR NOW|
+| `execution_timeout` | specifies the time out in *seconds* after which the execution will be killed. :exclamation: NOT USED FOR NOW|
+| `open_order_timeout` | specifies the time out in *seconds* after which the open orders will be killed. :exclamation: NOT USED FOR NOW|
+| `oracle` | Configuration parameters for the oracle as sub a dictionary. See the section on `oracle`. |
+| `portfolio` | Configuration parameters for the to portfolio creation as sub a dictionary. See the section on `portfolio`. |
+| `universe` | Configuration parameters for the to stock universe selection  as sub a dictionary. See the section on `universe`.
+ 
 ## `oracle`
 The `oracle` section should contain a key called `method` which can either be `'http'` or `'library'`.
 If `'http'` is specified as the `method` we need further keys as follows:
@@ -125,21 +125,43 @@ The `portfolio` section can be used to specify the portfolio creation. The follo
 
 | key | description |
 | --- | --- |
-| `max_abs_individual_weight` | :exclamation: ?? |
-| `max_abs_pos_gross_exposure` | :exclamation: ?? |
-| `max_abs_neg_gross_exposure` | :exclamation: ?? |
-| `margin_ratio` |:exclamation: ?? |
-| `max_annualised_std` | :exclamation: ?? |
+| `max_abs_individual_weight` | Maximum fraction of the portfolio value allowed for an individual asset. E.g. `0.02` for 2% |
+| `max_abs_pos_gross_exposure` | Maximum fraction of the portfolio value allowed for all the long positions combined. E.g. `0.6` for 60% |
+| `max_abs_neg_gross_exposure` | Maximum fraction of the portfolio value allowed for all the short positions combined. E.g. `0.6` for 60% |
+| `margin_ratio` | Ratio between the amount available as a loan and the net value portfolio value. E.g. `0.5` for 1.5x leverage |
+| `max_annualised_std` | Maximum annualised standard deviation tolerated for the portfolio of assets. E.g. `0.2` for 20%  |
 
 ### `universe` 
 The `universe` section deals with the universe creation. This section requires the key `method` to be specified. It 
-can either be `'fixed'` or `'liquidity'`. If `method: 'fixed'` is set, then we need to give a list ot stocks to specify the universe. 
-So the section will look like
+can either be `'fixed'` or `'liquidity'`. 
+If `method: 'fixed'`, the universe is constant over time and equal to the user input:
 ```yaml
   universe:
     method: 'fixed'
     symbol_list: ['AAPL', 'GOOGL', 'XOM', 'MSFT', 'JNJ', 'JPM', 'IBM', 'PG', 'BAC', 'T']
 ```
+| key | description |
+| --- | --- |
+| `symbol_list` | List of symbols of the fixed universe. |
+
+If `method: 'liquidity'`, the universe changes over time to reflect the most liquid stocks available:
+```yaml
+  universe:
+    method: 'liquidity'
+    nassets: 10
+    ndays_window: 30
+    update_frequency: 'monthly'
+    avg_function: 'median'
+    fill_limit: 5
+```
+| key | description |
+| --- | --- |
+| `nassets` | Number of assets to select. E.g.`10` means that the 10 most liquid assets are selected. |
+| `ndays_window` | Number of days over which the historical liquidity calculation is performed. |
+| `update_frequency` | Frequency of update of the assets in the universe. Options are [`'daily'`, `'weekly'`, `'monthly'`, `'yearly'`] |
+| `avg_function` | Averaging function to be used in the calculation of liquidity. Options are [`'median'`, `'mean'`] |
+| `fill_limit` | Maximum number of 1-minute time stamps in which missing data can be filled using previous values, for the calculation of liquidity. |
+
 *Note that your ingested data bundle should contain these stocks for this specification to work!*
 
 ## `zipline`
@@ -147,20 +169,20 @@ This section defines the parameters related to `zipline` library. The following 
 
 | key | description |
 | --- | --- |
-|  `zipline_root` | Tha path to `zipline` root where the `extension.py` and the `data` folder resides. e.g. `'D:\Zipline\20100101_20150101_10S\zipline_root'`. |
+| `zipline_root` | The path to `zipline` root where the `extension.py` and the `data` folder resides. e.g. `'D:\Zipline\20100101_20150101_10S\zipline_root'`. |
 | `start_date` | start date of the run. e.g. `'20110401'`.|
-| `end_date` | end date of the run. |
-| `capital_base` | The amount of capital available. |
-| `data_frequency` |  :exclamation: ?? The data frequency of the ingested data. e.g. `'minute'`. |
+| `end_date` | end date of the run. e.g. `'20110601'`.|
+| `capital_base` | The amount of capital available. e.g. `100000` for $100k |
+| `data_frequency` | The data frequency of the ingested data. :exclamation: SHOULD ALWAYS BE `'minute'`. |
 | `data_bundle` | the name of the data bundle. This should be defined in the `extension.py` in the `zipline_root`.
-| `slippage_type` | the type of slippage to be used in the backtest. The possible options are `'TradeAtTheOpenSlippageModel'` :exclamation: ??|
-| `spread` | :exclamation: ?? e.g. `0.` |
-| `open_close_fraction` | :exclamation ?? e.g. `0.` |
-| `volume_limit`| :exclamation: ?? e.g. `0.` |
-| `price_impact`| :exclamation: ?? e.g. `0.` |
-| `commission_type` | The type of commission model. Possible options are `'PerShare'` :exclamation: ?? |
-| `cost` | Defines the cost of each transaction. e.g. `0.0005` :exclamation: ?? |
-| `min_trade_cost` | :exclamation: ?? e.g. `1.`. |
+| `slippage_type` | the type of slippage to be used in the backtest. :exclamation: SHOULD ALWAYS BE `'TradeAtTheOpenSlippageModel'` |
+| `spread` | bid/ask spread SHOULD ALWAYS BE `0.` as we evaluate multiple spreads when analysing performance. |
+| `open_close_fraction` | between 0 and 1. Distance between open and close to pick the execution price. e.g. `0.1` execution = open + 0.1*(close-open) |
+| `volume_limit`| USE `0.` :exclamation: DEPRECATED: TO BE REMOVED |
+| `price_impact`| USE `0.` :exclamation: DEPRECATED: TO BE REMOVED |
+| `commission_type` | The type of commission model. Options are [`'PerShare'`, `'PerTrade'`, `'PerDollar'`] |
+| `cost` | Defines the commission cost according to `commission_type`. |
+| `min_trade_cost` | Minumum commission cost in dollars :exclamation: ONLY USED IF `commission_type` is `'PerTrade'`. |
 
 Thus a fully specified `zipline` section will look like
 ```yaml
