@@ -17,8 +17,13 @@ PRINT_LOSS_INTERVAL = 1
 PRINT_SUMMARY_INTERVAL = 5
 
 
-def make_hparam_string(learning_rate, batch_size):
-    return "lr={}_bs={}".format(learning_rate, batch_size)
+def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorboard_log_path, execution_time):
+    # FIXME I have removed priting of hyper parameters from the log for now
+    # FIXME The problem is that at them moment {learning_rate, batch_size} are the only hyper parameters.
+    # FIXME In general this is not true. We will have more. We neeed to find an eleagnt way of creating a
+    # FIXME unique id for the execution.
+    hyper_param_string = "lr={}_bs={}".format(learning_rate, batch_size)
+    return os.path.join(tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
 
 def train(topology, data_source, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
@@ -30,11 +35,8 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
     :return: epoch_loss_list
     """
 
-    hparam_string = make_hparam_string(FLAGS.learning_rate, FLAGS.batch_size)
-    tensorboard_log_dir = os.path.join(FLAGS.tensorboard_log_path, hparam_string,
-                                       execution_time.strftime(DATETIME_FORMAT_COMPACT))
-
-    logging.info("Starting run for hyperparameters: {}".format(hparam_string))
+    tensorboard_log_dir = get_tensorboard_log_dir_current_execution(FLAGS.learning_rate, FLAGS.batch_size,
+                                                                    FLAGS.tensorboard_log_path, execution_time)
 
     if topology.n_parameters > 1e7:
         logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
@@ -115,8 +117,9 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
                                                           feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
 
-                index = epoch * n_batches + batch_number
-                summary_writer.add_summary(summary_results, index)
+                if epoch * batch_number % PRINT_SUMMARY_INTERVAL:
+                    summary_index = epoch * n_batches + batch_number
+                    summary_writer.add_summary(summary_results, summary_index)
 
             time_epoch = timer() - start_time
 
