@@ -93,6 +93,7 @@ def load_default_config():
         'random_seed': 0,
 
         # Training specific
+        'predict_single_shares': True,
         'n_epochs': 1,
         'n_retrain_epochs': 1,
         'n_training_samples': 1000,
@@ -104,9 +105,9 @@ def load_default_config():
         'resume_training': False,
 
         # Topology
-        'n_series': 3,
+        'n_series': 1,
         'n_features_per_series': 271,
-        'n_forecasts': 3,
+        'n_forecasts': 1,
         'n_classification_bins': 12,
         'layer_heights': [3, 271],
         'layer_widths': [3, 3],
