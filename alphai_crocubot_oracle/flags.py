@@ -11,6 +11,9 @@ def set_training_flags(config):
 
     tf.flags._global_parser = argparse.ArgumentParser()
 
+    tf.app.flags.DEFINE_boolean('predict_single_shares', config['predict_single_shares'],
+                                """Whether the network predicts one share at a time.""")
+
     tf.app.flags.DEFINE_string('tensorboard_log_path', config['tensorboard_log_path'], """Path for storing tensorboard log.""")
 
     tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
