@@ -4,12 +4,13 @@
 
 import logging
 from timeit import default_timer as timer
-
+import os
 import tensorflow as tf
 
 import alphai_crocubot_oracle.bayesian_cost as cost
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 import alphai_crocubot_oracle.iotools as io
+from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
@@ -20,7 +21,8 @@ def make_hparam_string(learning_rate, batch_size):
     return "lr={}_bs={}".format(learning_rate, batch_size)
 
 
-def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, save_path=None, restore_path=None):
+def train(topology, data_source, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
+          restore_path=None):
     """ Train network on either MNIST or time series data
 
     :param Topology topology:
@@ -28,11 +30,9 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     :return: epoch_loss_list
     """
 
-    split_save_path = save_path.split("/")
-    run_id = split_save_path[-1]
     hparam_string = make_hparam_string(FLAGS.learning_rate, FLAGS.batch_size)
-
-    log_dir = "{}/{}/{}".format(FLAGS.tensorboard_log_path, hparam_string, run_id)
+    tensorboard_log_dir = os.path.join(FLAGS.tensorboard_log_path, hparam_string,
+                                       execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
     logging.info("Starting run for hyperparameters: {}".format(hparam_string))
 
@@ -88,7 +88,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             n_epochs = FLAGS.n_epochs
             sess.run(model_initialiser)
 
-        summary_writer = tf.summary.FileWriter(log_dir)
+        summary_writer = tf.summary.FileWriter(tensorboard_log_dir)
 
         epoch_loss_list = []
         for epoch in range(n_epochs):
