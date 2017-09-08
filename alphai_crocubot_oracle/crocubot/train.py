@@ -4,25 +4,50 @@
 
 import logging
 from timeit import default_timer as timer
-
+import os
 import tensorflow as tf
 
 import alphai_crocubot_oracle.bayesian_cost as cost
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 import alphai_crocubot_oracle.iotools as io
+from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
 PRINT_SUMMARY_INTERVAL = 5
 
 
-def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, save_path=None, restore_path=None):
+def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorboard_log_path, execution_time):
+    """
+    A function that creates unique tensorboard directory given a set of hyper parameters and execution time.
+
+    FIXME I have removed priting of hyper parameters from the log for now.
+    The problem is that at them moment {learning_rate, batch_size} are the only hyper parameters.
+    In general this is not true. We will have more. We need to find an elegant way of creating a
+    unique id for the execution.
+
+    :param learning_rate: Learning rate for the training
+    :param batch_size: batch size of the traning
+    :param tensorboard_log_path: Root path of the tensorboard logs
+    :param execution_time: The execution time for which a unique directory is to be created.
+    :return: A unique directory path inside tensorboard path.
+    """
+    hyper_param_string = "lr={}_bs={}".format(learning_rate, batch_size)
+    return os.path.join(tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
+
+
+def train(topology, data_source, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
+          restore_path=None):
     """ Train network on either MNIST or time series data
 
+    FIXME
     :param Topology topology:
     :param str data_source:
     :return: epoch_loss_list
     """
+
+    tensorboard_log_dir = get_tensorboard_log_dir_current_execution(FLAGS.learning_rate, FLAGS.batch_size,
+                                                                    FLAGS.tensorboard_log_path, execution_time)
 
     if topology.n_parameters > 1e7:
         logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
@@ -34,21 +59,22 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
     model = CrocuBotModel(topology, FLAGS)
     model.build_layers_variables()
 
-    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-    for var in tf.trainable_variables():   # Add histograms for trainable variables
-        summaries.append(tf.summary.histogram(var.op.name, var))
-
     use_data_loader = True if train_x is None else False
 
     # Placeholders for the inputs and outputs of neural networks
-    x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series])
-    y = tf.placeholder(FLAGS.d_type)
+    x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series], name="x")
+    y = tf.placeholder(FLAGS.d_type, name="y")
+
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
     n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
+
     cost_operator = _set_cost_operator(model, x, y, n_batches)
+    tf.summary.scalar("cost", cost_operator)
+
     training_operator = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(cost_operator, global_step=global_step)
-    summary_op = tf.summary.merge(summaries)
+
+    all_summaries = tf.summary.merge_all()
 
     model_initialiser = tf.global_variables_initializer()
 
@@ -75,9 +101,7 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
             n_epochs = FLAGS.n_epochs
             sess.run(model_initialiser)
 
-        summary_writer = tf.summary.FileWriter(
-            FLAGS.tensorboard_log_path,
-            graph=sess.graph)
+        summary_writer = tf.summary.FileWriter(tensorboard_log_dir)
 
         epoch_loss_list = []
         for epoch in range(n_epochs):
@@ -100,19 +124,21 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
                 if batch_number == 0 and epoch == 0:
                     logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
 
-                _, batch_loss = sess.run([training_operator, cost_operator], feed_dict={x: batch_x, y: batch_y})
+                _, batch_loss, summary_results = sess.run([training_operator, cost_operator, all_summaries],
+                                                          feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
 
+                if epoch * batch_number % PRINT_SUMMARY_INTERVAL:
+                    summary_index = epoch * n_batches + batch_number
+                    summary_writer.add_summary(summary_results, summary_index)
+
             time_epoch = timer() - start_time
+
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                msg = 'Epoch ' + str(epoch) + " loss:" + str.format('{0:.2e}', epoch_loss) + " in " + str.format('{0:.2f}', time_epoch) + " seconds"
+                msg = "Epoch {}... Loss: {:.2e}. in {:.2f} seconds.".format(epoch, epoch_loss, time_epoch)
                 logging.info(msg)
-
-            if (epoch % PRINT_SUMMARY_INTERVAL) == 0:
-                summary_str = sess.run(summary_op)
-                summary_writer.add_summary(summary_str, epoch)
 
         out_path = saver.save(sess, save_path)
         logging.info("Model saved in file:{}".format(out_path))
@@ -143,8 +169,6 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches):
 
     if FLAGS.cost_type == 'bayes':
         operator = cost_object.get_bayesian_cost(predictions, labels)
-    elif FLAGS.cost_type == 'hellinger':
-        operator = cost.get_hellinger_cost(predictions, labels)
     elif FLAGS.cost_type == 'softmax':
         operator = tf.nn.softmax_cross_entropy_with_logits(logits=predictions, labels=labels)
     else:
