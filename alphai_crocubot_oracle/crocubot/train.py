@@ -18,10 +18,20 @@ PRINT_SUMMARY_INTERVAL = 5
 
 
 def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorboard_log_path, execution_time):
-    # FIXME I have removed priting of hyper parameters from the log for now
-    # FIXME The problem is that at them moment {learning_rate, batch_size} are the only hyper parameters.
-    # FIXME In general this is not true. We will have more. We neeed to find an eleagnt way of creating a
-    # FIXME unique id for the execution.
+    """
+    A function that creates unique tensorboard directory given a set of hyper parameters and execution time.
+
+    FIXME I have removed priting of hyper parameters from the log for now.
+    The problem is that at them moment {learning_rate, batch_size} are the only hyper parameters.
+    In general this is not true. We will have more. We need to find an elegant way of creating a
+    unique id for the execution.
+
+    :param learning_rate: Learning rate for the training
+    :param batch_size: batch size of the traning
+    :param tensorboard_log_path: Root path of the tensorboard logs
+    :param execution_time: The execution time for which a unique directory is to be created.
+    :return: A unique directory path inside tensorboard path.
+    """
     hyper_param_string = "lr={}_bs={}".format(learning_rate, batch_size)
     return os.path.join(tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
@@ -30,6 +40,7 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
           restore_path=None):
     """ Train network on either MNIST or time series data
 
+    FIXME
     :param Topology topology:
     :param str data_source:
     :return: epoch_loss_list
@@ -126,8 +137,7 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                msg = 'Epoch ' + str(epoch) + " loss:" + str.format('{0:.2e}', epoch_loss) + " in " \
-                      + str.format('{0:.2f}', time_epoch) + " seconds"
+                msg = "Epoch {}... Loss: {:.2e}. in {:.2f} seconds.".format(epoch, epoch_loss, time_epoch)
                 logging.info(msg)
 
         out_path = saver.save(sess, save_path)
