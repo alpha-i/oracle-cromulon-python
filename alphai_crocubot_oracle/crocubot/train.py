@@ -111,11 +111,12 @@ def train(topology, data_source, train_x=None, train_y=None, bin_edges=None, sav
                 if batch_number == 0 and epoch == 0:
                     logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
 
-                _, batch_loss, summ = sess.run([training_operator, cost_operator, all_summaries], feed_dict={x: batch_x, y: batch_y})
+                _, batch_loss, summary_results = sess.run([training_operator, cost_operator, all_summaries],
+                                                          feed_dict={x: batch_x, y: batch_y})
                 epoch_loss += batch_loss
 
                 index = epoch * n_batches + batch_number
-                summary_writer.add_summary(summ, index)
+                summary_writer.add_summary(summary_results, index)
 
             time_epoch = timer() - start_time
 
