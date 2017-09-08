@@ -115,6 +115,12 @@ class CrocubotOracle:
         train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
         train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
+        if FLAGS.predict_single_shares:
+            n_feat_x = train_x.shape[1]
+            n_feat_y = train_y.shape[2]
+            train_x = np.reshape(train_x, [-1, n_feat_x, 1])
+            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+
         logging.info('Training features of shape: {}.'.format(
             train_x.shape,
         ))
@@ -123,6 +129,7 @@ class CrocubotOracle:
         ))
 
         resume_train_path = None
+
 
         if FLAGS.resume_training:
             try:
@@ -177,19 +184,31 @@ class CrocubotOracle:
         # FIXME: temporary fix, to be added to data transform
         predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
 
-        # Verify data is the correct shape
-        topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
-        if predict_x.shape != topology_shape:
-            raise ValueError('Data shape' + str(predict_x.shape) + " doesnt match network input " + str(topology_shape))
 
         start_time = timer()
-        predict_y = crocubot_eval.eval_neural_net(predict_x.reshape((1,) + predict_x.shape),
-                                                  topology=self._topology, save_file=latest_train)
+
+        predict_x = np.expand_dims(predict_x, axis=0)
+
+        if FLAGS.predict_single_shares:
+            predict_x = np.swapaxes(predict_x, axis1=0, axis2=2)
+
+        # Verify data is the correct shape
+        topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
+        if predict_x.shape[-2:] != topology_shape:
+            raise ValueError('Data shape' + str(predict_x.shape) + " doesnt match network input " + str(topology_shape))
+
+        predict_y = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=latest_train)
         end_time = timer()
         eval_time = end_time - start_time
         logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
 
+        print("predict_y shape :{}".format(predict_y.shape)) #  100, 3, 1, 12
+
+        if FLAGS.predict_single_shares:  # Return batch axis to series position
+            predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
+
         predict_y = np.squeeze(predict_y, axis=1)
+
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
 
         if not np.isfinite(forecast_covariance).all():
