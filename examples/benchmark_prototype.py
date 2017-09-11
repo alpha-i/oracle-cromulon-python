@@ -2,10 +2,9 @@
 # Acts as a useful test that training & inference still works!
 
 from timeit import default_timer as timer
-
+import datetime
 import logging
 
-import alphai_time_series.performance_trials as pt
 import numpy as np
 import tensorflow as tf
 
@@ -17,31 +16,41 @@ import alphai_crocubot_oracle.flags as fl
 import alphai_crocubot_oracle.iotools as io
 import alphai_crocubot_oracle.topology as topo
 
+from alphai_data_sources.data_sources import DataSourceGenerator
+from alphai_data_sources.generator import BatchOptions, BatchGenerator
+from alphai_data_sources.performance_trials.performance import Metrics
+
+data_source_generator = DataSourceGenerator()
+batch_generator = BatchGenerator()
+model_metrics = Metrics()
+
+
 FLAGS = tf.app.flags.FLAGS
-DEFAULT_DATA_SOURCE = 'MNIST'
 TIME_LIMIT = 600
 
 
-def run_timed_performance_benchmark(flags, data_source=DEFAULT_DATA_SOURCE, do_training=True, n_labels_per_series=1):
+def run_timed_benchmark_mnist(series_name, flags, do_training):
 
-    topology = load_default_topology(data_source, flags)
+    topology = load_default_topology(series_name)
 
     #  First need to establish bin edges using full training set
     template_sample_size = np.minimum(flags.n_training_samples, 10000)
-    _, training_labels = io.load_training_batch(data_source, batch_number=0, batch_size=template_sample_size,
-                                                labels_per_series=n_labels_per_series)
-    #  Ideally may use a template for each series
-    if data_source == 'MNIST':
-        bin_distribution = None
-        bin_edges = None
-    else:
-        bin_distribution = cl.make_template_distribution(training_labels, topology.n_classification_bins)
-        bin_edges = bin_distribution["bin_edges"]
+
+    batch_options = BatchOptions(batch_size=template_sample_size,
+                                 batch_number=0,
+                                 train=do_training,
+                                 dtype='float32')
+
+    data_source = data_source_generator.make_data_source(series_name)
+
+    _, labels = io.load_batch(batch_options, data_source)
 
     start_time = timer()
 
+    execution_time = datetime.datetime.now()
+
     if do_training:
-        crocubot.train(topology, data_source=data_source, flags=flags, bin_edges=bin_edges)
+        crocubot.train(topology, series_name, execution_time)
     else:
         tf.reset_default_graph()
         model = CrocuBotModel(topology)
@@ -51,62 +60,107 @@ def run_timed_performance_benchmark(flags, data_source=DEFAULT_DATA_SOURCE, do_t
     train_time = mid_time - start_time
     print("Training complete.")
 
-    metrics = evaluate_network(topology, data_source, bin_distribution)
+    metrics = evaluate_network(topology, series_name, bin_distribution=None)
     eval_time = timer() - mid_time
 
     print('Metrics:')
-    if data_source == 'MNIST':
-        accuracy = print_MNIST_accuracy(metrics)
-    else:
-        pt.print_performance_summary(metrics)
+    print_MNIST_accuracy(metrics)
+    print_time_info(train_time, eval_time)
+
+
+def print_time_info(train_time, eval_time):
 
     print('Training took', str.format('{0:.2f}', train_time), "seconds")
     print('Evaluation took', str.format('{0:.2f}', eval_time), "seconds")
 
     if train_time > TIME_LIMIT:
-        print('** Training took ', str.format('{0:.2f}', train_time - TIME_LIMIT), ' seconds too long - DISQUALIFIED! **')
-
-    if data_source == 'MNIST':
-        return accuracy
+        print('** Training took ', str.format('{0:.2f}', train_time - TIME_LIMIT),
+              ' seconds too long - DISQUALIFIED! **')
 
 
-def evaluate_network(topology, data_source, bin_distribution):
+def run_timed_benchmark_time_series(series_name, flags, do_training=True):
+
+    topology = load_default_topology(series_name)
+
+    #  First need to establish bin edges using full training set
+    template_sample_size = np.minimum(flags.n_training_samples, 10000)
+
+    batch_options = BatchOptions(batch_size=template_sample_size,
+                                 batch_number=0,
+                                 train=do_training,
+                                 dtype='float32')
+
+    data_source = data_source_generator.make_data_source(series_name)
+
+    _, labels = io.load_batch(batch_options, data_source)
+
+    bin_distribution = cl.make_template_distribution(labels, topology.n_classification_bins)
+    bin_edges = bin_distribution["bin_edges"]
+
+    start_time = timer()
+
+    if do_training:
+        crocubot.train(topology, data_source, execution_time, bin_edges)
+    else:
+        tf.reset_default_graph()
+        model = CrocuBotModel(topology)
+        model.build_layers_variables()
+
+    mid_time = timer()
+    train_time = mid_time - start_time
+    print("Training complete.")
+
+    evaluate_network(topology, series_name, bin_distribution)
+    eval_time = timer() - mid_time
+
+    print('Metrics:')
+    print_time_info(train_time, eval_time)
+
+
+def evaluate_network(topology, series_name, bin_distribution):
 
     # Get the test data
-    test_features, test_labels = io.load_test_samples(data_source=data_source)
-    save_file = io.load_file_name(data_source, topology)
+    batch_options = BatchOptions(batch_size=100,
+                                 batch_number=1,
+                                 train=False,
+                                 dtype='float32')
+
+    data_source = data_source_generator.make_data_source(series_name)
+
+
+    test_features, test_labels = io.load_batch(batch_options, data_source)
+    save_file = io.load_file_name(series_name, topology)
 
     binned_outputs = eval.eval_neural_net(test_features, topology, save_file)
 
-    if data_source == 'MNIST':
+    if series_name == 'MNIST':
         binned_outputs = np.mean(binned_outputs, axis=0)  # Average over passes
         predicted_indices = np.argmax(binned_outputs, axis=2)
         true_indices = np.argmax(test_labels, axis=2)
 
-        metrics = np.equal(predicted_indices, true_indices)
+        metric = np.equal(predicted_indices, true_indices)
+        print(metric)
 
     else:
         estimated_means, estimated_covariance = eval.forecast_means_and_variance(binned_outputs, bin_distribution)
-        metrics = pt.evaluate_sample_performance(truth=test_labels, estimation=estimated_means, test_name=data_source, estimated_covariance=estimated_covariance)
-
-    return metrics
+        model_metrics.evaluate_sample_performance(data_source, test_labels, estimated_means, estimated_covariance)
 
 
-def load_default_topology(data_source, flags):
+def load_default_topology(series_name):
     """The input and output layers must adhere to the dimensions of the features and labels.
     """
 
-    if data_source == 'low_noise':
+    if series_name == 'low_noise':
         n_input_series = 1
         n_features_per_series = 100
         n_classification_bins = 12
         n_output_series = 1
-    elif data_source == 'stochasticwalk':
+    elif series_name == 'stochasticwalk':
         n_input_series = 10
         n_features_per_series = 100
         n_classification_bins = 12
         n_output_series = 10
-    elif data_source == 'MNIST':
+    elif series_name == 'mnist':
         n_input_series = 1
         n_features_per_series = 784
         n_classification_bins = 10
@@ -130,7 +184,7 @@ def print_MNIST_accuracy(metrics):
     return accuracy
 
 
-def run_MNIST_test():
+def run_mnist_test():
 
     config = load_default_config()
     config["n_epochs"] = 1
@@ -142,10 +196,12 @@ def run_MNIST_test():
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
     config['activation_functions'] = ['linear', 'selu', 'selu']
+    config['tensorboard_log_path'] = '/home/rmason/Documents/tensorboard'
+    config['n_retrain_epochs'] = 5
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    accuracy = run_timed_performance_benchmark(FLAGS, data_source=DEFAULT_DATA_SOURCE, do_training=True)
+    accuracy = run_timed_benchmark_mnist(series_name="mnist", flags=FLAGS, do_training=True)
 
     return accuracy
 
@@ -167,7 +223,7 @@ def run_stochastic_test():
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    run_timed_performance_benchmark(FLAGS, data_source='stochasticwalk', do_training=True)
+    run_timed_benchmark_time_series(series_name='stochasticwalk', flags=FLAGS,  do_training=True)
 
 
 def load_default_config():
@@ -242,4 +298,4 @@ if __name__ == '__main__':
     logger.addHandler(logging.StreamHandler())
     logging.basicConfig(level=logging.DEBUG)
     # run_stochastic_test()
-    run_MNIST_test()
+    run_mnist_test()
