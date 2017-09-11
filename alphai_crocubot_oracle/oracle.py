@@ -130,7 +130,6 @@ class CrocubotOracle:
 
         resume_train_path = None
 
-
         if FLAGS.resume_training:
             try:
                 resume_train_path = self._train_file_manager.latest_train_filename(execution_time)
@@ -180,13 +179,10 @@ class CrocubotOracle:
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
+        start_time = timer()
 
         # FIXME: temporary fix, to be added to data transform
         predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
-
-
-        start_time = timer()
-
         predict_x = np.expand_dims(predict_x, axis=0)
 
         if FLAGS.predict_single_shares:
@@ -201,8 +197,6 @@ class CrocubotOracle:
         end_time = timer()
         eval_time = end_time - start_time
         logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
-
-        print("predict_y shape :{}".format(predict_y.shape)) #  100, 3, 1, 12
 
         if FLAGS.predict_single_shares:  # Return batch axis to series position
             predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
