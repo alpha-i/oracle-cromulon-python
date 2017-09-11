@@ -133,4 +133,3 @@ def sinh_shift(x, c):
     neg_f = x - tf.log(-neg_t + tf.sqrt(tf.exp(2 * x) + tf.square(neg_t)))
 
     return tf.where(x > 0.0, pos_f, neg_f)
-
