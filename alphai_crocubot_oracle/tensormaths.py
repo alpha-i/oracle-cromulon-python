@@ -134,29 +134,3 @@ def sinh_shift(x, c):
 
     return tf.where(x > 0.0, pos_f, neg_f)
 
-
-def roll_noise(noise, iteration):
-    """
-    Wraps noise iteration in tensorflow framework. The noise values will be rolled in circular way.
-    :param noise: The noise Tensor.
-    :param iteration: The iteration number.
-    :return: The rolled noise-tensor.
-    """
-    return tf.py_func(roll_noise_np, [noise, iteration], DEFAULT_TF_TYPE)
-
-
-def roll_noise_np(noise, iteration):
-    """
-    Roll the values of a noise array in a circular way.
-    :param noise: numpy array
-    :param iteration: type integer
-    :return: The rolled noise array.
-    """
-
-    shift_factor = 1
-    shift = iteration * shift_factor
-    original_shape = noise.shape
-    noise = noise.flatten()
-    noise = np.roll(noise, shift=shift)
-
-    return np.reshape(noise, original_shape)
