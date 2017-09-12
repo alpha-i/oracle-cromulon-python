@@ -59,13 +59,14 @@ oracle_arguments:
 | --- | --- |
 | `data_transformation` | describes the data transformation  |
 | `train_path` | path where the training related files will be stored |
+| `tensorboard_log_path` | path were tensorboard files will be stored |
 | `covariance_method` | method for covariance calculation (`'NERCOME'` or `'Ledoit'`) |
 | `model_save_path` | path where the trained models are saved ?? |
 | `d_type` | floating point type for data analysis (`float32` or `float64`) |
 | `tf_type` | floating point type for `TensorFlow` (`32` or `64`). should correspond to the one specified in `d_type` |
 | `random_seed` | a seed for the random variate generator (integer) |
+| `predict_single_shares` | whether the network predicts one share at a time. |
 | `n_epochs` | number of epochs for training |
-| `n_training_samples` | number of training samples to be used. |
 | `learning_rate` | learning rate of the training process. |
 | `batch_size` | size of each batch for training the network. |
 | `cost_type` | the model for the cost function. only accepts `'bayes'` for now. |
