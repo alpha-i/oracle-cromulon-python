@@ -1,6 +1,6 @@
 # Corcubot options
 
-This page describes the keys required to define the Crocubot oracle. 
+This page describes the keys required to define the Crocubot oracle.
 ```yaml
 oracle_arguments:
   data_transformation:
@@ -20,14 +20,16 @@ oracle_arguments:
     target_delta_ndays: 1
     target_market_minute: 60
   train_path: 'D:\Zipline\20100101_20150101_10S\train'
+  tensorboard_log_path: 'D:\Zipline\20100101_20150101_10S\tensorboard'
   covariance_method: 'NERCOME'
   covariance_ndays: 9
   model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
   d_type: float32
   tf_type: 32
   random_seed: 0
+  predict_single_shares: False
   n_epochs: 10
-  n_training_samples: 1000
+  n_retrain_epochs: 10
   learning_rate: 2e-3
   batch_size: 100
   cost_type: 'bayes'
@@ -60,7 +62,7 @@ oracle_arguments:
 | `covariance_method` | method for covariance calculation (`'NERCOME'` or `'Ledoit'`) |
 | `model_save_path` | path where the trained models are saved ?? |
 | `d_type` | floating point type for data analysis (`float32` or `float64`) |
-| `tf_type` | floating point type for `TensorFlow` (`32` or `64`). should correspond to the one specified in `d_type` | 
+| `tf_type` | floating point type for `TensorFlow` (`32` or `64`). should correspond to the one specified in `d_type` |
 | `random_seed` | a seed for the random variate generator (integer) |
 | `n_epochs` | number of epochs for training |
 | `n_training_samples` | number of training samples to be used. |
@@ -102,5 +104,4 @@ The data transformation needs to be specified as a subsection with the following
 | `prediction_frequency_ndays` | at what point in future we try to predict :exclamation: SHOULD BE IN LINE WITH `trade_frequency` |
 | `prediction_market_minute` | the minute at which the prediction is done. :exclamation: SHOULD BE IDENTICAL TO `trade_minutes_offset` |
 | `target_delta_ndays` | the number of days in the future the prediction is made aimed for. :exclamation: SHOULD BE IN LINE WITH `trade_frequency` and `trade_horizon_ncycles` |
-| `target_market_minute` | the minute after market open the prediction in the future is made for. | 
-
+| `target_market_minute` | the minute after market open the prediction in the future is made for. |
