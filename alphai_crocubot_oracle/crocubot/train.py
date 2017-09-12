@@ -59,7 +59,12 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
     model = CrocuBotModel(topology, FLAGS)
     model.build_layers_variables()
 
-    use_data_loader = True if train_x is None else False
+    if train_x is None:
+        use_data_loader = True
+        n_training_samples = FLAGS.n_training_samples
+    else:
+        use_data_loader = False
+        n_training_samples = train_x.shape[0]
 
     # Placeholders for the inputs and outputs of neural networks
     x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series], name="x")
@@ -67,7 +72,7 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
 
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
-    n_batches = int(FLAGS.n_training_samples / FLAGS.batch_size)
+    n_batches = int(n_training_samples / FLAGS.batch_size) + 1
 
     cost_operator = _set_cost_operator(model, x, y, n_batches)
     tf.summary.scalar("cost", cost_operator)
@@ -116,10 +121,7 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
                     batch_x, batch_y = io.load_training_batch(data_source, batch_number=batch_number,
                                                               batch_size=FLAGS.batch_size, bin_edges=bin_edges)
                 else:
-                    lo_index = batch_number * FLAGS.batch_size
-                    hi_index = lo_index + FLAGS.batch_size
-                    batch_x = train_x[lo_index:hi_index, :]
-                    batch_y = train_y[lo_index:hi_index, :]
+                    batch_x, batch_y = extract_batch(train_x, train_y, batch_number)
 
                 if batch_number == 0 and epoch == 0:
                     logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
@@ -144,6 +146,22 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
         logging.info("Model saved in file:{}".format(out_path))
 
     return epoch_loss_list
+
+
+def extract_batch(x, y, batch_number):
+    """ Returns batch of features and labels from the full data set x and y
+
+    :param nparray x: Full set of training features
+    :param nparray y: Full set of training labels
+    :param int batch_number: Which batch
+    :return:
+    """
+    lo_index = batch_number * FLAGS.batch_size
+    hi_index = lo_index + FLAGS.batch_size
+    batch_x = x[lo_index:hi_index, :]
+    batch_y = y[lo_index:hi_index, :]
+
+    return batch_x, batch_y
 
 
 def _set_cost_operator(crocubot_model, x, labels, n_batches):

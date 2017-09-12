@@ -137,17 +137,11 @@ class CrocuBotModel:
 
     def get_weight_noise(self, layer_number, iteration):
         noise = self.get_variable(layer_number, self.VAR_WEIGHT_NOISE)
-        return tm.roll_noise(
-            noise,
-            iteration
-        )
+        return tf.random_shuffle(noise, seed=iteration)
 
     def get_bias_noise(self, layer_number, iteration):
         noise = self.get_variable(layer_number, self.VAR_BIAS_NOISE)
-        return tm.roll_noise(
-            noise,
-            iteration
-        )
+        return tf.random_shuffle(noise, seed=iteration)
 
     def compute_weights(self, layer_number, iteration=0):
 
