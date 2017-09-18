@@ -9,16 +9,16 @@ import numpy as np
 import tensorflow as tf
 
 import alphai_crocubot_oracle.classifier as cl
-import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as eval
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
 import alphai_crocubot_oracle.flags as fl
 import alphai_crocubot_oracle.iotools as io
 import alphai_crocubot_oracle.topology as topo
+from alphai_crocubot_oracle.crocubot import train as crocubot_train
 
 from alphai_data_sources.data_sources import DataSourceGenerator
 from alphai_data_sources.generator import BatchOptions, BatchGenerator
-from alphai_data_sources.performance_trials.performance import Metrics
+from alphai_time_series.performance_trials.performance import Metrics
 
 data_source_generator = DataSourceGenerator()
 batch_generator = BatchGenerator()
@@ -50,7 +50,7 @@ def run_timed_benchmark_mnist(series_name, flags, do_training):
     execution_time = datetime.datetime.now()
 
     if do_training:
-        crocubot.train(topology, series_name, execution_time)
+        crocubot_train.train(topology, series_name, execution_time)
     else:
         tf.reset_default_graph()
         model = CrocuBotModel(topology)
@@ -99,8 +99,10 @@ def run_timed_benchmark_time_series(series_name, flags, do_training=True):
 
     start_time = timer()
 
+    execution_time = datetime.datetime.now()
+
     if do_training:
-        crocubot.train(topology, data_source, execution_time, bin_edges)
+        crocubot_train.train(topology, series_name, execution_time, bin_edges=bin_edges)
     else:
         tf.reset_default_graph()
         model = CrocuBotModel(topology)
@@ -133,16 +135,18 @@ def evaluate_network(topology, series_name, bin_distribution):
 
     binned_outputs = eval.eval_neural_net(test_features, topology, save_file)
 
-    if series_name == 'MNIST':
+    if series_name == 'mnist':
         binned_outputs = np.mean(binned_outputs, axis=0)  # Average over passes
         predicted_indices = np.argmax(binned_outputs, axis=2)
         true_indices = np.argmax(test_labels, axis=2)
 
         metric = np.equal(predicted_indices, true_indices)
-        print(metric)
+        return metric
 
     else:
         estimated_means, estimated_covariance = eval.forecast_means_and_variance(binned_outputs, bin_distribution)
+        test_labels = np.squeeze(test_labels)
+
         model_metrics.evaluate_sample_performance(data_source, test_labels, estimated_means, estimated_covariance)
 
 
@@ -155,7 +159,7 @@ def load_default_topology(series_name):
         n_features_per_series = 100
         n_classification_bins = 12
         n_output_series = 1
-    elif series_name == 'stochasticwalk':
+    elif series_name == 'stochastic_walk':
         n_input_series = 10
         n_features_per_series = 100
         n_classification_bins = 12
@@ -187,7 +191,7 @@ def print_MNIST_accuracy(metrics):
 def run_mnist_test():
 
     config = load_default_config()
-    config["n_epochs"] = 1
+    config["n_epochs"] = 10
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
@@ -209,7 +213,7 @@ def run_mnist_test():
 def run_stochastic_test():
     config = load_default_config()
 
-    config["n_epochs"] = 10   # -3 per sample after 10 epochs
+    config["n_epochs"] = 1   # -3 per sample after 10 epochs
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
@@ -220,10 +224,12 @@ def run_stochastic_test():
     config['activation_functions'] = ['linear', 'selu', 'selu', 'selu']
     config["layer_heights"] = 200
     config["layer_widths"] = 1
+    config['tensorboard_log_path'] = '/home/rmason/Documents/tensorboard'
+    config['n_retrain_epochs'] = 5
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    run_timed_benchmark_time_series(series_name='stochasticwalk', flags=FLAGS,  do_training=True)
+    run_timed_benchmark_time_series(series_name='stochastic_walk', flags=FLAGS,  do_training=True)
 
 
 def load_default_config():
@@ -297,5 +303,5 @@ if __name__ == '__main__':
     logger = logging.getLogger('tipper')
     logger.addHandler(logging.StreamHandler())
     logging.basicConfig(level=logging.DEBUG)
-    # run_stochastic_test()
+    #run_stochastic_test()
     run_mnist_test()

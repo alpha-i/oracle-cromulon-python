@@ -1,7 +1,6 @@
 # Trains the network
 # Used by oracle.py
 
-
 import logging
 from timeit import default_timer as timer
 import os
@@ -13,11 +12,12 @@ import alphai_crocubot_oracle.iotools as io
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 
 from alphai_data_sources.data_sources import DataSourceGenerator
-from alphai_data_sources.generator import BatchOptions, BatchGenerator
+from alphai_data_sources.generator import BatchOptions
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
 PRINT_SUMMARY_INTERVAL = 5
+
 
 def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorboard_log_path, execution_time):
     """
@@ -66,6 +66,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
     if use_data_loader:
         data_source_generator = DataSourceGenerator()
         batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype='float32')
+        print(series_name)
         data_source = data_source_generator.make_data_source(series_name)
 
     # Placeholders for the inputs and outputs of neural networks

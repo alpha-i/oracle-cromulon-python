@@ -20,7 +20,7 @@ def load_batch(batch_options, data_source, bin_edges=None):
     return features, labels
 
 
-def load_file_name(data_source, topology):
+def load_file_name(series_name, topology):
     """ File used for storing the network parameters.
 
     :param str data_source: Identify the data on which the network was trained: MNIST, low_noise, randomwalk, etc
@@ -36,4 +36,4 @@ def load_file_name(data_source, topology):
     bitstring = str(FLAGS.TF_TYPE)
     path = FLAGS.model_save_path
 
-    return path + bitstring[-2:] + "model_" + data_source + "_" + series_string + '_' + depth_string + "x" + breadth_string + ".ckpt"
+    return path + bitstring[-2:] + "model_" + series_name + "_" + series_string + '_' + depth_string + "x" + breadth_string + ".ckpt"
