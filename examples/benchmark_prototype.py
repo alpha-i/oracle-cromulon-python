@@ -27,6 +27,7 @@ model_metrics = Metrics()
 FLAGS = tf.app.flags.FLAGS
 TIME_LIMIT = 600
 
+
 def run_timed_benchmark_mnist(series_name, flags, do_training):
 
     topology = load_default_topology(series_name)
