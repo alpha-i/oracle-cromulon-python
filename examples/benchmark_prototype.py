@@ -129,7 +129,6 @@ def evaluate_network(topology, series_name, bin_distribution):
 
     data_source = data_source_generator.make_data_source(series_name)
 
-
     test_features, test_labels = io.load_batch(batch_options, data_source)
     save_file = io.load_file_name(series_name, topology)
 
@@ -229,7 +228,7 @@ def run_stochastic_test():
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    run_timed_benchmark_time_series(series_name='stochastic_walk', flags=FLAGS,  do_training=True)
+    run_timed_benchmark_time_series(series_name='stochastic_walk', flags=FLAGS, do_training=True)
 
 
 def load_default_config():
@@ -303,5 +302,5 @@ if __name__ == '__main__':
     logger = logging.getLogger('tipper')
     logger.addHandler(logging.StreamHandler())
     logging.basicConfig(level=logging.DEBUG)
-    #run_stochastic_test()
+    # run_stochastic_test()
     run_mnist_test()
