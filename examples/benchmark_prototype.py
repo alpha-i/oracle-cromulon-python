@@ -4,7 +4,6 @@
 from timeit import default_timer as timer
 import datetime
 import logging
-
 import numpy as np
 import tensorflow as tf
 
@@ -28,13 +27,12 @@ model_metrics = Metrics()
 FLAGS = tf.app.flags.FLAGS
 TIME_LIMIT = 600
 
-
 def run_timed_benchmark_mnist(series_name, flags, do_training):
 
     topology = load_default_topology(series_name)
 
     #  First need to establish bin edges using full training set
-    template_sample_size = np.minimum(flags.n_training_samples, 10000)
+    template_sample_size = np.minimum(flags.n_training_samples_benchmark, 10000)
 
     batch_options = BatchOptions(batch_size=template_sample_size,
                                  batch_number=0,
@@ -83,7 +81,7 @@ def run_timed_benchmark_time_series(series_name, flags, do_training=True):
     topology = load_default_topology(series_name)
 
     #  First need to establish bin edges using full training set
-    template_sample_size = np.minimum(flags.n_training_samples, 10000)
+    template_sample_size = np.minimum(flags.n_training_samples_benchmark, 10000)
 
     batch_options = BatchOptions(batch_size=template_sample_size,
                                  batch_number=0,
@@ -187,43 +185,45 @@ def print_MNIST_accuracy(metrics):
     return accuracy
 
 
-def run_mnist_test():
+def run_mnist_test(train_path, tensorboard_log_path):
 
     config = load_default_config()
     config["n_epochs"] = 10
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
-    config['n_training_samples'] = 50000
+    config['n_training_samples_benchmark'] = 50000
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
     config['activation_functions'] = ['linear', 'selu', 'selu']
-    config['tensorboard_log_path'] = '/home/rmason/Documents/tensorboard'
+    config['tensorboard_log_path'] = tensorboard_log_path
+    config['train_path'] = train_path
+    config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    accuracy = run_timed_benchmark_mnist(series_name="mnist", flags=FLAGS, do_training=True)
-
-    return accuracy
+    run_timed_benchmark_mnist(series_name="mnist", flags=FLAGS, do_training=True)
 
 
-def run_stochastic_test():
+def run_stochastic_test(train_path, tensorboard_log_path):
     config = load_default_config()
 
-    config["n_epochs"] = 1   # -3 per sample after 10 epochs
+    config["n_epochs"] = 10   # -3 per sample after 10 epochs
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
-    config['n_training_samples'] = 1000
+    config['n_training_samples_benchmark'] = 1000
     config['n_series'] = 10
     config['n_features_per_series'] = 100
     config['resume_training'] = False  # Make sure we start from scratch
     config['activation_functions'] = ['linear', 'selu', 'selu', 'selu']
     config["layer_heights"] = 200
     config["layer_widths"] = 1
-    config['tensorboard_log_path'] = '/home/rmason/Documents/tensorboard'
+    config['tensorboard_log_path'] = tensorboard_log_path
+    config['train_path'] = train_path
+    config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
 
     fl.set_training_flags(config)
@@ -259,10 +259,11 @@ def load_default_config():
         'd_type': 'float32',
         'tf_type': 32,
         'random_seed': 0,
+        'predict_single_shares': False,
 
         # Training specific
         'n_epochs': 1,
-        'n_training_samples': 1000,
+        'n_training_samples_benchmark': 1000,
         'learning_rate': 2e-3,
         'batch_size': 100,
         'cost_type': 'bayes',
@@ -302,5 +303,10 @@ if __name__ == '__main__':
     logger = logging.getLogger('tipper')
     logger.addHandler(logging.StreamHandler())
     logging.basicConfig(level=logging.DEBUG)
-    # run_stochastic_test()
-    run_mnist_test()
+
+    # change the following lines according to your machine
+    train_path = 'D:\\tmp'
+    tensorboard_log_path = 'D:\\tmp\\tensorboard'
+
+    run_stochastic_test(train_path, tensorboard_log_path)
+    run_mnist_test(train_path, tensorboard_log_path)

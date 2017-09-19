@@ -63,7 +63,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
 
     if train_x is None:
         use_data_loader = True
-        n_training_samples = FLAGS.n_training_samples
+        n_training_samples = FLAGS.n_training_samples_benchmark
     else:
         use_data_loader = False
         n_training_samples = train_x.shape[0]
