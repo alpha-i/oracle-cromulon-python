@@ -32,10 +32,7 @@ def run_timed_benchmark_mnist(series_name, flags, do_training):
 
     topology = load_default_topology(series_name)
 
-    #  First need to establish bin edges using full training set
-    template_sample_size = np.minimum(flags.n_training_samples_benchmark, 10000)
-
-    batch_options = BatchOptions(batch_size=template_sample_size,
+    batch_options = BatchOptions(batch_size=200,
                                  batch_number=0,
                                  train=do_training,
                                  dtype='float32')

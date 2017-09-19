@@ -48,7 +48,7 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('spike_slab_weighting', config['spike_slab_weighting'], """Initial standard deviation on weights.""")
 
     # only used in benchmark_prototype
-    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', config['n_epochs'], """Number of samples for benchmarking.""")
+    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', config['n_training_samples_benchmark'], """Number of samples for benchmarking.""")
     FLAGS._parse_flags()
 
 
