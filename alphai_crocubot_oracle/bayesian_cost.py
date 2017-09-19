@@ -142,4 +142,4 @@ class BayesianCost(object):
         :return: The total log likelihood value.
         """
 
-        return tf.reduce_sum(truth * tf.log(forecast))   # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
+        return tf.reduce_sum(truth * forecast)   # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]

@@ -207,7 +207,7 @@ class Estimator:
         stacked_output = tf.stack(outputs, axis=0)
 
         # Make sure we softmax across the 'bin' dimension, but not across all series!
-        stacked_output = tf.nn.softmax(stacked_output, dim=-1)
+        stacked_output = tf.nn.log_softmax(stacked_output, dim=-1)
 
         return stacked_output
 
