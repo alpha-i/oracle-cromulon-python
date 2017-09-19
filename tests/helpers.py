@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 
 import pandas_market_calendars as mcal
 from alphai_finance.data.cleaning import convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv
@@ -11,7 +12,7 @@ from alphai_crocubot_oracle.oracle import CrocubotOracle
 DATA_FILENAME = 'sample_hdf5.h5'
 
 FIXTURES_SOURCE_DIR = os.path.join(os.path.dirname(__file__), 'resources')
-FIXTURE_DESTINATION_DIR = '/tmp/crocubot/'
+FIXTURE_DESTINATION_DIR = tempfile.TemporaryDirectory().name
 
 FIXTURE_DATA_FULLPATH = os.path.join(FIXTURE_DESTINATION_DIR, DATA_FILENAME)
 
@@ -93,6 +94,7 @@ def load_default_config():
         'random_seed': 0,
 
         # Training specific
+        'predict_single_shares': True,
         'n_epochs': 1,
         'n_retrain_epochs': 1,
         'n_training_samples': 1000,
@@ -104,9 +106,9 @@ def load_default_config():
         'resume_training': False,
 
         # Topology
-        'n_series': 3,
+        'n_series': 1,
         'n_features_per_series': 271,
-        'n_forecasts': 3,
+        'n_forecasts': 1,
         'n_classification_bins': 12,
         'layer_heights': [3, 271],
         'layer_widths': [3, 3],

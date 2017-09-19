@@ -11,6 +11,9 @@ def set_training_flags(config):
 
     tf.flags._global_parser = argparse.ArgumentParser()
 
+    tf.app.flags.DEFINE_boolean('predict_single_shares', config['predict_single_shares'],
+                                """Whether the network predicts one share at a time.""")
+
     tf.app.flags.DEFINE_string('tensorboard_log_path', config['tensorboard_log_path'], """Path for storing tensorboard log.""")
 
     tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
@@ -22,7 +25,6 @@ def set_training_flags(config):
     # Training specific
     tf.app.flags.DEFINE_integer('n_epochs', config['n_epochs'], """How many epochs to be used for training.""")
     tf.app.flags.DEFINE_integer('n_retrain_epochs', config['n_retrain_epochs'], """How many epochs to be used for re-training a previously stored model.""")
-    tf.app.flags.DEFINE_integer('n_training_samples', config['n_training_samples'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_float('learning_rate', config['learning_rate'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_integer('batch_size', config['batch_size'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_string('cost_type', config['cost_type'], """Total number of data samples to be used for training.""")
