@@ -178,19 +178,13 @@ class Estimator:
 
         :param data: Mini-batch to be fed into the network
         :param number_of_passes: How many random realisations of the weights should be sampled
-        :return: Means and variances of the posterior. NB this is not the covariance - see network_covariance.py
+        :return: Estimate of the posterior distribution.
         """
 
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
 
-        mean = tf.reduce_logsumexp(collated_outputs, axis=[0]) - tf.log(tf.to_float(number_of_passes))
-        variance = 1.0
+        return tf.reduce_logsumexp(collated_outputs, axis=[0]) - tf.log(tf.to_float(number_of_passes))
 
-        if number_of_passes == 1:
-            logging.warning("Using default variance")
-            variance = self._flags.DEFAULT_FORECAST_VARIANCE
-
-        return mean, variance
 
     def collate_multiple_passes(self, x, number_of_passes=50):
         """

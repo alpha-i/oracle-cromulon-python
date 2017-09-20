@@ -183,12 +183,12 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches):
                                     )
 
     estimator = Estimator(crocubot_model, FLAGS)
-    predictions, _ = estimator.average_multiple_passes(x, FLAGS.n_train_passes)
+    log_predictions = estimator.average_multiple_passes(x, FLAGS.n_train_passes)
 
     if FLAGS.cost_type == 'bayes':
-        operator = cost_object.get_bayesian_cost(predictions, labels)
+        operator = cost_object.get_bayesian_cost(log_predictions, labels)
     elif FLAGS.cost_type == 'softmax':
-        operator = tf.nn.softmax_cross_entropy_with_logits(logits=predictions, labels=labels)
+        operator = tf.nn.softmax_cross_entropy_with_logits(logits=log_predictions, labels=labels)
     else:
         raise NotImplementedError
 
