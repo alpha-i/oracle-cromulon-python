@@ -183,7 +183,7 @@ class Estimator:
 
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
 
-        mean = tf.reduce_logsumexp(collated_outputs, axis=[0])
+        mean = tf.reduce_logsumexp(collated_outputs, axis=[0]) - tf.log(tf.to_float(number_of_passes))
         variance = 1.0
 
         if number_of_passes == 1:
