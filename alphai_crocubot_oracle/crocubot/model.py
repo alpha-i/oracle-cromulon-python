@@ -11,8 +11,6 @@ This modules contains two classes
 
 """
 
-import logging
-
 import numpy as np
 import tensorflow as tf
 
@@ -178,17 +176,12 @@ class Estimator:
 
         :param data: Mini-batch to be fed into the network
         :param number_of_passes: How many random realisations of the weights should be sampled
-        :return: Means and variances of the posterior. NB this is not the covariance - see network_covariance.py
+        :return: Estimate of the posterior distribution.
         """
 
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
-        mean, variance = tf.nn.moments(collated_outputs, axes=[0])
 
-        if number_of_passes == 1:
-            logging.warning("Using default variance")
-            variance = self._flags.DEFAULT_FORECAST_VARIANCE
-
-        return mean, variance
+        return tf.reduce_logsumexp(collated_outputs, axis=[0]) - tf.log(tf.to_float(number_of_passes))
 
     def collate_multiple_passes(self, x, number_of_passes=50):
         """
@@ -207,7 +200,7 @@ class Estimator:
         stacked_output = tf.stack(outputs, axis=0)
 
         # Make sure we softmax across the 'bin' dimension, but not across all series!
-        stacked_output = tf.nn.softmax(stacked_output, dim=-1)
+        stacked_output = tf.nn.log_softmax(stacked_output, dim=-1)
 
         return stacked_output
 

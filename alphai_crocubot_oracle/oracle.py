@@ -12,7 +12,9 @@ import pandas as pd
 import tensorflow as tf
 
 from alphai_finance.data.transformation import FinancialDataTransformation
-from alphai_crocubot_oracle.crocubot import train as crocubot_train
+from alphai_time_series.transform import gaussianise
+
+import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
 from alphai_crocubot_oracle.flags import set_training_flags
 import alphai_crocubot_oracle.topology as tp
@@ -97,6 +99,8 @@ class CrocubotOracle:
             activation_functions=configuration['activation_functions']
         )
 
+        logging.info('Initialised network topology: {}.'.format(self._topology.layers))
+
     def train(self, historical_universes, train_data, execution_time):
         """
         Trains the model
@@ -110,15 +114,7 @@ class CrocubotOracle:
             execution_time,
         ))
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
-
-        train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
-        train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
-
-        if FLAGS.predict_single_shares:
-            n_feat_x = train_x.shape[1]
-            n_feat_y = train_y.shape[2]
-            train_x = np.reshape(train_x, [-1, n_feat_x, 1])
-            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+        train_x, train_y = self._preprocess_training(train_x, train_y)
 
         logging.info('Training features of shape: {}.'.format(
             train_x.shape,
@@ -137,8 +133,8 @@ class CrocubotOracle:
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
         start_time = timer()  # FIXME we should find a way to make some function 'temporizable' with a python decorator
-        crocubot_train.train(self._topology, data_source, execution_time, train_x, train_y, save_path=train_path,
-                             restore_path=resume_train_path)
+        crocubot.train(self._topology, data_source, execution_time, train_x, train_y, save_path=train_path,
+                       restore_path=resume_train_path)
         end_time = timer()
         train_time = end_time - start_time
         logging.info("Training took: {} seconds".format(train_time))
@@ -181,12 +177,7 @@ class CrocubotOracle:
         logging.info('Predicting mean values.')
         start_time = timer()
 
-        # FIXME: temporary fix, to be added to data transform
-        predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
-        predict_x = np.expand_dims(predict_x, axis=0)
-
-        if FLAGS.predict_single_shares:
-            predict_x = np.swapaxes(predict_x, axis1=0, axis2=2)
+        predict_x = self._preprocess_prediction(predict_x)
 
         # Verify data is the correct shape
         topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
@@ -217,3 +208,34 @@ class CrocubotOracle:
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
         # return means, historical_covariance, forecast_covariance
         return means, forecast_covariance
+
+    def _preprocess_training(self, train_x, train_y):
+        """ Prepare training data to be fed into crocubot. """
+
+        train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
+        train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
+
+        if FLAGS.predict_single_shares:
+            n_feat_x = train_x.shape[1]
+            n_feat_y = train_y.shape[2]
+            train_x = np.reshape(train_x, [-1, n_feat_x, 1])
+            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+
+        # Gaussianise & Normalise of inputs (not necessary for outputs)
+        train_x = gaussianise(train_x, target_mean=0.0, target_sigma=1.0)
+
+        return train_x, train_y
+
+    def _preprocess_prediction(self, predict_x):
+        """ Prepare prediction to be fed into crocubot. """
+
+        # FIXME: astype is a temporary fix, to be added to data transform
+        predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
+        predict_x = np.expand_dims(predict_x, axis=0)
+
+        if FLAGS.predict_single_shares:
+            predict_x = np.swapaxes(predict_x, axis1=0, axis2=2)
+
+        predict_x = gaussianise(predict_x, target_mean=0.0, target_sigma=1.0)
+
+        return predict_x

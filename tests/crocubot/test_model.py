@@ -104,17 +104,14 @@ class TestEstimator(tf.test.TestCase):
 
         data = np.ones(shape=(20, 10), dtype=np.float32)
         number_of_passes = 3
-        mean, variance = estimator.average_multiple_passes(data, number_of_passes)
+        mean = estimator.average_multiple_passes(data, number_of_passes)
 
         with self.test_session() as session:
             session.run(tf.global_variables_initializer())
 
             self.assertIsInstance(mean, tf.Tensor)
-            self.assertIsInstance(variance, tf.Tensor)
 
             mean_value = mean.eval()
-            variance_value = variance.eval()
 
             expected_shape = (20, 10)
             self.assertEqual(expected_shape, mean_value.shape)
-            self.assertEqual(expected_shape, variance_value.shape)
