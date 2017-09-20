@@ -134,12 +134,12 @@ class BayesianCost(object):
         return tf.reduce_sum(log_qw)
 
     @staticmethod
-    def calculate_likelihood(truth, forecast):
+    def calculate_likelihood(truth, log_forecast):
         """
         Compute the Gaussian likelihood given truth and forecasts.
-        :param truth: The true or target values.
-        :param forecast: The forecast values to be compared with truth
+        :param truth: The true or target distributions.
+        :param log_forecast: The log forecast to be compared with truth
         :return: The total log likelihood value.
         """
 
-        return tf.reduce_sum(truth * forecast)   # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
+        return tf.reduce_sum(truth * log_forecast)   # Dimensions [batch_size, N_LABEL_TIMESTEPS, N_LABEL_CLASSES]
