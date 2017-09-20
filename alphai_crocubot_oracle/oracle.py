@@ -236,6 +236,6 @@ class CrocubotOracle:
         if FLAGS.predict_single_shares:
             predict_x = np.swapaxes(predict_x, axis1=0, axis2=2)
 
-        predict_x  = gaussianise(predict_x, target_mean=0.0, target_sigma=1.0)
+        predict_x = gaussianise(predict_x, target_mean=0.0, target_sigma=1.0)
 
         return predict_x
