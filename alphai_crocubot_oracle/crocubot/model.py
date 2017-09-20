@@ -182,7 +182,9 @@ class Estimator:
         """
 
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
-        mean, variance = tf.nn.moments(collated_outputs, axes=[0])
+
+        mean = tf.reduce_logsumexp(collated_outputs, axis=[0])
+        variance = 1.0
 
         if number_of_passes == 1:
             logging.warning("Using default variance")
