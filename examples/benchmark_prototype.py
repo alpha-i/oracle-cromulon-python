@@ -7,6 +7,7 @@ import logging
 import numpy as np
 import tensorflow as tf
 
+# FIXME this classifier is now obsolete. We need to use alphai-finance instead.
 import alphai_crocubot_oracle.classifier as cl
 import alphai_crocubot_oracle.crocubot.evaluate as eval
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
@@ -199,6 +200,8 @@ def run_mnist_test(train_path, tensorboard_log_path):
     config['train_path'] = train_path
     config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
+    config['n_train_passes'] = 8
+    config['n_eval_passes'] = 8
 
     fl.set_training_flags(config)
     print("Epochs to evaluate:", FLAGS.n_epochs)
