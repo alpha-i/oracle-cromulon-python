@@ -46,6 +46,9 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('wide_prior_std', config['wide_prior_std'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('narrow_prior_std', config['narrow_prior_std'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('spike_slab_weighting', config['spike_slab_weighting'], """Initial standard deviation on weights.""")
+
+    # only used in benchmark_prototype
+    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', config['n_training_samples_benchmark'], """Number of samples for benchmarking.""")
     FLAGS._parse_flags()
 
 

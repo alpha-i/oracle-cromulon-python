@@ -1,7 +1,6 @@
 # Trains the network
 # Used by oracle.py
 
-
 import logging
 from timeit import default_timer as timer
 import os
@@ -11,6 +10,9 @@ import alphai_crocubot_oracle.bayesian_cost as cost
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 import alphai_crocubot_oracle.iotools as io
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
+
+from alphai_data_sources.data_sources import DataSourceGenerator
+from alphai_data_sources.generator import BatchOptions
 
 FLAGS = tf.app.flags.FLAGS
 PRINT_LOSS_INTERVAL = 1
@@ -36,13 +38,13 @@ def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorb
     return os.path.join(tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
 
-def train(topology, data_source, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
+def train(topology, series_name, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
           restore_path=None):
     """ Train network on either MNIST or time series data
 
     FIXME
     :param Topology topology:
-    :param str data_source:
+    :param str series_name:
     :return: epoch_loss_list
     """
 
@@ -61,10 +63,16 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
 
     if train_x is None:
         use_data_loader = True
-        n_training_samples = FLAGS.n_training_samples
+        n_training_samples = FLAGS.n_training_samples_benchmark
     else:
         use_data_loader = False
         n_training_samples = train_x.shape[0]
+
+    if use_data_loader:
+        data_source_generator = DataSourceGenerator()
+        batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype='float32')
+        print(series_name)
+        data_source = data_source_generator.make_data_source(series_name)
 
     # Placeholders for the inputs and outputs of neural networks
     x = tf.placeholder(FLAGS.d_type, shape=[None, topology.n_features_per_series, topology.n_series], name="x")
@@ -84,7 +92,7 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
     model_initialiser = tf.global_variables_initializer()
 
     if save_path is None:
-        save_path = io.load_file_name(data_source, topology)
+        save_path = io.load_file_name(series_name, topology)
     saver = tf.train.Saver()
 
     # Launch the graph
@@ -118,8 +126,8 @@ def train(topology, data_source, execution_time, train_x=None, train_y=None, bin
             for batch_number in range(n_batches):  # The randomly sampled weights are fixed within single batch
 
                 if use_data_loader:
-                    batch_x, batch_y = io.load_training_batch(data_source, batch_number=batch_number,
-                                                              batch_size=FLAGS.batch_size, bin_edges=bin_edges)
+                    batch_options.batch_number = batch_number
+                    batch_x, batch_y = io.load_batch(batch_options, data_source, bin_edges=bin_edges)
                 else:
                     batch_x, batch_y = extract_batch(train_x, train_y, batch_number)
 

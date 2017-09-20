@@ -12,8 +12,7 @@ import pandas as pd
 import tensorflow as tf
 
 from alphai_finance.data.transformation import FinancialDataTransformation
-
-import alphai_crocubot_oracle.crocubot.train as crocubot
+from alphai_crocubot_oracle.crocubot import train as crocubot_train
 import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
 from alphai_crocubot_oracle.flags import set_training_flags
 import alphai_crocubot_oracle.topology as tp
@@ -138,8 +137,8 @@ class CrocubotOracle:
         train_path = self._train_file_manager.new_filename(execution_time)
         data_source = 'financial_stuff'
         start_time = timer()  # FIXME we should find a way to make some function 'temporizable' with a python decorator
-        crocubot.train(self._topology, data_source, execution_time, train_x, train_y, save_path=train_path,
-                       restore_path=resume_train_path)
+        crocubot_train.train(self._topology, data_source, execution_time, train_x, train_y, save_path=train_path,
+                             restore_path=resume_train_path)
         end_time = timer()
         train_time = end_time - start_time
         logging.info("Training took: {} seconds".format(train_time))

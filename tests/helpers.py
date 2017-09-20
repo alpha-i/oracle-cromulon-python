@@ -97,7 +97,7 @@ def load_default_config():
         'predict_single_shares': True,
         'n_epochs': 1,
         'n_retrain_epochs': 1,
-        'n_training_samples': 1000,
+        'n_training_samples_benchmark': 1000,
         'learning_rate': 2e-3,
         'batch_size': 100,
         'cost_type': 'bayes',

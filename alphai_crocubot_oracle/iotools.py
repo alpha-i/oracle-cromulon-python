@@ -1,55 +1,18 @@
 # Used for retrieving non-financial data, and saving/retrieving non-financial models
 # Will not be used by quant workflow
-
+import os
 import tensorflow as tf
 
-from tensorflow.examples.tutorials.mnist import input_data
-
-import alphai_time_series.performance_trials as pt
+from alphai_data_sources.generator import BatchGenerator
 import alphai_crocubot_oracle.classifier as cl
 
 FLAGS = tf.app.flags.FLAGS
-
-N_TEST_SAMPLES = 100
-DEFAULT_SAVE_PATH = "/tmp/"
-MNIST = None
-DO_DIFF = True
-RESHAPE_MNIST = False
+batch_generator = BatchGenerator()
 
 
-def initialise_MNIST():
-    global MNIST
-    MNIST = input_data.read_data_sets("MNIST_data/", one_hot=True)
+def load_batch(batch_options, data_source, bin_edges=None):
 
-
-def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, labels_per_series=1, do_diff=DO_DIFF,
-                        bin_edges=None):
-    """Load a subsample of examples for training"""
-
-    if data_source == "low_noise":
-        do_diff = False
-
-    if data_source == "MNIST":
-        if MNIST is None:
-            initialise_MNIST()
-
-        features, labels = MNIST.train.next_batch(batch_size)
-
-        if RESHAPE_MNIST:
-            N_CLASSIFICATION_BINS = 10
-            N_SERIES = 28
-            N_FEAT_PER_SERIES = 28
-        else:
-            N_CLASSIFICATION_BINS = 10
-            N_SERIES = 1
-            N_FEAT_PER_SERIES = 784
-
-        features = features.reshape(features.shape[0], N_FEAT_PER_SERIES, N_SERIES)
-        labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
-
-    else:
-        features, labels = pt.get_training_batch(series_name=data_source, batch_size=batch_size, batch_number=batch_number,
-                                                 label_timesteps=labels_per_series, do_differential_forecast=do_diff, dtype=FLAGS.d_type)
+    features, labels = batch_generator.get_batch(batch_options, data_source)
 
     if bin_edges is not None:
         labels = cl.classify_labels(bin_edges, labels)
@@ -57,43 +20,11 @@ def load_training_batch(data_source="MNIST", batch_number=0, batch_size=100, lab
     return features, labels
 
 
-def load_test_samples(data_source="MNIST", labels_per_series=1, do_differential_forecast=DO_DIFF):
-    """Load a subsample of examples for testing. """
-
-    if data_source == "low_noise":
-        do_differential_forecast = False
-
-    if data_source == "MNIST":
-        if MNIST is None:
-            initialise_MNIST()
-
-        features = MNIST.test.images
-        labels = MNIST.test.labels
-
-        if RESHAPE_MNIST:
-            N_CLASSIFICATION_BINS = 10
-            N_SERIES = 28
-            N_FEAT_PER_SERIES = 28
-        else:
-            N_CLASSIFICATION_BINS = 10
-            N_SERIES = 1
-            N_FEAT_PER_SERIES = 784
-
-        features = features.reshape(features.shape[0], N_FEAT_PER_SERIES, N_SERIES)
-        labels = labels.reshape(labels.shape[0], 1, N_CLASSIFICATION_BINS)
-    else:
-        features, labels = pt.get_test_batch(batch_size=N_TEST_SAMPLES, series_name=data_source, do_differential_forecast=do_differential_forecast,
-                                             label_timesteps=labels_per_series, dtype=FLAGS.d_type)
-
-    return features, labels
-
-
-def load_file_name(data_source, topology):
+def load_file_name(series_name, topology):
     """ File used for storing the network parameters.
 
-    :param str data_source: Identify the data on which the network was trained: MNIST, low_noise, randomwalk, etc
+    :param str series_name: Identify the data on which the network was trained: MNIST, low_noise, randomwalk, etc
     :param Topology topology: Info on network shape
-    :param str path:
     :return:
     """
 
@@ -104,4 +35,6 @@ def load_file_name(data_source, topology):
     bitstring = str(FLAGS.TF_TYPE)
     path = FLAGS.model_save_path
 
-    return path + bitstring[-2:] + "model_" + data_source + "_" + series_string + '_' + depth_string + "x" + breadth_string + ".ckpt"
+    file_name = "{}model_{}_{}_{}x{}.ckpt".format(bitstring[-2:], series_name, series_string, depth_string,
+                                                  breadth_string)
+    return os.path.join(path, file_name)
