@@ -15,13 +15,13 @@ logging:
       class : 'logging.FileHandler'
       formatter: 'formatter'
       level: 'DEBUG'
-      filename: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/logs/quant_workflow-debug.log'
+      filename: '/tmp/crocubot/500S/logs/quant_workflow-debug.log'
   root:
     level: 'DEBUG'
     handlers: ['file', 'console']
 quant_workflow:
   run_mode: 'backtest'
-  results_path: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/results'
+  results_path: '/tmp/crocubot/500S/results'
   fill_limit: 5
   trade_resample_rule: '15T'
   trade_history_ndays: 20
@@ -58,11 +58,11 @@ quant_workflow:
         prediction_market_minute: 60
         target_delta_ndays: 1
         target_market_minute: 60
-      train_path: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/train'
-      tensorboard_log_path: '/tmp/tensorboard'
+      train_path: '/tmp/crocubot/500S/train'
+      tensorboard_log_path: '/tmp/crocubot/500S/tensorboard'
       covariance_method: 'Ledoit'
       covariance_ndays: 9
-      model_save_path: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/model'
+      model_save_path: '/tmp/crocubot/500S/model'
       d_type: float32
       tf_type: 32
       random_seed: 0
@@ -106,9 +106,9 @@ quant_workflow:
     avg_function: 'median'
     fill_limit: 5
 zipline:
-  zipline_root: '/mnt/dc5c8724-9087-40ea-962b-554db4722cb0/20100101_20150101_500S/zipline_root'
+  zipline_root: '/home/rmason/Downloads/20100101_20150101_500S/zipline_root'
   start_date: '20110401'
-  end_date: '20141230'
+  end_date: '20110630'
   capital_base: 1000000.
   data_frequency: 'minute'
   data_bundle: 'test_bundle'

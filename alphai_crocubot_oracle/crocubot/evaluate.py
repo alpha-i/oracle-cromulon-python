@@ -9,6 +9,7 @@ import tensorflow as tf
 # FIXME once time_series is updated, uncomment the below and delete the copy in this file
 # from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
+# FIXME this classifier is now obsolete. We need to use alphai-finance instead.
 import alphai_crocubot_oracle.classifier as cl
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 

@@ -72,7 +72,7 @@ def compute_balanced_bin_edges(x, n_bins):
     n_xvals = len(x)
     xrange = np.linspace(0, n_xvals - 1, n_bins + 1)
     n_array = np.arange(n_xvals)
-    logging.info("Assigning", str(x.shape), "to", n_bins, "bins")
+    logging.info("Assigning {} to {}".format(x.shape, n_bins))
     return np.interp(xrange, n_array, np.sort(x))
 
 
