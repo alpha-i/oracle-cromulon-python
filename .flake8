@@ -1,11 +1,15 @@
 [flake8]
 ignore=E501
 exclude=
-    # No need to traverse our git directory
+    # src is where the pip installs other build related stuff in CI builds.
+    src/,
+    # we don't want the flake8 to look in third party.
+    alphai_crocubot_oracle/third_party/,
     doc/,
+    # No need to traverse our git directory
     .git/,
     __pycache__,
     build,
     dist,
 
-max-complexity = 10
+max-complexity = 14
