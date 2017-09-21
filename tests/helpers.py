@@ -106,7 +106,7 @@ def load_default_config():
         'resume_training': False,
 
         # Topology
-        'n_series': 1,
+        'n_series': 3,
         'n_features_per_series': 271,
         'n_forecasts': 1,
         'n_classification_bins': 12,
