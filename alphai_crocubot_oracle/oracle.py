@@ -119,6 +119,7 @@ class CrocubotOracle:
         logging.info('Training model on {}.'.format(
             execution_time,
         ))
+
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
         train_x, train_y = self._preprocess_training(train_x, train_y)
 
@@ -279,7 +280,8 @@ class CrocubotOracle:
             correlation_indices = neg_correlation_matrix.argsort(axis=1)  # Sort negative corr to get descending order
 
             for series_index in range(n_series):
-                assert correlation_indices[series_index, [0]] == series_index, 'A series should always be most correlated with itself!'
+                if correlation_indices[series_index, [0]] != series_index:
+                    raise ValueError('A series should always be most correlated with itself!')
                 sample_number = batch * n_series + series_index
                 for i in range(self._n_input_series):
                     corr_series_index = correlation_indices[series_index, i]
