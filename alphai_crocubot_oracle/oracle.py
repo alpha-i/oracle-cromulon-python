@@ -76,6 +76,7 @@ class CrocubotOracle:
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']
+        self._configuration = configuration
 
         self._train_file_manager = TrainFileManager(
             self._train_path,
@@ -117,12 +118,12 @@ class CrocubotOracle:
         self._topology = tp.Topology(
             layers=None,
             n_series=self._n_input_series,
-            n_features_per_series=self.train_x.shape[1],
+            n_features_per_series=train_x.shape[1],
             n_forecasts=self._n_forecasts,
-            n_classification_bins=self.configuration['n_classification_bins'],
-            layer_heights=self.configuration['layer_heights'],
-            layer_widths=self.configuration['layer_widths'],
-            activation_functions=self.configuration['activation_functions']
+            n_classification_bins=self._configuration['n_classification_bins'],
+            layer_heights=self._configuration['layer_heights'],
+            layer_widths=self._configuration['layer_widths'],
+            activation_functions=self._configuration['activation_functions']
         )
 
         logging.info('Initialised network topology: {}.'.format(self._topology.layers))
