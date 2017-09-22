@@ -90,15 +90,17 @@ class CrocubotOracle:
 
         if FLAGS.predict_single_shares:
             self._n_input_series = int(np.minimum(DEFAULT_N_CORRELATED_SERIES, configuration['n_series']))
+            self._n_forecasts = 1
         else:
             self._n_input_series = configuration['n_series']
+            self._n_forecasts = configuration['n_forecasts']
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         self._topology = tp.Topology(
             layers=None,
             n_series=self._n_input_series,
             n_features_per_series=configuration['n_features_per_series'],
-            n_forecasts=configuration['n_forecasts'],
+            n_forecasts=self._n_forecasts,
             n_classification_bins=configuration['n_classification_bins'],
             layer_heights=configuration['layer_heights'],
             layer_widths=configuration['layer_widths'],
