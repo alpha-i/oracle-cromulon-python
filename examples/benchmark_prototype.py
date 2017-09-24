@@ -204,6 +204,10 @@ def run_mnist_test(train_path, tensorboard_log_path):
     config['n_eval_passes'] = 8
 
     fl.set_training_flags(config)
+    # this flag is only used in benchmark.
+    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', config['n_training_samples_benchmark'],
+                                """Number of samples for benchmarking.""")
+    FLAGS._parse_flags()
     print("Epochs to evaluate:", FLAGS.n_epochs)
     run_timed_benchmark_mnist(series_name="mnist", flags=FLAGS, do_training=True)
 
@@ -228,6 +232,10 @@ def run_stochastic_test(train_path, tensorboard_log_path):
     config['n_retrain_epochs'] = 5
 
     fl.set_training_flags(config)
+    # this flag is only used in benchmark.
+    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', config['n_training_samples_benchmark'],
+                                """Number of samples for benchmarking.""")
+    FLAGS._parse_flags()
     print("Epochs to evaluate:", FLAGS.n_epochs)
     run_timed_benchmark_time_series(series_name='stochastic_walk', flags=FLAGS, do_training=True)
 

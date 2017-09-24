@@ -22,6 +22,7 @@ from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
+DEFAULT_N_CORRELATED_SERIES = 5
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
 
@@ -87,12 +88,19 @@ class CrocubotOracle:
 
         set_training_flags(configuration)  # Perhaps use separate config dict here?
 
+        if FLAGS.predict_single_shares:
+            self._n_input_series = int(np.minimum(DEFAULT_N_CORRELATED_SERIES, configuration['n_series']))
+            self._n_forecasts = 1
+        else:
+            self._n_input_series = configuration['n_series']
+            self._n_forecasts = configuration['n_forecasts']
+
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         self._topology = tp.Topology(
             layers=None,
-            n_series=configuration['n_series'],
+            n_series=self._n_input_series,
             n_features_per_series=configuration['n_features_per_series'],
-            n_forecasts=configuration['n_forecasts'],
+            n_forecasts=self._n_forecasts,
             n_classification_bins=configuration['n_classification_bins'],
             layer_heights=configuration['layer_heights'],
             layer_widths=configuration['layer_widths'],
@@ -113,6 +121,7 @@ class CrocubotOracle:
         logging.info('Training model on {}.'.format(
             execution_time,
         ))
+
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
         train_x, train_y = self._preprocess_training(train_x, train_y)
 
@@ -212,30 +221,72 @@ class CrocubotOracle:
     def _preprocess_training(self, train_x, train_y):
         """ Prepare training data to be fed into crocubot. """
 
-        train_x = np.squeeze(train_x, axis=3).astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
-        train_y = train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
-
-        if FLAGS.predict_single_shares:
-            n_feat_x = train_x.shape[1]
-            n_feat_y = train_y.shape[2]
-            train_x = np.reshape(train_x, [-1, n_feat_x, 1])
-            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+        train_x = np.squeeze(train_x, axis=3)
 
         # Gaussianise & Normalise of inputs (not necessary for outputs)
-        train_x = gaussianise(train_x, target_mean=0.0, target_sigma=1.0)
+        train_x = self.gaussianise_series(train_x)
 
-        return train_x, train_y
+        # Expand dataset if requested
+        if FLAGS.predict_single_shares:
+            train_x = self.expand_input_data(train_x)
+            n_feat_y = train_y.shape[2]
+            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+
+        return train_x.astype(np.float32), train_y.astype(np.float32)  # FIXME: prob do this in data transform, conditional on config file
 
     def _preprocess_prediction(self, predict_x):
         """ Prepare prediction to be fed into crocubot. """
 
         # FIXME: astype is a temporary fix, to be added to data transform
-        predict_x = np.squeeze(predict_x, axis=2).astype(np.float32)
+        predict_x = np.squeeze(predict_x, axis=2)
         predict_x = np.expand_dims(predict_x, axis=0)
 
+        predict_x = self.gaussianise_series(predict_x)
+
         if FLAGS.predict_single_shares:
-            predict_x = np.swapaxes(predict_x, axis1=0, axis2=2)
+            predict_x = self.expand_input_data(predict_x)
 
-        predict_x = gaussianise(predict_x, target_mean=0.0, target_sigma=1.0)
+        return predict_x.astype(np.float32)
 
-        return predict_x
+    def gaussianise_series(self, train_x):
+        """  Gaussianise each series within each batch - but don't normalise means
+
+        :param nparray train_x: Series in format [batches, features, series]. NB ensure all features are of the same kind
+        :return: nparray The same data but now each series is gaussianised
+        """
+
+        n_batches = train_x.shape[0]
+
+        for batch in range(n_batches):
+            train_x[batch, :, :] = gaussianise(train_x[batch, :, :], target_sigma=1.0)
+
+        return train_x
+
+    def expand_input_data(self, train_x):
+        """Converts to the form where each time series is predicted separately, though companion time series are included as auxilliary features
+        :param nparray train_x: The log returns in format [batches, features, series]. Ideally these have been gaussianised already
+        :return: nparray The expanded training dataset, still in the format [batches, features, series]
+        """
+
+        n_batches = train_x.shape[0]
+        n_feat_x = train_x.shape[1]
+        n_series = train_x.shape[2]
+        n_total_samples = n_batches * n_series
+
+        corr_train_x = np.zeros(shape=[n_total_samples, n_feat_x, self._n_input_series])
+
+        for batch in range(n_batches):
+            # Series ordering may differ between batches - so we need the correlations for each batch
+            batch_data = train_x[batch, :, :]
+            neg_correlation_matrix = - np.corrcoef(batch_data, rowvar=False)  # False since each col represents a variable
+            correlation_indices = neg_correlation_matrix.argsort(axis=1)  # Sort negative corr to get descending order
+
+            for series_index in range(n_series):
+                if correlation_indices[series_index, [0]] != series_index:
+                    raise ValueError('A series should always be most correlated with itself!')
+                sample_number = batch * n_series + series_index
+                for i in range(self._n_input_series):
+                    corr_series_index = correlation_indices[series_index, i]
+                    corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
+
+        return corr_train_x
