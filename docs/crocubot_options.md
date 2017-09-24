@@ -5,12 +5,11 @@ This page describes the keys required to define the Crocubot oracle.
 oracle_arguments:
   data_transformation:
     feature_config_list:
-      -
-        name: close
-        order: 'log-return'
-        normalization: standard
-        nbins: 12
-        is_target: True
+    - name: close
+      order: log-return
+      is_target: True
+      nbins: 6
+      normalization: standard
     exchange_name: 'NYSE'
     features_ndays: 10
     features_resample_minutes: 15
@@ -19,40 +18,72 @@ oracle_arguments:
     prediction_market_minute: 60
     target_delta_ndays: 1
     target_market_minute: 60
-  train_path: 'D:\Zipline\20100101_20150101_10S\train'
-  tensorboard_log_path: 'D:\Zipline\20100101_20150101_10S\tensorboard'
-  covariance_method: 'NERCOME'
+  n_training_samples_benchmark: 1000
+  train_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\train'
+  tensorboard_log_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\temp'
+  covariance_method: 'Ledoit'
   covariance_ndays: 9
-  model_save_path: 'D:\Zipline\20100101_20150101_10S\model'
+  model_save_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\model'
   d_type: float32
   tf_type: 32
   random_seed: 0
-  predict_single_shares: False
-  n_epochs: 10
-  n_retrain_epochs: 10
-  learning_rate: 2e-3
+  predict_single_shares: True
+  n_epochs: 200
+  n_retrain_epochs: 5
+  n_training_samples: 15800
+  learning_rate: 0.0001
   batch_size: 100
   cost_type: 'bayes'
-  n_train_passes: 30
-  n_eval_passes: 100
-  resume_training: False
-  n_series: 10
+  n_train_passes: 16
+  n_eval_passes: 16
+  resume_training: True
+  n_series: 1
   n_features_per_series: 271
-  n_forecasts: 10
-  n_classification_bins: 12
-  layer_heights: [3, 271]
-  layer_widths: [3, 3]
-  activation_functions: ["relu", "relu"]
+  n_forecasts: 1
+  n_classification_bins: 6
+  layer_heights:
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  - 100
+  layer_widths:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  activation_functions:
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
+  - relu
   INITIAL_ALPHA: 0.2
-  INITIAL_WEIGHT_UNCERTAINTY: 0.4
-  INITIAL_BIAS_UNCERTAINTY: 0.4
-  INITIAL_WEIGHT_DISPLACEMENT: 0.1
-  INITIAL_BIAS_DISPLACEMENT: 0.4
-  USE_PERFECT_NOISE: True
-  double_gaussian_weights_prior: False
-  wide_prior_std: 1.2
-  narrow_prior_std: 0.05
-  spike_slab_weighting: 0.5
+  INITIAL_WEIGHT_UNCERTAINTY: 0.01
+  INITIAL_BIAS_UNCERTAINTY: 0.01
+  INITIAL_WEIGHT_DISPLACEMENT: 0.2
+  INITIAL_BIAS_DISPLACEMENT: 0.01
+  USE_PERFECT_NOISE: False
+  double_gaussian_weights_prior: True
+  wide_prior_std: 1.5
+  narrow_prior_std: 1e-05
+  spike_slab_weighting: 0.25
 ```
 
 | key | description |
