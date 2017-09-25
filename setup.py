@@ -11,7 +11,7 @@ setup(
     packages=find_packages(exclude=['doc', 'tests*']),
     install_requires=[
         'alphai-time-series>=0.0.3',
-        'alphai-finance>=1.2.0',
+        'alphai-finance>=1.2.1',
         'alphai_covariance>=0.1.2',
         'alphai-data-sources>=1.0.1',
         'tensorflow>=1.3.0',
