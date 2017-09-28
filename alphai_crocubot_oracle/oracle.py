@@ -252,7 +252,6 @@ class CrocubotOracle:
 
         return train_y.astype(np.float32)  # FIXME:set float32 in data transform, conditional on config file
 
-
     def gaussianise_series(self, train_x):
         """  Gaussianise each series within each batch - but don't normalise means
 
