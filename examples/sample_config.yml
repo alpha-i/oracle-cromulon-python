@@ -15,13 +15,13 @@ logging:
       class : 'logging.FileHandler'
       formatter: 'formatter'
       level: 'DEBUG'
-      filename: '/tmp/quant_workflow-debug.log'
+      filename: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\logs\quant_workflow-debug.log'
   root:
     level: 'DEBUG'
     handlers: ['file', 'console']
 quant_workflow:
   run_mode: 'backtest'
-  results_path: '/Users/Christopher_old/Downloads/20100101_20150101_30S/croccubot_runs/results'
+  results_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\results'
   fill_limit: 5
   trade_resample_rule: '15T'
   trade_history_ndays: 20
@@ -30,7 +30,7 @@ quant_workflow:
   trade_minutes_offset: 60
   trade_horizon_ncycles: 1
   train_resample_rule: '15T'
-  train_history_ndays: 30
+  train_history_ndays: 250
   train_frequency: 'weekly'
   train_days_offset: 0
   train_minutes_offset: 60
@@ -49,7 +49,7 @@ quant_workflow:
             transformation:
               name: 'log-return'
             normalization: standard
-            nbins: 12
+            nbins: 6
             is_target: True
             name: close
           -
@@ -76,43 +76,75 @@ quant_workflow:
             nbins: 12
             is_target: False
         exchange_name: 'NYSE'
-        features_ndays: 5
+        features_ndays: 10
         features_resample_minutes: 15
         features_start_market_minute: 60
         prediction_frequency_ndays: 1
         prediction_market_minute: 60
         target_delta_ndays: 1
         target_market_minute: 60
-      train_path: '/Users/Christopher_old/Downloads/20100101_20150101_30S/croccubot_runs/results/train'
-      tensorboard_log_path: '/Users/Christopher_old/Downloads/20100101_20150101_30S/croccubot_runs/tensorboard'
+      n_training_samples_benchmark: 1000
+      train_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\train'
+      tensorboard_log_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\temp'
       covariance_method: 'Ledoit'
       covariance_ndays: 9
-      model_save_path: '/Users/Christopher_old/Downloads/20100101_20150101_30S/croccubot_runs/model'
+      model_save_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\model'
       d_type: float32
       tf_type: 32
       random_seed: 0
-      n_epochs: 2
+      predict_single_shares: True
+      n_epochs: 200
       n_retrain_epochs: 5
-      learning_rate: 1e-4
-      batch_size: 13
+      n_training_samples: 15800
+      learning_rate: 0.0001
+      batch_size: 100
       cost_type: 'bayes'
       n_train_passes: 16
       n_eval_passes: 16
       resume_training: True
-      n_series: 10
-      predict_single_shares: False
+      n_series: 1
       n_features_per_series: 271
-      n_forecasts: 10
-      n_classification_bins: 12
-      layer_heights: [7, 8, 9]
-      layer_widths: [11, 12, 13]
-      activation_functions: ["relu", "selu", "selu"]
-      INITIAL_ALPHA: 0.01
-      INITIAL_WEIGHT_UNCERTAINTY: 0.05
-      INITIAL_BIAS_UNCERTAINTY: 0.005
-      INITIAL_WEIGHT_DISPLACEMENT: 0.02
-      INITIAL_BIAS_DISPLACEMENT: 0.0005
-      USE_PERFECT_NOISE: True
+      n_forecasts: 1
+      n_classification_bins: 6
+      layer_heights:
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      - 100
+      layer_widths:
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      activation_functions:
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      - relu
+      INITIAL_ALPHA: 0.2
+      INITIAL_WEIGHT_UNCERTAINTY: 0.01
+      INITIAL_BIAS_UNCERTAINTY: 0.01
+      INITIAL_WEIGHT_DISPLACEMENT: 0.2
+      INITIAL_BIAS_DISPLACEMENT: 0.01
+      USE_PERFECT_NOISE: False
       double_gaussian_weights_prior: True
       wide_prior_std: 0.8
       narrow_prior_std: 0.0001
@@ -125,14 +157,14 @@ quant_workflow:
     max_annualised_std: 0.3
   universe:
     method: 'liquidity'
-    nassets: 10
-    ndays_window: 30
+    nassets: 400
+    ndays_window: 60
     update_frequency: 'monthly'
     avg_function: 'median'
     fill_limit: 5
     dropna: False
 zipline:
-  zipline_root: '/Users/Christopher_old/Downloads/20100101_20150101_30S/zipline_root'
+  zipline_root: 'D:\Zipline\20100101_20150101_500S\zipline_root'
   start_date: '20110401'
   end_date: '20110415'
   capital_base: 1000000.
