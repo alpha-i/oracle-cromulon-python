@@ -124,6 +124,7 @@ class CrocubotOracle:
         ))
 
         train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
+
         logging.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x)
         train_y = self._preprocess_outputs(train_y)
@@ -134,7 +135,6 @@ class CrocubotOracle:
         logging.info('Training labels of shape: {}.'.format(
             train_y.shape,
         ))
-
 
         resume_train_path = None
 
@@ -279,6 +279,7 @@ class CrocubotOracle:
         n_total_samples = n_batches * n_series
 
         corr_train_x = np.zeros(shape=[n_total_samples, n_feat_x, self._n_input_series])
+        found_duplicates = False
 
         for batch in range(n_batches):
             # Series ordering may differ between batches - so we need the correlations for each batch
@@ -288,12 +289,13 @@ class CrocubotOracle:
 
             for series_index in range(n_series):
                 if correlation_indices[series_index, [0]] != series_index:
-                    # diff_array = correlation_indices[:, 0] - np.linspace(0, n_series-1, n_series)
-                    logging.warning("correlation_indices: {}".format(-neg_correlation_matrix))
-                    # logging.warning('A series should always be most correlated with itself!')
+                    found_duplicates = True
                 sample_number = batch * n_series + series_index
                 for i in range(self._n_input_series):
                     corr_series_index = correlation_indices[series_index, i]
                     corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
+
+        if found_duplicates:
+            logging.warning('A series should always be most correlated with itself! Probably duplicate series in the data')
 
         return corr_train_x
