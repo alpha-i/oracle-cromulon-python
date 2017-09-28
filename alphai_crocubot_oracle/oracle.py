@@ -25,7 +25,6 @@ from alphai_crocubot_oracle.helpers import TrainFileManager
 DEFAULT_N_CORRELATED_SERIES = 5
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
-MAX_INPUT_AMPLITUDE = 6
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -77,6 +76,7 @@ class CrocubotOracle:
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']
+        self._configuration = configuration
 
         self._train_file_manager = TrainFileManager(
             self._train_path,
@@ -96,19 +96,7 @@ class CrocubotOracle:
             self._n_input_series = configuration['n_series']
             self._n_forecasts = configuration['n_forecasts']
 
-        # Topology can either be directly constructed from layers, or build from sequence of parameters
-        self._topology = tp.Topology(
-            layers=None,
-            n_series=self._n_input_series,
-            n_features_per_series=configuration['n_features_per_series'],
-            n_forecasts=self._n_forecasts,
-            n_classification_bins=configuration['n_classification_bins'],
-            layer_heights=configuration['layer_heights'],
-            layer_widths=configuration['layer_widths'],
-            activation_functions=configuration['activation_functions']
-        )
-
-        logging.info('Initialised network topology: {}.'.format(self._topology.layers))
+        self._topology = None
 
     def train(self, historical_universes, train_data, execution_time):
         """
@@ -128,6 +116,20 @@ class CrocubotOracle:
         logging.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x)
         train_y = self._preprocess_outputs(train_y)
+
+        # Topology can either be directly constructed from layers, or build from sequence of parameters
+        self._topology = tp.Topology(
+            layers=None,
+            n_series=self._n_input_series,
+            n_features_per_series=train_x.shape[1],
+            n_forecasts=self._n_forecasts,
+            n_classification_bins=self._configuration['n_classification_bins'],
+            layer_heights=self._configuration['layer_heights'],
+            layer_widths=self._configuration['layer_widths'],
+            activation_functions=self._configuration['activation_functions']
+        )
+
+        logging.info('Initialised network topology: {}.'.format(self._topology.layers))
 
         logging.info('Training features of shape: {}.'.format(
             train_x.shape,
@@ -221,22 +223,24 @@ class CrocubotOracle:
             raise ValueError('Prediction of means failed. Contains non-finite values.')
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
-
         # return means, historical_covariance, forecast_covariance
         return means, forecast_covariance
 
-    def _preprocess_inputs(self, train_x):
+    def _preprocess_inputs(self, train_x_dict):
         """ Prepare training data to be fed into crocubot. """
 
-        train_x = np.squeeze(train_x, axis=3)
+        numpy_arrays = []
+        for key, value in train_x_dict.items():
+            numpy_arrays.append(value)
+        train_x = np.concatenate(numpy_arrays, axis=1)
+
+        # for key, value in train_y.items():  # FIXME move this preprocess_outputs
+        #     train_y = value.astype(np.float32)
+
+        #train_x = np.squeeze(train_x, axis=3)
 
         # Gaussianise & Normalise of inputs (not necessary for outputs)
         # train_x = self.gaussianise_series(train_x)
-        train_x = 300 * train_x   # FIXME: hack 15min universal normalisation issue for now until alpha-i finance is updated
-        train_x = np.clip(train_x, -MAX_INPUT_AMPLITUDE, MAX_INPUT_AMPLITUDE)  # Prevent extreme outliers from entering network
-
-        logging.info("Sample features from rescaled train_x: {}".format(train_x[0, 0:10, 0]))
-        logging.info("x Shape: {}".format(train_x.shape))
 
         # Expand dataset if requested
         if FLAGS.predict_single_shares:
@@ -244,7 +248,10 @@ class CrocubotOracle:
 
         return train_x.astype(np.float32)  # FIXME: set float32 in data transform, conditional on config file
 
-    def _preprocess_outputs(self, train_y):
+    def _preprocess_outputs(self, train_y_dict):
+        # jut one loop below. a convoluted way of getting the only value out of a dictionary
+        for key, value in train_y_dict.items():  # FIXME move this preprocess_outputs
+            train_y = value
 
         if FLAGS.predict_single_shares:
             n_feat_y = train_y.shape[2]
