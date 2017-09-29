@@ -111,7 +111,8 @@ class CrocubotOracle:
             execution_time,
         ))
 
-        train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
+        training_dates = self._data_transformation.get_training_market_dates(train_data)
+        train_x, train_y = self._data_transformation.create_data(train_data, training_dates, historical_universes)
 
         logging.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x)
@@ -187,12 +188,13 @@ class CrocubotOracle:
         # Convert the array into a dataframe
         # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
+        current_market_open = self._data_transformation.get_current_market_date(predict_data)
+        # predict_x,_ = self._data_transformation.create_data(predict_data, current_market_open)
+        # Unified method not yet working for predictions
         predict_x = self._data_transformation.create_predict_data(predict_data)
-        # predict_x = np.expand_dims(predict_x, axis=0)  # Effective batch size of 1
 
         logging.info('Predicting mean values.')
         start_time = timer()
-
         predict_x = self._preprocess_inputs(predict_x, prediction=True)
 
         # Verify data is the correct shape
@@ -232,11 +234,13 @@ class CrocubotOracle:
         numpy_arrays = []
         for key, value in train_x_dict.items():
             numpy_arrays.append(value)
+
         if prediction:
             train_x = np.concatenate(numpy_arrays, axis=0)
             train_x = np.expand_dims(train_x, axis=0)
         else:
             train_x = np.concatenate(numpy_arrays, axis=1)
+
 
         # for key, value in train_y.items():  # FIXME move this preprocess_outputs
         #     train_y = value.astype(np.float32)

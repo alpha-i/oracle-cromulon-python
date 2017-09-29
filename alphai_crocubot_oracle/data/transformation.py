@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import numpy as np
 import pandas_market_calendars as mcal
+import pandas as pd
 
 from alphai_crocubot_oracle.data import MINUTES_IN_TRADING_DAY
 from alphai_crocubot_oracle.data.feature import FinancialFeature, get_feature_names, get_feature_max_ndays
@@ -187,6 +188,44 @@ class FinancialDataTransformation(DataTransformation):
         )
         return predict_x_dict
 
+    def create_data(self, raw_data_dict, simulated_market_dates, historical_universes=None):
+        """
+        Create x and y data
+        :param dict raw_data_dict: dictionary of dataframes containing features data.
+        :param market_open_list:
+        :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
+        :return (dict, dict): feature_x_dict, feature_x_dict
+        """
+
+        market_open_list = self._get_market_open_list(raw_data_dict)
+        data_x_list, data_y_list = [], []
+
+        for prediction_market_open in simulated_market_dates:
+            date_index = pd.Index(market_open_list).get_loc(prediction_market_open)
+            target_index = date_index + self.target_delta_ndays
+
+            if target_index < len(market_open_list):
+                target_market_open = market_open_list[target_index]
+            else:
+                target_market_open = None
+
+            feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes,
+                                                                 prediction_market_open, target_market_open)
+
+            if self.check_x_batch_dimensions(feature_x_dict):
+                data_x_list.append(feature_x_dict)
+                data_y_list.append(feature_y_dict)
+
+        x_dict = self.stack_samples_for_each_feature(data_x_list)
+        y_dict = self.stack_samples_for_each_feature(data_y_list)
+
+        target_feature = self.get_target_feature()
+        if target_feature.nbins:
+            y_dict = {target_feature.full_name: target_feature.classify_train_data_y(y_dict[list(y_dict.keys())[0]])}
+
+        return x_dict, y_dict
+
+
     def create_train_data(self, raw_data_dict, historical_universes):
         """
         Create x and y data for model train call.
@@ -205,7 +244,8 @@ class FinancialDataTransformation(DataTransformation):
             prediction_market_open = market_open_list[window + max_feature_ndays]
             target_market_open = market_open_list[window + window_width]
 
-            feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes, prediction_market_open, target_market_open)
+            feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes,
+                                                                 prediction_market_open, target_market_open)
 
             if self.check_x_batch_dimensions(feature_x_dict):
                 train_data_x_list.append(feature_x_dict)
@@ -231,10 +271,19 @@ class FinancialDataTransformation(DataTransformation):
         :return:
         """
 
-        prediction_date = prediction_market_open.date()
+        if historical_universes is None:
+            universe = None
+        else:
+            prediction_date = prediction_market_open.date()
+            universe = _get_universe_from_date(prediction_date, historical_universes)
+
         prediction_timestamp = prediction_market_open + timedelta(minutes=self.prediction_market_minute)
-        target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
-        universe = _get_universe_from_date(prediction_date, historical_universes)
+
+        if target_market_open is None:
+            target_timestamp = None
+        else:
+            target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
+
         return self.get_prediction_data_all_features(
             raw_data_dict,
             prediction_timestamp,
@@ -275,6 +324,18 @@ class FinancialDataTransformation(DataTransformation):
 
         return means, cov_matrix
 
+    def get_current_market_date(self, raw_data_dict):
+        return self._get_market_open_list(raw_data_dict)[:-1]
+
+    def get_training_market_dates(self, raw_data_dict):
+        """ Returns all dates on which we have both x and y data"""
+
+        max_feature_ndays = get_feature_max_ndays(self.features)
+
+        return self._get_market_open_list(raw_data_dict)[max_feature_ndays:-self.target_delta_ndays]
+
+
+
 
 def _get_universe_from_date(date, historical_universes):
     """
@@ -286,3 +347,11 @@ def _get_universe_from_date(date, historical_universes):
     universe_idx = historical_universes[(date >= historical_universes.start_date) &
                                         (date < historical_universes.end_date)].index[0]
     return historical_universes.assets[universe_idx]
+
+
+
+
+
+
+
+
