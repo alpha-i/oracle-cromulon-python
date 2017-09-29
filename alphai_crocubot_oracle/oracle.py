@@ -188,12 +188,12 @@ class CrocubotOracle:
         # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
         predict_x = self._data_transformation.create_predict_data(predict_data)
-        predict_x = np.expand_dims(predict_x, axis=0)  # Effective batch size of 1
+        # predict_x = np.expand_dims(predict_x, axis=0)  # Effective batch size of 1
 
         logging.info('Predicting mean values.')
         start_time = timer()
 
-        predict_x = self._preprocess_inputs(predict_x)
+        predict_x = self._preprocess_inputs(predict_x, prediction=True)
 
         # Verify data is the correct shape
         topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
@@ -226,13 +226,17 @@ class CrocubotOracle:
         # return means, historical_covariance, forecast_covariance
         return means, forecast_covariance
 
-    def _preprocess_inputs(self, train_x_dict):
+    def _preprocess_inputs(self, train_x_dict, prediction=False):
         """ Prepare training data to be fed into crocubot. """
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
             numpy_arrays.append(value)
-        train_x = np.concatenate(numpy_arrays, axis=1)
+        if prediction:
+            train_x = np.concatenate(numpy_arrays, axis=0)
+            train_x = np.expand_dims(train_x, axis=0)
+        else:
+            train_x = np.concatenate(numpy_arrays, axis=1)
 
         # for key, value in train_y.items():  # FIXME move this preprocess_outputs
         #     train_y = value.astype(np.float32)
