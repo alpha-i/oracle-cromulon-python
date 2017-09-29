@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from alphai_finance.data.transformation import FinancialDataTransformation
+from alphai_crocubot_oracle.data.transformation import FinancialDataTransformation
 from alphai_time_series.transform import gaussianise
 
 import alphai_crocubot_oracle.crocubot.train as crocubot
