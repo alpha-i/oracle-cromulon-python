@@ -1,4 +1,3 @@
-import itertools
 from abc import ABCMeta, abstractmethod
 from datetime import timedelta
 
@@ -7,6 +6,10 @@ import pandas_market_calendars as mcal
 
 from alphai_crocubot_oracle.data import MINUTES_IN_TRADING_DAY
 from alphai_crocubot_oracle.data.feature import FinancialFeature, get_feature_names, get_feature_max_ndays
+
+TOTAL_TICKS_FINANCIAL_FEATURES = ['open_value', 'high_value', 'low_value', 'close_value', 'volume_value']
+TOTAL_TICKS_M1_FINANCIAL_FEATURES = ['open_log-return', 'high_log-return', 'low_log-return', 'close_log-return',
+                                     'volume_log-return']
 
 
 class DataTransformation(metaclass=ABCMeta):
@@ -76,6 +79,22 @@ class FinancialDataTransformation(DataTransformation):
         total_ticks = ticks_in_a_day * self.features_ndays + intra_day_ticks + 1
         return int(total_ticks)
 
+    def check_x_batch_dimensions(self, feature_x_dict):
+        """
+        Evaluate if the x batch has the expected dimensions.
+        :param dict feature_x_dict: batch of x-features
+        :return bool: False if the dimensions are not those expected
+        """
+        correct_dimensions = True
+        for feature_full_name, feature_array in feature_x_dict.items():
+            if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
+                if feature_array.shape[0] != self.get_total_ticks_x():
+                    correct_dimensions = False
+            elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
+                if feature_array.shape[0] != self.get_total_ticks_x() - 1:
+                    correct_dimensions = False
+        return correct_dimensions
+
     def _financial_features_factory(self, feature_config_list):
         """
         Build list of financial features from list of incomplete feature-config dictionaries (class-specific).
@@ -139,10 +158,10 @@ class FinancialDataTransformation(DataTransformation):
                 prediction_timestamp,
                 target_timestamp,
             )
-            feature_x_dict['{}_{}'.format(feature.name, feature.transformation['name'])] = feature_x.values
+            feature_x_dict[feature.full_name] = feature_x.values
 
             if feature_y is not None:
-                feature_y_dict['{}_{}'.format(feature.name, feature.transformation['name'])] = feature_y.values
+                feature_y_dict[feature.full_name] = feature_y.values
 
         if len(feature_y_dict) > 0:
             assert len(feature_y_dict) == 1, 'Only one target is allowed'
@@ -155,18 +174,18 @@ class FinancialDataTransformation(DataTransformation):
         """
         Create x-data for model predict call.
         :param dict raw_data_dict: dictionary of dataframes containing features data.
-        :return ndarray: predict_x
+        :return ndarray: predict_x_dict
         """
         market_open_list = self._get_market_open_list(raw_data_dict)
         prediction_timestamp = market_open_list[-1] + timedelta(minutes=self.prediction_market_minute)
 
-        predict_x, _ = self.get_prediction_data_all_features(
+        predict_x_dict, _ = self.get_prediction_data_all_features(
             raw_data_dict,
             prediction_timestamp,
             universe=None,
             target_timestamp=None,
         )
-        return predict_x
+        return predict_x_dict
 
     def create_train_data(self, raw_data_dict, historical_universes):
         """
@@ -186,39 +205,26 @@ class FinancialDataTransformation(DataTransformation):
             prediction_timestamp = prediction_market_open + timedelta(minutes=self.prediction_market_minute)
             target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
             universe = _get_universe_from_date(prediction_date, historical_universes)
-            feature_x_array, feature_y_array = self.get_prediction_data_all_features(
+            feature_x_dict, feature_y_dict = self.get_prediction_data_all_features(
                 raw_data_dict,
                 prediction_timestamp,
                 universe,
                 target_timestamp,
             )
 
-            # Only add the example to the train data has the correct dimension
-            correct_dimensions = True
-            for key, value in feature_x_array.items():
-                if key in list(map(''.join, (itertools.product(['open_', 'high_', 'low_', 'close_', 'volume_'],
-                                                               ['value'])))):
-                    if value.shape[0] != self.get_total_ticks_x():
-                        correct_dimensions = False
-                elif key in list(map(''.join, (itertools.product(['open_', 'high_', 'low_', 'close_', 'volume_'],
-                                                                 ['log-return'])))):
-                    if value.shape[0] != self.get_total_ticks_x() - 1:
-                        correct_dimensions = False
-            if correct_dimensions:
-                train_data_x_list.append(feature_x_array)
-                train_data_y_list.append(feature_y_array)
+            if self.check_x_batch_dimensions(feature_x_dict):
+                train_data_x_list.append(feature_x_dict)
+                train_data_y_list.append(feature_y_dict)
 
-        feature_x_dict = self.stack_samples_for_each_feature(train_data_x_list)
-        feature_y_dict = self.stack_samples_for_each_feature(train_data_y_list)
+        train_x_dict = self.stack_samples_for_each_feature(train_data_x_list)
+        train_y_dict = self.stack_samples_for_each_feature(train_data_y_list)
 
         target_feature = self.get_target_feature()
         if target_feature.nbins:
-            feature_y_dict = {
-                '{}_{}'.format(target_feature.name, target_feature.transformation['name']):
-                target_feature.classify_train_data_y(feature_y_dict[list(feature_y_dict.keys())[0]])
-            }
+            train_y_dict = {target_feature.full_name:
+                            target_feature.classify_train_data_y(train_y_dict[list(train_y_dict.keys())[0]])}
 
-        return feature_x_dict, feature_y_dict
+        return train_x_dict, train_y_dict
 
     @staticmethod
     def stack_samples_for_each_feature(samples):

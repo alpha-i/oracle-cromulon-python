@@ -41,6 +41,10 @@ class FinancialFeature(object):
         self.scaler = None
         self.bin_distribution = None
 
+    @property
+    def full_name(self):
+        return '{}_{}'.format(self.name, self.transformation['name'])
+
     @staticmethod
     def _assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute, is_target):
         assert isinstance(name, str)
