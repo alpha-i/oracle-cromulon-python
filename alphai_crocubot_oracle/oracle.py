@@ -241,7 +241,7 @@ class CrocubotOracle:
         # for key, value in train_y.items():  # FIXME move this preprocess_outputs
         #     train_y = value.astype(np.float32)
 
-        #train_x = np.squeeze(train_x, axis=3)
+        # train_x = np.squeeze(train_x, axis=3)
 
         # Gaussianise & Normalise of inputs (not necessary for outputs)
         # train_x = self.gaussianise_series(train_x)

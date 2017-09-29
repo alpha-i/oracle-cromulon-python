@@ -48,8 +48,8 @@ class FinancialDataTransformation(DataTransformation):
     def _assert_input(configuration):
         assert isinstance(configuration['exchange_name'], str)
         assert isinstance(configuration['features_ndays'], int) and configuration['features_ndays'] >= 0
-        assert isinstance(configuration['features_resample_minutes'], int) and \
-               configuration['features_resample_minutes'] >= 0
+        assert isinstance(configuration['features_resample_minutes'], int) \
+            and configuration['features_resample_minutes'] >= 0
         assert isinstance(configuration['features_start_market_minute'], int)
         assert configuration['features_start_market_minute'] < MINUTES_IN_TRADING_DAY
         assert configuration['prediction_frequency_ndays'] >= 0
@@ -71,8 +71,8 @@ class FinancialDataTransformation(DataTransformation):
         :return int: expected total number of ticks for x data
         """
         ticks_in_a_day = np.floor(MINUTES_IN_TRADING_DAY / self.features_resample_minutes) + 1
-        intra_day_ticks = np.floor((self.prediction_market_minute - self.features_start_market_minute)
-                                   / self.features_resample_minutes)
+        intra_day_ticks = np.floor((self.prediction_market_minute - self.features_start_market_minute) /
+                                   self.features_resample_minutes)
         total_ticks = ticks_in_a_day * self.features_ndays + intra_day_ticks + 1
         return int(total_ticks)
 
@@ -213,8 +213,10 @@ class FinancialDataTransformation(DataTransformation):
 
         target_feature = self.get_target_feature()
         if target_feature.nbins:
-            feature_y_dict = {'{}_{}'.format(target_feature.name, target_feature.transformation['name']):
-                                  target_feature.classify_train_data_y(feature_y_dict[list(feature_y_dict.keys())[0]])}
+            feature_y_dict = {
+                '{}_{}'.format(target_feature.name, target_feature.transformation['name']):
+                target_feature.classify_train_data_y(feature_y_dict[list(feature_y_dict.keys())[0]])
+            }
 
         return feature_x_dict, feature_y_dict
 
@@ -230,10 +232,6 @@ class FinancialDataTransformation(DataTransformation):
             stacked_samples[feature_name] = np.stack([sample[feature_name] for sample in samples])
 
         return stacked_samples
-
-
-
-
 
     def inverse_transform_single_predict_y(self, predict_y):
         """

@@ -203,5 +203,3 @@ def mock_ml_model_multi_pass(predict_x, n_passes, nbins):
         return predict_y
     else:
         return np.ones(shape=(n_passes, n_series)) * factors
-
-

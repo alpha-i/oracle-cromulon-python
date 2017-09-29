@@ -161,5 +161,3 @@ def extract_point_estimates(bin_centres, pdf_array):
         points[i] = np.sum(bin_centres * pdf)
 
     return points
-
-

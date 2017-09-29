@@ -97,4 +97,3 @@ class TestClassifier(unittest.TestCase):
         points = [point_a, point_b]
 
         self.assertTrue(np.allclose(estimated_points, points, rtol=RTOL, atol=ATOL))
-

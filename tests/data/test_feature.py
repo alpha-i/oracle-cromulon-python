@@ -118,8 +118,7 @@ class TestFinancialFeature(TestCase):
         processed_prediction_data_x = self.feature_3.process_prediction_data_x(data_frame_x)
         expected_normalized_log_returns = \
             preprocessing.StandardScaler().fit_transform(
-                np.log(data_frame_x.pct_change() + 1).
-                    replace([np.inf, -np.inf], np.nan).dropna())
+                np.log(data_frame_x.pct_change() + 1).replace([np.inf, -np.inf], np.nan).dropna())
         assert_almost_equal(processed_prediction_data_x, expected_normalized_log_returns, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_x_4(self):
@@ -163,7 +162,7 @@ class TestFinancialFeature(TestCase):
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
         data_frame_y = data_frame.iloc[-1]
-        _ = self.feature_1.process_prediction_data_x(data_frame_x)
+        self.feature_1.process_prediction_data_x(data_frame_x)
         processed_prediction_data_y = \
             self.feature_1.process_prediction_data_y(data_frame_y, prediction_reference_data)
         assert processed_prediction_data_y.equals(data_frame_y)
@@ -173,7 +172,7 @@ class TestFinancialFeature(TestCase):
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
         data_frame_y = data_frame.iloc[-1]
-        _ = self.feature_2.process_prediction_data_x(data_frame_x)
+        self.feature_2.process_prediction_data_x(data_frame_x)
         processed_prediction_data_y = \
             self.feature_2.process_prediction_data_y(data_frame_y, prediction_reference_data)
         expected_log_returns = np.log(data_frame_y / prediction_reference_data)
@@ -184,7 +183,7 @@ class TestFinancialFeature(TestCase):
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
         data_frame_y = data_frame.iloc[-1]
-        _ = self.feature_3.process_prediction_data_x(data_frame_x)
+        self.feature_3.process_prediction_data_x(data_frame_x)
         processed_prediction_data_y = \
             self.feature_3.process_prediction_data_y(data_frame_y, prediction_reference_data)
 
@@ -269,13 +268,13 @@ class TestFinancialFeature(TestCase):
             classified_train_y = feature.classify_train_data_y(SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]])
             if feature.nbins:
                 assert isinstance(feature.bin_distribution, BinDistribution)
-                assert classified_train_y.shape == \
-                       SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]].shape + (feature.nbins,)
+                assert classified_train_y.shape \
+                    == SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]].shape + (feature.nbins,)
                 assert_almost_equal(
                     classified_train_y.sum(axis=1),
                     (SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]].shape[1] /
-                    feature.nbins * np.ones(shape=(len(SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]]),
-                                                   feature.nbins))),
+                     feature.nbins * np.ones(shape=(len(SAMPLE_TRAIN_LABELS[list(SAMPLE_TRAIN_LABELS.keys())[0]]),
+                                                    feature.nbins))),
                     ASSERT_NDECIMALS)
             else:
                 assert_almost_equal(classified_train_y,
@@ -303,7 +302,7 @@ class TestFinancialFeature(TestCase):
                 with pytest.raises(AttributeError):
                     feature.inverse_transform_single_predict_y(predict_y)
 
-            _ = feature.process_prediction_data_x(data_frame_x)
+            feature.process_prediction_data_x(data_frame_x)
             inverse_transf_predict_y = feature.inverse_transform_single_predict_y(predict_y)
 
             if feature.normalization:
@@ -324,9 +323,9 @@ class TestFinancialFeature(TestCase):
             n_series * [0.07666667],
             n_series * [0.08166667],
             n_series * [0.10185185],
-            ]
+        ]
         for idx, feature in enumerate(feature_list):
-            _ = feature.classify_train_data_y(train_y[list(train_y.keys())[0]])
+            feature.classify_train_data_y(train_y[list(train_y.keys())[0]])
             if feature.nbins:
                 predict_y = np.zeros((n_passes, n_series, feature.nbins))
                 for i in range(n_passes):
@@ -349,18 +348,18 @@ class TestFinancialFeature(TestCase):
         expected_means_list = [
             n_series * [0.5],
             n_series * [0.5],
-            [0.50059,  0.50049,  0.49958,  0.50104,  0.50002],
-            ]
+            [0.50059, 0.50049, 0.49958, 0.50104, 0.50002],
+        ]
         expected_variances_list = [
             n_series * [0.07666667],
             n_series * [0.08166667],
-            [2.93159848e-06,   2.67647671e-06, 3.08804282e-06, 5.03376454e-06, 3.76759147e-06],
-            ]
+            [2.93159848e-06, 2.67647671e-06, 3.08804282e-06, 5.03376454e-06, 3.76759147e-06],
+        ]
         for idx, feature in enumerate(feature_list):
-            _ = feature.classify_train_data_y(train_y[list(train_y.keys())[0]])
+            feature.classify_train_data_y(train_y[list(train_y.keys())[0]])
 
             data_frame_x = sample_hourly_ohlcv_data_dict[feature.name]
-            _ = feature.process_prediction_data_x(data_frame_x)
+            feature.process_prediction_data_x(data_frame_x)
 
             if feature.nbins:
                 predict_y = np.zeros((n_passes, n_series, feature.nbins))
@@ -425,7 +424,7 @@ def test_single_financial_features_factory_wrong_keys():
         'ndays': 5,
         'start_market_minute': 1,
         'is_target': False,
-        }
+    }
 
     with pytest.raises(AssertionError):
         financial_features_factory(feature_dict)

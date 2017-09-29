@@ -95,7 +95,7 @@ class FinancialFeature(object):
 
             assert direction.shape == volatility.shape, ' direction and volatility need same shape in KER'
 
-            processed_prediction_data_x = direction/volatility
+            processed_prediction_data_x = direction / volatility
             processed_prediction_data_x.dropna(axis=0, inplace=True)
 
         if self.normalization:
@@ -152,8 +152,8 @@ class FinancialFeature(object):
         market_open_list = self.exchange_calendar.schedule(schedule_start_date, schedule_end_date).market_open
         prediction_market_open = market_open_list[prediction_timestamp.date()]
         prediction_market_open_idx = np.argwhere(market_open_list == prediction_market_open).flatten()[0]
-        start_timestamp_x = market_open_list[prediction_market_open_idx - self.ndays] + \
-                            timedelta(minutes=self.start_market_minute)
+        start_timestamp_x = market_open_list[prediction_market_open_idx - self.ndays] + timedelta(
+            minutes=self.start_market_minute)
         return start_timestamp_x
 
     def _index_selection_x(self, date_time_index, prediction_timestamp):
@@ -287,16 +287,15 @@ def single_financial_feature_factory(feature_config):
     assert isinstance(feature_config, dict)
 
     return FinancialFeature(
-            feature_config['name'],
-            feature_config['transformation'],
-            feature_config['normalization'],
-            feature_config['nbins'],
-            feature_config['ndays'],
-            feature_config['resample_minutes'],
-            feature_config['start_market_minute'],
-            feature_config['is_target'],
-            mcal.get_calendar(feature_config['exchange_name']),
-        )
+        feature_config['name'],
+        feature_config['transformation'],
+        feature_config['normalization'],
+        feature_config['nbins'],
+        feature_config['ndays'],
+        feature_config['resample_minutes'],
+        feature_config['start_market_minute'],
+        feature_config['is_target'],
+        mcal.get_calendar(feature_config['exchange_name']))
 
 
 def financial_features_factory(feature_config_list):
