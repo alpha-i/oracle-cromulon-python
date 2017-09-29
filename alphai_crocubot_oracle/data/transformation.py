@@ -197,10 +197,14 @@ class FinancialDataTransformation(DataTransformation):
         market_open_list = self._get_market_open_list(raw_data_dict)[:-1]
         max_feature_ndays = get_feature_max_ndays(self.features)
 
+        window_width = max_feature_ndays + self.target_delta_ndays
+        n_sliding_windows = len(market_open_list) - window_width
+
         train_data_x_list, train_data_y_list = [], []
-        for prediction_market_open, target_market_open in \
-                (zip(market_open_list[max_feature_ndays:-self.target_delta_ndays],
-                     market_open_list[max_feature_ndays + self.target_delta_ndays:])):
+
+        for window in range(n_sliding_windows):
+            prediction_market_open = market_open_list[window + max_feature_ndays]
+            target_market_open = market_open_list[window + window_width]
             prediction_date = prediction_market_open.date()
             prediction_timestamp = prediction_market_open + timedelta(minutes=self.prediction_market_minute)
             target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
