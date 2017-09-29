@@ -217,14 +217,17 @@ class FinancialDataTransformation(DataTransformation):
                 data_y_list.append(feature_y_dict)
 
         x_dict = self.stack_samples_for_each_feature(data_x_list)
-        y_dict = self.stack_samples_for_each_feature(data_y_list)
 
-        target_feature = self.get_target_feature()
-        if target_feature.nbins:
-            y_dict = {target_feature.full_name: target_feature.classify_train_data_y(y_dict[list(y_dict.keys())[0]])}
+        if target_market_open is None:
+            y_dict = None
+        else:
+            y_dict = self.stack_samples_for_each_feature(data_y_list)
+            target_feature = self.get_target_feature()
+            if target_feature.nbins:
+                y_dict = {
+                    target_feature.full_name: target_feature.classify_train_data_y(y_dict[list(y_dict.keys())[0]])}
 
         return x_dict, y_dict
-
 
     def create_train_data(self, raw_data_dict, historical_universes):
         """
@@ -299,8 +302,13 @@ class FinancialDataTransformation(DataTransformation):
         feature_names = samples[0].keys()
 
         stacked_samples = {}
+
         for feature_name in feature_names:
-            stacked_samples[feature_name] = np.stack([sample[feature_name] for sample in samples])
+            if len(samples) == 1:
+                sample = samples[0]
+                stacked_samples[feature_name] = np.expand_dims(sample[feature_name], axis=0)
+            else:
+                stacked_samples[feature_name] = np.stack([sample[feature_name] for sample in samples])
 
         return stacked_samples
 
@@ -325,7 +333,7 @@ class FinancialDataTransformation(DataTransformation):
         return means, cov_matrix
 
     def get_current_market_date(self, raw_data_dict):
-        return self._get_market_open_list(raw_data_dict)[:-1]
+        return [self._get_market_open_list(raw_data_dict)[-1]]
 
     def get_training_market_dates(self, raw_data_dict):
         """ Returns all dates on which we have both x and y data"""
@@ -333,8 +341,6 @@ class FinancialDataTransformation(DataTransformation):
         max_feature_ndays = get_feature_max_ndays(self.features)
 
         return self._get_market_open_list(raw_data_dict)[max_feature_ndays:-self.target_delta_ndays]
-
-
 
 
 def _get_universe_from_date(date, historical_universes):
@@ -347,11 +353,3 @@ def _get_universe_from_date(date, historical_universes):
     universe_idx = historical_universes[(date >= historical_universes.start_date) &
                                         (date < historical_universes.end_date)].index[0]
     return historical_universes.assets[universe_idx]
-
-
-
-
-
-
-
-

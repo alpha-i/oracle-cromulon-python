@@ -189,20 +189,20 @@ class CrocubotOracle:
         # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
         current_market_open = self._data_transformation.get_current_market_date(predict_data)
-        # predict_x,_ = self._data_transformation.create_data(predict_data, current_market_open)
-        # Unified method not yet working for predictions
-        predict_x = self._data_transformation.create_predict_data(predict_data)
+        predict_x, _ = self._data_transformation.create_data(predict_data, current_market_open)
 
         logging.info('Predicting mean values.')
         start_time = timer()
-        predict_x = self._preprocess_inputs(predict_x, prediction=True)
+        predict_x = self._preprocess_inputs(predict_x)
 
         # Verify data is the correct shape
         topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
+
         if predict_x.shape[-2:] != topology_shape:
             raise ValueError('Data shape' + str(predict_x.shape) + " doesnt match network input " + str(topology_shape))
 
         predict_y = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=latest_train)
+
         end_time = timer()
         eval_time = end_time - start_time
         logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
@@ -228,27 +228,14 @@ class CrocubotOracle:
         # return means, historical_covariance, forecast_covariance
         return means, forecast_covariance
 
-    def _preprocess_inputs(self, train_x_dict, prediction=False):
+    def _preprocess_inputs(self, train_x_dict):
         """ Prepare training data to be fed into crocubot. """
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
             numpy_arrays.append(value)
 
-        if prediction:
-            train_x = np.concatenate(numpy_arrays, axis=0)
-            train_x = np.expand_dims(train_x, axis=0)
-        else:
-            train_x = np.concatenate(numpy_arrays, axis=1)
-
-
-        # for key, value in train_y.items():  # FIXME move this preprocess_outputs
-        #     train_y = value.astype(np.float32)
-
-        # train_x = np.squeeze(train_x, axis=3)
-
-        # Gaussianise & Normalise of inputs (not necessary for outputs)
-        # train_x = self.gaussianise_series(train_x)
+        train_x = np.concatenate(numpy_arrays, axis=1)
 
         # Expand dataset if requested
         if FLAGS.predict_single_shares:
