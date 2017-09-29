@@ -199,22 +199,13 @@ class FinancialDataTransformation(DataTransformation):
 
         window_width = max_feature_ndays + self.target_delta_ndays
         n_sliding_windows = len(market_open_list) - window_width
-
         train_data_x_list, train_data_y_list = [], []
 
         for window in range(n_sliding_windows):
             prediction_market_open = market_open_list[window + max_feature_ndays]
             target_market_open = market_open_list[window + window_width]
-            prediction_date = prediction_market_open.date()
-            prediction_timestamp = prediction_market_open + timedelta(minutes=self.prediction_market_minute)
-            target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
-            universe = _get_universe_from_date(prediction_date, historical_universes)
-            feature_x_dict, feature_y_dict = self.get_prediction_data_all_features(
-                raw_data_dict,
-                prediction_timestamp,
-                universe,
-                target_timestamp,
-            )
+
+            feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes, prediction_market_open, target_market_open)
 
             if self.check_x_batch_dimensions(feature_x_dict):
                 train_data_x_list.append(feature_x_dict)
@@ -229,6 +220,27 @@ class FinancialDataTransformation(DataTransformation):
                             target_feature.classify_train_data_y(train_y_dict[list(train_y_dict.keys())[0]])}
 
         return train_x_dict, train_y_dict
+
+    def build_features(self, raw_data_dict, historical_universes, prediction_market_open, target_market_open):
+        """ Creates dictionaries of features and labels for a single window
+
+        :param dict raw_data_dict: dictionary of dataframes containing features data.
+        :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
+        :param prediction_market_open:
+        :param target_market_open:
+        :return:
+        """
+
+        prediction_date = prediction_market_open.date()
+        prediction_timestamp = prediction_market_open + timedelta(minutes=self.prediction_market_minute)
+        target_timestamp = target_market_open + timedelta(minutes=self.target_market_minute)
+        universe = _get_universe_from_date(prediction_date, historical_universes)
+        return self.get_prediction_data_all_features(
+            raw_data_dict,
+            prediction_timestamp,
+            universe,
+            target_timestamp,
+        )
 
     @staticmethod
     def stack_samples_for_each_feature(samples):
