@@ -131,7 +131,8 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
                     batch_x, batch_y = extract_batch(train_x, train_y, batch_number)
 
                 if batch_number == 0 and epoch == 0:
-                    logging.info("Training {} batches of size {} and {}".format(n_batches, batch_x.shape, batch_y.shape))
+                    logging.info("Training {} batches of size {} and {}"
+                                 .format(n_batches, batch_x.shape, batch_y.shape))
 
                 _, batch_loss, summary_results = sess.run([training_operator, cost_operator, all_summaries],
                                                           feed_dict={x: batch_x, y: batch_y})

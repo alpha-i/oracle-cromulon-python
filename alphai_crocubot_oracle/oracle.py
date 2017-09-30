@@ -49,7 +49,8 @@ class CrocubotOracle:
             covariance_config:
                 covariance_method: The name of the covariance estimation method.
                 covariance_ndays: The number of previous days those are needed for the covariance estimate (int).
-                use_forecast_covariance: (bool) Whether to use the covariance of the forecast. (If False uses historical data)
+                use_forecast_covariance: (bool) Whether to use the covariance of the forecast.
+                    (If False uses historical data)
             network_config:
                 n_series: Number of input time series
                 n_features_per_series: Number of inputs associated with each time series
@@ -186,7 +187,8 @@ class CrocubotOracle:
         if not np.isfinite(cov).all():
             raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
         # Convert the array into a dataframe
-        # historical_covariance = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
+        # historical_covariance \
+        #     = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
         current_market_open = self._data_transformation.get_current_market_date(predict_data)
         predict_x, _ = self._data_transformation.create_data(predict_data, current_market_open)
@@ -257,7 +259,8 @@ class CrocubotOracle:
     def gaussianise_series(self, train_x):
         """  Gaussianise each series within each batch - but don't normalise means
 
-        :param nparray train_x: Series in format [batches, features, series]. NB ensure all features are of the same kind
+        :param nparray train_x: Series in format [batches, features, series]. NB ensure all features
+            are of the same kind
         :return: nparray The same data but now each series is gaussianised
         """
 
@@ -269,8 +272,10 @@ class CrocubotOracle:
         return train_x
 
     def expand_input_data(self, train_x):
-        """Converts to the form where each time series is predicted separately, though companion time series are included as auxilliary features
-        :param nparray train_x: The log returns in format [batches, features, series]. Ideally these have been gaussianised already
+        """Converts to the form where each time series is predicted separately, though companion time series are
+            included as auxilliary features
+        :param nparray train_x: The log returns in format [batches, features, series]. Ideally these have been
+            Gaussianised already
         :return: nparray The expanded training dataset, still in the format [batches, features, series]
         """
 
@@ -285,7 +290,7 @@ class CrocubotOracle:
         for batch in range(n_batches):
             # Series ordering may differ between batches - so we need the correlations for each batch
             batch_data = train_x[batch, :, :]
-            neg_correlation_matrix = - np.corrcoef(batch_data, rowvar=False)  # False since each col represents a variable
+            neg_correlation_matrix = - np.corrcoef(batch_data, rowvar=False)  # False since each col represents a var
             correlation_indices = neg_correlation_matrix.argsort(axis=1)  # Sort negative corr to get descending order
 
             for series_index in range(n_series):
@@ -297,6 +302,7 @@ class CrocubotOracle:
                     corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
 
         if found_duplicates:
-            logging.warning('A series should always be most correlated with itself! Probably duplicate series in the data')
+            logging.warning('A series should always be most correlated with itself!'
+                            ' Probably duplicate series in the data')
 
         return corr_train_x
