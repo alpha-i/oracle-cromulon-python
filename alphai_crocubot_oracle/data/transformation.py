@@ -171,22 +171,16 @@ class FinancialDataTransformation(DataTransformation):
 
         return feature_x_dict, feature_y_dict
 
-    def create_predict_data(self, raw_data_dict):
-        """
-        Create x-data for model predict call.
-        :param dict raw_data_dict: dictionary of dataframes containing features data.
-        :return ndarray: predict_x_dict
-        """
-        market_open_list = self._get_market_open_list(raw_data_dict)
-        prediction_timestamp = market_open_list[-1] + timedelta(minutes=self.prediction_market_minute)
+    def create_train_data(self, raw_data_dict, historical_universes):
 
-        predict_x_dict, _ = self.get_prediction_data_all_features(
-            raw_data_dict,
-            prediction_timestamp,
-            universe=None,
-            target_timestamp=None,
-        )
-        return predict_x_dict
+        training_dates = self._data_transformation.get_training_market_dates(raw_data_dict)
+        return self.create_data(self, raw_data_dict, training_dates, historical_universes)
+
+    def create_predict_data(self, raw_data_dict):
+
+        current_market_open = self.get_current_market_date(raw_data_dict)
+        predict_x, _ = self.create_data(raw_data_dict, simulated_market_dates=current_market_open)
+        return predict_x
 
     def create_data(self, raw_data_dict, simulated_market_dates, historical_universes=None):
         """
@@ -226,43 +220,12 @@ class FinancialDataTransformation(DataTransformation):
             if target_feature.nbins:
                 y_dict = {
                     target_feature.full_name: target_feature.classify_train_data_y(y_dict[list(y_dict.keys())[0]])}
+            else:
+                raise NotImplementedError('If not using a classifier, we need to implement an inverse y transformation.'
+                                          ' Take care with the discintion between the '
+                                          'timescale for the x and y log returns')
 
         return x_dict, y_dict
-
-    def create_train_data(self, raw_data_dict, historical_universes):
-        """
-        Create x and y data for model train call.
-        :param dict raw_data_dict: dictionary of dataframes containing features data.
-        :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
-        :return (dict, dict): feature_x_dict, feature_x_dict
-        """
-        market_open_list = self._get_market_open_list(raw_data_dict)[:-1]
-        max_feature_ndays = get_feature_max_ndays(self.features)
-
-        window_width = max_feature_ndays + self.target_delta_ndays
-        n_sliding_windows = len(market_open_list) - window_width
-        train_data_x_list, train_data_y_list = [], []
-
-        for window in range(n_sliding_windows):
-            prediction_market_open = market_open_list[window + max_feature_ndays]
-            target_market_open = market_open_list[window + window_width]
-
-            feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes,
-                                                                 prediction_market_open, target_market_open)
-
-            if self.check_x_batch_dimensions(feature_x_dict):
-                train_data_x_list.append(feature_x_dict)
-                train_data_y_list.append(feature_y_dict)
-
-        train_x_dict = self.stack_samples_for_each_feature(train_data_x_list)
-        train_y_dict = self.stack_samples_for_each_feature(train_data_y_list)
-
-        target_feature = self.get_target_feature()
-        if target_feature.nbins:
-            train_y_dict = {target_feature.full_name:
-                            target_feature.classify_train_data_y(train_y_dict[list(train_y_dict.keys())[0]])}
-
-        return train_x_dict, train_y_dict
 
     def build_features(self, raw_data_dict, historical_universes, prediction_market_open, target_market_open):
         """ Creates dictionaries of features and labels for a single window

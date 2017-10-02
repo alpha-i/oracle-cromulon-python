@@ -40,8 +40,20 @@ class FinancialFeature(object):
         self.is_target = is_target
         self.exchange_calendar = exchange_calendar
 
-        self.scaler = None
         self.bin_distribution = None
+        self.has_fitted_scaler = False
+
+        if self.normalization:
+            if self.normalization == 'robust':
+                self.scaler = RobustScaler()
+            elif self.normalization == 'min_max':
+                self.scaler = MinMaxScaler()
+            elif self.normalization == 'standard':
+                self.scaler = StandardScaler()
+            else:
+                raise NotImplementedError('Requested normalisation not supported: {}'.format(self.normalization))
+        else:
+            self.scaler = None
 
     @property
     def full_name(self):
@@ -106,17 +118,11 @@ class FinancialFeature(object):
             processed_prediction_data_x = direction / volatility
             processed_prediction_data_x.dropna(axis=0, inplace=True)
 
-        if self.normalization:
-            if self.normalization == 'robust':
-                self.scaler = RobustScaler()
-            elif self.normalization == 'min_max':
-                self.scaler = MinMaxScaler()
-            elif self.normalization == 'standard':
-                self.scaler = StandardScaler()
-            else:
-                raise NotImplementedError('Requested normalisation not supported: {}'.format(self.normalization))
-
+        if self.has_fitted_scaler:
+            processed_prediction_data_x.loc[:, :] = self.scaler.transform(processed_prediction_data_x)
+        elif self.scaler is not None:
             processed_prediction_data_x.loc[:, :] = self.scaler.fit_transform(processed_prediction_data_x)
+            self.has_fitted_scaler = True
 
         return processed_prediction_data_x
 
@@ -134,9 +140,10 @@ class FinancialFeature(object):
         if self.transformation['name'] == 'log-return':
             processed_prediction_data_y = np.log(prediction_data_y / prediction_reference_data). \
                 replace([np.inf, -np.inf], np.nan).dropna()
+
         if self.scaler:
-            reshaped_processed_data = self.scaler.transform(processed_prediction_data_y.values.reshape(1, -1))
-            processed_prediction_data_y.loc[:] = reshaped_processed_data.squeeze()
+            if self.nbins is None:
+                raise NotImplementedError('y scaling is not required for classifiers, but is required for regression')
 
         return processed_prediction_data_y
 

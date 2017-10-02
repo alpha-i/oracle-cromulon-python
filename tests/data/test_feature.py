@@ -114,6 +114,7 @@ class TestFinancialFeature(TestCase):
         assert_almost_equal(processed_prediction_data_x, expected_log_returns.values, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_x_3(self):
+        self.has_fitted_scalar=False
         data_frame_x = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         processed_prediction_data_x = self.feature_3.process_prediction_data_x(data_frame_x)
         expected_normalized_log_returns = \

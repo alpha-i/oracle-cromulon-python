@@ -108,36 +108,30 @@ class TestFinancialDataTransformation(TestCase):
             assert feature_x_dict[key].shape == (expected_n_time_dict[key], expected_n_symbols)
         assert feature_y_dict is None
 
-    def test_create_predict_data(self):
-        predict_x = self.fin_data_transf_nobins.create_predict_data(sample_hourly_ohlcv_data_dict)
-
-        expected_n_time_dict = {'open_value': 15, 'high_log-return': 14, 'close_log-return': 14}
-        expected_n_symbols = 5
-        expected_n_features = 3
-
-        assert len(predict_x.keys()) == expected_n_features
-        for key in predict_x.keys():
-            assert predict_x[key].shape == (expected_n_time_dict[key], expected_n_symbols)
-
-    def test_create_train_data(self):
-        expected_n_samples = 29
+    def test_create_data(self):
+        expected_n_samples = 30
         expected_n_time_dict = {'open_value': 15, 'high_log-return': 14, 'close_log-return': 14}
         expected_n_symbols = 4
         expected_n_features = 3
         expected_n_bins = 5
 
-        train_x, train_y = self.fin_data_transf_nobins.create_train_data(sample_hourly_ohlcv_data_dict,
+        training_dates = self.fin_data_transf_nobins.get_training_market_dates(sample_hourly_ohlcv_data_dict)
+        train_x, train_y = self.fin_data_transf_nobins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
                                                                          sample_historical_universes)
+
+        print("training_dates new", training_dates)
 
         assert len(train_x.keys()) == expected_n_features
 
         for key in train_x.keys():
+            print("training_shape:", train_x[key].shape)
             assert train_x[key].shape == (expected_n_samples, expected_n_time_dict[key], expected_n_symbols)
 
         for key in train_y.keys():
+            print("trainingy_shape:", train_y[key].shape)
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols,)
 
-        train_x, train_y = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict,
+        train_x, train_y = self.fin_data_transf_bins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
                                                                        sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
@@ -159,7 +153,9 @@ class TestFinancialDataTransformation(TestCase):
     def test_inverse_transform_multi_predict_y(self):
         n_passes = 10
         n_bins = 5
-        predict_x = self.fin_data_transf_nobins.create_predict_data(sample_hourly_ohlcv_data_dict)
+
+        current_market_open = self.fin_data_transf_nobins.get_current_market_date(sample_hourly_ohlcv_data_dict)
+        predict_x, _ = self.fin_data_transf_nobins.create_data(sample_hourly_ohlcv_data_dict, current_market_open)
         predict_y = mock_ml_model_multi_pass(predict_x, n_passes, None)
         all_target_means, cov_matrix = self.fin_data_transf_nobins.inverse_transform_multi_predict_y(predict_y)
 
@@ -169,7 +165,7 @@ class TestFinancialDataTransformation(TestCase):
         assert_almost_equal(cov_matrix, expected_cov_matrix, ASSERT_NDECIMALS)
 
         _, _ = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict, sample_historical_universes)
-        predict_x = self.fin_data_transf_bins.create_predict_data(sample_hourly_ohlcv_data_dict)
+        predict_x, _ = self.fin_data_transf_bins.create_data(sample_hourly_ohlcv_data_dict, current_market_open)
         predict_y = mock_ml_model_multi_pass(predict_x, n_passes, n_bins)
         all_target_means, cov_matrix = self.fin_data_transf_bins.inverse_transform_multi_predict_y(predict_y)
 
