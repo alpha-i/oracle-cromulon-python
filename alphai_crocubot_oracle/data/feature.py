@@ -13,12 +13,13 @@ from alphai_crocubot_oracle.data.classifier import BinDistribution, classify_lab
 
 
 class FinancialFeature(object):
-    def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute, is_target,
-                 exchange_calendar):
+    def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
+                 is_target, exchange_calendar):
         """
         Object containing all the information to manipulate the data relative to a financial feature.
         :param str name: Name of the feature
-        :param dict transformation: contains name and parameters to use for processing, name must be in FINANCIAL_FEATURE_TRANSFORMATIONS
+        :param dict transformation: contains name and parameters to use for processing, name must be in
+            FINANCIAL_FEATURE_TRANSFORMATIONS
         :param str/None normalization: type of normalization. Can be None.
         :param int/None nbins: number of bins to be used for target classification. Can be None.
         :param int ndays: number of trading days worth of data the feature should use.
@@ -27,7 +28,8 @@ class FinancialFeature(object):
         :param bool is_target: if True the feature is a target.
         :param pandas_market_calendar exchange_calendar: exchange calendar.
         """
-        self._assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute, is_target)
+        self._assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
+                           is_target)
         self.name = name
         self.transformation = transformation
         self.normalization = normalization
@@ -46,7 +48,8 @@ class FinancialFeature(object):
         return '{}_{}'.format(self.name, self.transformation['name'])
 
     @staticmethod
-    def _assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute, is_target):
+    def _assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
+                      is_target):
         assert isinstance(name, str)
         assert isinstance(transformation, dict)
         assert 'name' in transformation, 'The transformation dict does not contain the key "name"'
@@ -80,8 +83,9 @@ class FinancialFeature(object):
         if self.transformation['name'] == 'stochastic_k':
 
             columns = processed_prediction_data_x.columns
-            processed_prediction_data_x = ((processed_prediction_data_x.iloc[-1] - processed_prediction_data_x.min()) /
-                                           (processed_prediction_data_x.max() - processed_prediction_data_x.min())) * 100.
+            processed_prediction_data_x \
+                = ((processed_prediction_data_x.iloc[-1] - processed_prediction_data_x.min()) /
+                   (processed_prediction_data_x.max() - processed_prediction_data_x.min())) * 100.
 
             processed_prediction_data_x = np.expand_dims(processed_prediction_data_x, axis=0)
             processed_prediction_data_x = pd.DataFrame(processed_prediction_data_x, columns=columns)
