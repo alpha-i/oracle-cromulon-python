@@ -9,8 +9,7 @@ import tensorflow as tf
 # FIXME once time_series is updated, uncomment the below and delete the copy in this file
 # from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
-# FIXME this classifier is now obsolete. We need to use alphai-finance instead.
-import alphai_crocubot_oracle.classifier as cl
+from alphai_crocubot_oracle.data.classifier import declassify_labels
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 
 FLAGS = tf.app.flags.FLAGS
@@ -50,12 +49,12 @@ def eval_neural_net(data, topology, save_file):
         return np.exp(log_p)
 
 
-def forecast_means_and_variance(outputs, bin_distribution):
+def forecast_means_and_variance(outputs, bin_dist):
     """ Each forecast comprises a mean and variance. NB not the covariance matrix
     Oracle will perform this outside, but this function is useful for testing purposes
 
     :param nparray outputs: Raw output from the network, a 4D array of shape [n_passes, n_samples, n_series, classes]
-    :param bin_distribution: Characterises the binning used to perform the classification task
+    :param bin_dist: Characterises the binning used to perform the classification task
     :return: Means and variances of the posterior.
     """
 
@@ -69,7 +68,7 @@ def forecast_means_and_variance(outputs, bin_distribution):
     for i in range(n_samples):
         for j in range(n_series):
             bin_passes = outputs[:, i, j, :]
-            temp_mean, temp_variance = cl.declassify_labels(bin_distribution, bin_passes)
+            temp_mean, temp_variance = declassify_labels(bin_dist, bin_passes)
             mean[i, j] = temp_mean
             variance[i, j] = temp_variance
 
