@@ -60,7 +60,7 @@ class TestFinancialFeature(TestCase):
             name='high',
             transformation={'name': 'log-return'},
             normalization='standard',
-            nbins=None,
+            nbins=10,
             ndays=10,
             resample_minutes=60,
             start_market_minute=150,
@@ -71,7 +71,7 @@ class TestFinancialFeature(TestCase):
             name='high',
             transformation={'name': 'stochastic_k'},
             normalization=None,
-            nbins=None,
+            nbins=10,
             ndays=10,
             resample_minutes=60,
             start_market_minute=150,
@@ -82,7 +82,7 @@ class TestFinancialFeature(TestCase):
             name='high',
             transformation={'name': 'ewma', 'halflife': 20},
             normalization=None,
-            nbins=None,
+            nbins=10,
             ndays=10,
             resample_minutes=60,
             start_market_minute=150,
@@ -93,7 +93,7 @@ class TestFinancialFeature(TestCase):
             name='high',
             transformation={'name': 'KER', 'lag': 20},
             normalization=None,
-            nbins=None,
+            nbins=10,
             ndays=10,
             resample_minutes=60,
             start_market_minute=150,
@@ -169,6 +169,7 @@ class TestFinancialFeature(TestCase):
         assert processed_prediction_data_y.equals(data_frame_y)
 
     def test_process_prediction_data_y_2(self):
+
         data_frame = sample_hourly_ohlcv_data_dict[self.feature_2.name]
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
@@ -180,15 +181,22 @@ class TestFinancialFeature(TestCase):
         assert_almost_equal(processed_prediction_data_y, expected_log_returns.values, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_y_3(self):
+
+        print(self.feature_3.scaler)
+
         data_frame = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
         data_frame_y = data_frame.iloc[-1]
         self.feature_3.process_prediction_data_x(data_frame_x)
+
+        print(self.feature_3.scaler)
+
         processed_prediction_data_y = \
             self.feature_3.process_prediction_data_y(data_frame_y, prediction_reference_data)
 
         log_ratio_data = np.log(data_frame_y / prediction_reference_data)
+
         expected_normalized_log_returns = \
             self.feature_3.scaler.transform(log_ratio_data.values.reshape(1, -1)).squeeze()
         assert_almost_equal(processed_prediction_data_y, expected_normalized_log_returns, ASSERT_NDECIMALS)

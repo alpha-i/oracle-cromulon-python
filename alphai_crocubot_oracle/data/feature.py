@@ -85,7 +85,6 @@ class FinancialFeature(object):
         :return pd.Dataframe: processed_prediction_data_x
         """
         assert isinstance(prediction_data_x, pd.DataFrame)
-        self.scaler = None
         processed_prediction_data_x = deepcopy(prediction_data_x)
 
         if self.transformation['name'] == 'log-return':
