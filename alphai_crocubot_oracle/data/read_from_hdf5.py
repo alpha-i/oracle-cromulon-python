@@ -59,7 +59,7 @@ def read_feature_data_dict_from_hdf5(symbols, start, end, filepath, timezone='Am
 
 def get_all_table_names_in_hdf5(filepath):
     """
-    Return a list of all table names in input hdf5 file 
+    Return a list of all table names in input hdf5 file
     :param filepath: path to input hdf5 file
     :return: list of strings describing the names of the tables inside the input hdf5 file
     """

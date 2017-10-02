@@ -65,7 +65,7 @@ def resample(data, resample_rule, sampling_functions='mean'):
     Resample input dataframe or dictionary according to input rules and drop nans horizontally.
     :param data: dataframe or data dictionary
     :param resample_rule: string specifying the pandas resampling rule
-    :param sampling_functions: string or dictionary of strings specifying the sampling function in 
+    :param sampling_functions: string or dictionary of strings specifying the sampling function in
                                ['mean', 'median', 'sum'].
     :return: resampled data.
     """
@@ -100,8 +100,8 @@ def resample_data_dict(data_dict, resample_rule, sampling_function_mapping='mean
     Resample dictionary of dataframes data according to input rules and drop nans horizontally.
     :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values
     :param resample_rule: string specifying the pandas resampling rule
-    :param sampling_function_mapping: dictionary of strings (or string) specifying the 
-           sampling function in ['mean', 'median', 'sum'] for each key in data_dict. If a string 
+    :param sampling_function_mapping: dictionary of strings (or string) specifying the
+           sampling function in ['mean', 'median', 'sum'] for each key in data_dict. If a string
            is passed, it will be used for all keys in data_dict.
     :return: dictionary of resampled dataframes.
     """
@@ -119,7 +119,7 @@ def resample_data_dict(data_dict, resample_rule, sampling_function_mapping='mean
 
 def resample_ohlcv(ohlcv_data, resample_rule, averaging_function='mean'):
     """
-    Resample ['open', 'high', 'low', 'close', 'volume'] history data according to input rule 
+    Resample ['open', 'high', 'low', 'close', 'volume'] history data according to input rule
     and drop nans horizontally.
     :param ohlcv_data: Dictionary of dataframes with time as index and OHLCV as keys
     :param resample_rule: string specifying the pandas resampling rule
@@ -247,7 +247,7 @@ def fill_gaps_data_frame(data_frame, fill_limit, dropna=True):
 
 def fill_gaps_data_dict(data_dict, fill_limit, dropna=True):
     """
-    Fill small vertical gaps and drop columns still containing nans, if required, in all 
+    Fill small vertical gaps and drop columns still containing nans, if required, in all
     dataframes contained in input data_dict.
     :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values
     :param fill_limit: forward and backward fill gaps in data for a maximum of fill_limit points
@@ -376,7 +376,7 @@ def convert_to_utc(data, timezone='America/New_York'):
     """
     Convert a generic input data [dataframe or dictionary] to UTC timezone
     :param data: dataframe or data dictionary
-    :param timezone: pandas string specifying the timezone of input data 
+    :param timezone: pandas string specifying the timezone of input data
     :return: data converted to UTC timezone
     """
     if isinstance(data, pd.DataFrame):
@@ -391,7 +391,7 @@ def convert_data_frame_to_utc(data_frame, timezone='America/New_York'):
     """
     Convert a dataframe to UTC timezone
     :param data_frame: Dataframe with time as index
-    :param timezone: pandas string specifying the timezone of input data 
+    :param timezone: pandas string specifying the timezone of input data
     :return: Dataframe converted to UTC timezone
     """
     tmp_data_frame = deepcopy(data_frame)
@@ -403,8 +403,8 @@ def convert_data_frame_to_utc(data_frame, timezone='America/New_York'):
 def convert_data_dict_to_utc(data_dict, timezone='America/New_York'):
     """
     Convert a data dictionary to UTC timezone
-    :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values 
-    :param timezone: pandas string specifying the timezone of input data 
+    :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values
+    :param timezone: pandas string specifying the timezone of input data
     :return: data dictionary converted to UTC timezone
     """
     tmp_data_dict = deepcopy(data_dict)
@@ -431,7 +431,7 @@ def sample_minutes_after_market_open_data_frame(data_frame, market_calendar, min
 def select_columns_data_dict(data_dict, select_columns):
     """
     Selected input columns from all dataframes in data_dict
-    :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values 
+    :param data_dict: a dictionary with (timestamp, symbol)-dataframes as values
     :param select_columns: columns to select
     :return: data dictionary with only selected columns
     """

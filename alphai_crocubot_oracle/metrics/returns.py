@@ -19,8 +19,8 @@ def returns_minutes_after_market_open_data_frame(data_frame, market_calendar, mi
 def log_to_simple_returns_conversion(log_returns, covariance_matrix):
     """
     converts the log returns and covariances into simple returns and covariances for use in the portfolio optimisation
-    :param np.array log_returns: 
-    :param np.array covariance_matrix: 
+    :param np.array log_returns:
+    :param np.array covariance_matrix:
     :return tuple: (np.array simple_returns, np.array simple_covariances)
     """
 

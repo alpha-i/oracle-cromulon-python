@@ -35,7 +35,7 @@ class TestCrocubot(TestCase):
             'feature_config_list': [
                 {
                     'name': 'close',
-                    'transformation':{
+                    'transformation': {
                         'name': 'log-return'
                     },
                     'normalization': 'standard',

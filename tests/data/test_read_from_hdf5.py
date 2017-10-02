@@ -92,6 +92,3 @@ def test_read_feature_data_dict_from_hdf5_check_file_content():
 
 def test_get_all_table_names_in_hdf5():
     assert get_all_table_names_in_hdf5(sample_hdf5_file) == SAMPLE_SYMBOLS
-
-
-
