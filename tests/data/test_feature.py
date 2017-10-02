@@ -182,15 +182,11 @@ class TestFinancialFeature(TestCase):
 
     def test_process_prediction_data_y_3(self):
 
-        print(self.feature_3.scaler)
-
         data_frame = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
         data_frame_y = data_frame.iloc[-1]
         self.feature_3.process_prediction_data_x(data_frame_x)
-
-        print(self.feature_3.scaler)
 
         processed_prediction_data_y = \
             self.feature_3.process_prediction_data_y(data_frame_y, prediction_reference_data)

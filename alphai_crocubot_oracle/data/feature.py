@@ -39,9 +39,11 @@ class FinancialFeature(object):
         self.start_market_minute = start_market_minute
         self.is_target = is_target
         self.exchange_calendar = exchange_calendar
+        self.n_series = None
 
         self.bin_distribution = None
         self.has_fitted_scaler = False
+        self.classify_per_series = False  #FIXME We'll need to explore whether it is beneficial to hold different bins for each series
 
         if self.normalization:
             if self.normalization == 'robust':
@@ -216,7 +218,13 @@ class FinancialFeature(object):
         :return: Nothing.
         """
         assert isinstance(self.nbins, int) and self.nbins > 0
-        self.bin_distribution = BinDistribution(train_y, self.nbins)
+
+        if self.classify_per_series:
+            self.bin_distribution = []
+            for i in range(self.n_series):
+                self.bin_distribution.append(BinDistribution(train_y[:, i], self.nbins))
+        else:
+            self.bin_distribution = BinDistribution(train_y, self.nbins)
 
     def classify_train_data_y(self, train_y):
         """
@@ -224,12 +232,23 @@ class FinancialFeature(object):
         :param ndarray train_y: Training target labels to calculate bin distribution.
         :return ndarray: classified train_y or input train_y if self.nbins = None
         """
-        self.bin_distribution = None
-        if self.nbins:
-            self.calculate_bin_distribution(train_y)
-            return classify_labels(self.bin_distribution.bin_edges, train_y)
-        else:
+
+        if self.nbins is None:
             return train_y
+
+        self.bin_distribution = None
+        self.n_series = train_y.shape[1] # FIXME check if this is the right dimension! If not need to change other lines
+        self.calculate_bin_distribution(train_y)
+
+        if self.classify_per_series:
+            labels = np.zeros((self.nbins, self.n_series))
+            for i in range(self.n_series):
+                bin_edges = self.bin_distribution[i].bin_edges
+                labels[:, i] = classify_labels(bin_edges, train_y[:, i])
+        else:
+            labels = classify_labels(self.bin_distribution.bin_edges, train_y)
+
+        return labels
 
     def declassify_single_predict_y(self, predict_y):
         raise NotImplementedError('Declassification is only available for multi-pass prediction at the moment.')

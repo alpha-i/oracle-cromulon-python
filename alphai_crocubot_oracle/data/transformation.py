@@ -172,11 +172,22 @@ class FinancialDataTransformation(DataTransformation):
         return feature_x_dict, feature_y_dict
 
     def create_train_data(self, raw_data_dict, historical_universes):
+        """
+        Prepare x and y data for training
+        :param dict raw_data_dict: dictionary of dataframes containing features data.
+        :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
+        :return (dict, dict): feature_x_dict, feature_y_dict
+        """
 
-        training_dates = self._data_transformation.get_training_market_dates(raw_data_dict)
-        return self.create_data(self, raw_data_dict, training_dates, historical_universes)
+        training_dates = self.get_training_market_dates(raw_data_dict)
+        return self.create_data(raw_data_dict, training_dates, historical_universes)
 
     def create_predict_data(self, raw_data_dict):
+        """
+        Prepare x data for inference purposes.
+        :param dict raw_data_dict: dictionary of dataframes containing features data.
+        :return dict: feature_x_dict
+        """
 
         current_market_open = self.get_current_market_date(raw_data_dict)
         predict_x, _ = self.create_data(raw_data_dict, simulated_market_dates=current_market_open)
@@ -188,7 +199,7 @@ class FinancialDataTransformation(DataTransformation):
         :param dict raw_data_dict: dictionary of dataframes containing features data.
         :param market_open_list:
         :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
-        :return (dict, dict): feature_x_dict, feature_x_dict
+        :return (dict, dict): feature_x_dict, feature_y_dict
         """
 
         market_open_list = self._get_market_open_list(raw_data_dict)
