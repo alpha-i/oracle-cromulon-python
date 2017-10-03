@@ -114,7 +114,6 @@ class TestFinancialFeature(TestCase):
         assert_almost_equal(processed_prediction_data_x, expected_log_returns.values, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_x_3(self):
-        self.has_fitted_scalar=False
         data_frame_x = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         processed_prediction_data_x = self.feature_3.process_prediction_data_x(data_frame_x)
         expected_normalized_log_returns = \
@@ -181,7 +180,6 @@ class TestFinancialFeature(TestCase):
         assert_almost_equal(processed_prediction_data_y, expected_log_returns.values, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_y_3(self):
-
         data_frame = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         data_frame_x = data_frame.iloc[:-1]
         prediction_reference_data = data_frame_x.iloc[-1]
@@ -192,9 +190,8 @@ class TestFinancialFeature(TestCase):
             self.feature_3.process_prediction_data_y(data_frame_y, prediction_reference_data)
 
         log_ratio_data = np.log(data_frame_y / prediction_reference_data)
+        expected_normalized_log_returns = log_ratio_data.values
 
-        expected_normalized_log_returns = \
-            self.feature_3.scaler.transform(log_ratio_data.values.reshape(1, -1)).squeeze()
         assert_almost_equal(processed_prediction_data_y, expected_normalized_log_returns, ASSERT_NDECIMALS)
 
     def test_get_start_timestamp_x(self):
