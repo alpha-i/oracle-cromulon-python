@@ -49,16 +49,18 @@ def eval_neural_net(data, topology, save_file):
         return np.exp(log_p)
 
 
-def forecast_means_and_variance(outputs, bin_dist):
+def forecast_means_and_variance(outputs, bin_distribution):
     """ Each forecast comprises a mean and variance. NB not the covariance matrix
     Oracle will perform this outside, but this function is useful for testing purposes
 
     :param nparray outputs: Raw output from the network, a 4D array of shape [n_passes, n_samples, n_series, classes]
-    :param bin_dist: Characterises the binning used to perform the classification task
+    :param bin_distribution: Characterises the binning used to perform the classification task
     :return: Means and variances of the posterior.
     """
 
-    assert outputs.shape[0] == FLAGS.n_eval_passes, 'unexpected output shape'
+    if outputs.shape[0] != FLAGS.n_eval_passes:
+        raise ValueError('Unexpected output shape {}. It should be identical to n_eval_passes {}'
+                         .format(outputs.shape[0], FLAGS.n_eval_passes))
     n_samples = outputs.shape[1]
     n_series = outputs.shape[2]
 
@@ -68,7 +70,7 @@ def forecast_means_and_variance(outputs, bin_dist):
     for i in range(n_samples):
         for j in range(n_series):
             bin_passes = outputs[:, i, j, :]
-            temp_mean, temp_variance = declassify_labels(bin_dist, bin_passes)
+            temp_mean, temp_variance = declassify_labels(bin_distribution, bin_passes)
             mean[i, j] = temp_mean
             variance[i, j] = temp_variance
 
