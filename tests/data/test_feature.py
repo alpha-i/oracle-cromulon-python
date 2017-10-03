@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 from numpy.testing import assert_almost_equal, assert_array_equal
-from sklearn import preprocessing
-
 
 from alphai_crocubot_oracle.data.classifier import BinDistribution
 from alphai_crocubot_oracle.data.feature import (

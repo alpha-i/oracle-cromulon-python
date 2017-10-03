@@ -194,7 +194,7 @@ class FinancialDataTransformation(DataTransformation):
         return predict_x
 
     def _create_data(self, raw_data_dict, simulated_market_dates,
-                    historical_universes=None, do_normalisation_fitting=False):
+                     historical_universes=None, do_normalisation_fitting=False):
         """
         Create x and y data
         :param dict raw_data_dict: dictionary of dataframes containing features data.
