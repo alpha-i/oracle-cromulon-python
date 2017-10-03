@@ -2,7 +2,6 @@ from unittest import TestCase
 
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_almost_equal
 
 from alphai_crocubot_oracle.data.transformation import (
     FinancialDataTransformation,
@@ -117,7 +116,7 @@ class TestFinancialDataTransformation(TestCase):
 
         training_dates = self.fin_data_transf_nobins.get_training_market_dates(sample_hourly_ohlcv_data_dict)
         train_x, train_y = self.fin_data_transf_nobins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
-                                                                         sample_historical_universes)
+                                                                   sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
 
@@ -128,7 +127,7 @@ class TestFinancialDataTransformation(TestCase):
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
 
         train_x, train_y = self.fin_data_transf_bins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
-                                                                       sample_historical_universes)
+                                                                 sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
         for key in train_x.keys():
