@@ -43,7 +43,6 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.has_fitted_scaler = False
         self.classify_per_series = False
 
         if self.normalization:
@@ -122,20 +121,20 @@ class FinancialFeature(object):
             processed_prediction_data_x = direction / volatility
             processed_prediction_data_x.dropna(axis=0, inplace=True)
 
-        if self.has_fitted_scaler:
-            processed_prediction_data_x.loc[:, :] = self.scaler.transform(processed_prediction_data_x)
-        elif self.scaler is not None:
-            processed_prediction_data_x.loc[:, :] = self.scaler.fit_transform(processed_prediction_data_x)
-            self.has_fitted_scaler = True
-
         return processed_prediction_data_x
 
-    def fit_normalisation_constants(self, data_x):
-        """ Compute normalisation across the entire training set"""
+    def apply_normalisation(self, data_x, do_normalisation_fitting):
+        """ Compute normalisation across the entire training set, or apply predetermined normalistion to prediction"""
 
-        if self.scaler is not None:
+        if self.scaler is None:
+            raise ValueError
+
+        if do_normalisation_fitting:
             data_x.loc[:, :] = self.scaler.fit_transform(data_x)
-            self.has_fitted_scaler = True
+        else:
+            data_x.loc[:, :] = self.scaler.transform(data_x)
+
+        return data_x
 
     def process_prediction_data_y(self, prediction_data_y, prediction_reference_data):
         """

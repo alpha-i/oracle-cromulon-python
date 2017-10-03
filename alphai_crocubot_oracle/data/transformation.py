@@ -180,7 +180,7 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         training_dates = self.get_training_market_dates(raw_data_dict)
-        return self.create_data(raw_data_dict, training_dates, historical_universes)
+        return self.create_data(raw_data_dict, training_dates, historical_universes, self_normalise=True)
 
     def create_predict_data(self, raw_data_dict):
         """
@@ -193,7 +193,8 @@ class FinancialDataTransformation(DataTransformation):
         predict_x, _ = self.create_data(raw_data_dict, simulated_market_dates=current_market_open)
         return predict_x
 
-    def create_data(self, raw_data_dict, simulated_market_dates, historical_universes=None):
+    def create_data(self, raw_data_dict, simulated_market_dates,
+                    historical_universes=None, do_normalisation_fitting=False):
         """
         Create x and y data
         :param dict raw_data_dict: dictionary of dataframes containing features data.
@@ -221,7 +222,7 @@ class FinancialDataTransformation(DataTransformation):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
 
-        x_dict = self.stack_samples_for_each_feature(data_x_list)
+        x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
         if target_market_open is None:
             y_dict = None
@@ -229,6 +230,18 @@ class FinancialDataTransformation(DataTransformation):
             y_dict = self._make_classified_y_dict(data_y_list)
 
         return x_dict, y_dict
+
+    def _make_normalised_x_dict(self, x_list, do_normalisation_fitting):
+        """Collects sample of x into a dictionary, and applies normalisation"""
+
+        x_dict = self.stack_samples_for_each_feature(x_list)
+        x_features = list(x_dict.keys())
+
+        for feat in x_features:
+            x_data = x_dict[feat]
+            self.features[feat].apply_normalisation(x_data, do_normalisation_fitting)
+
+        return x_dict
 
     def _make_classified_y_dict(self, y_list):
 
