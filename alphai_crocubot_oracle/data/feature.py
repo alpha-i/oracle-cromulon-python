@@ -44,6 +44,7 @@ class FinancialFeature(object):
 
         self.bin_distribution = None
         self.classify_per_series = False
+        self.normalise_per_series = False
 
         if self.normalization:
             if self.normalization == 'robust':
@@ -127,14 +128,28 @@ class FinancialFeature(object):
         """ Compute normalisation across the entire training set, or apply predetermined normalistion to prediction"""
 
         if self.scaler is None:
-            raise ValueError
+            return data_x
+
+        original_shape = data_x.shape
+        data_x = self.reshape_for_scikit(data_x)
 
         if do_normalisation_fitting:
-            data_x.loc[:, :] = self.scaler.fit_transform(data_x)
+            data_x = self.scaler.fit_transform(data_x)
         else:
-            data_x.loc[:, :] = self.scaler.transform(data_x)
+            data_x = self.scaler.transform(data_x)
 
-        return data_x
+        return data_x.reshape(original_shape)
+
+    def reshape_for_scikit(self, data_x):
+        """Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature."""
+
+        if self.normalise_per_series:
+            n_series = data_x[1]
+            scikit_shape = (-1, n_series)
+        else:
+            scikit_shape = (-1, 1)
+
+        return data_x.reshape(scikit_shape)
 
     def process_prediction_data_y(self, prediction_data_y, prediction_reference_data):
         """
@@ -264,20 +279,6 @@ class FinancialFeature(object):
     def declassify_single_predict_y(self, predict_y):
         raise NotImplementedError('Declassification is only available for multi-pass prediction at the moment.')
 
-    def inverse_transform_single_predict_y(self, predict_y):
-        """
-        Inverse-transform single-pass predict_y data
-        :param pd.Dataframe predict_y: target single-pass prediction
-        :return pd.Dataframe: inversely transformed single-pass predicted_y data
-        """
-        assert self.is_target
-        if self.normalization:
-            inverse_transf_predicted_y = self.scaler.inverse_transform(predict_y)
-        else:
-            inverse_transf_predicted_y = predict_y
-
-        return inverse_transf_predicted_y
-
     def declassify_multi_predict_y(self, predict_y):
         """
         Declassify multi-pass predict_y data
@@ -310,17 +311,7 @@ class FinancialFeature(object):
         :return pd.Dataframe: inversely transformed mean and variance of target multi-pass prediction
         """
         assert self.is_target
-        means, variances = self.declassify_multi_predict_y(predict_y)
-
-        if self.normalization:
-            if self.normalization == 'standard':
-                inverse_transf_means = means + self.scaler.mean_
-                inverse_transf_variances = variances * self.scaler.var_
-            else:
-                raise NotImplementedError('Requested normalisation cannot be inverted')
-        else:
-            inverse_transf_means = means
-            inverse_transf_variances = variances
+        inverse_transf_means, inverse_transf_variances = self.declassify_multi_predict_y(predict_y)
 
         diag_cov_matrix = np.diag(inverse_transf_variances)
 

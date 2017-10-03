@@ -180,7 +180,7 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         training_dates = self.get_training_market_dates(raw_data_dict)
-        return self.create_data(raw_data_dict, training_dates, historical_universes, self_normalise=True)
+        return self._create_data(raw_data_dict, training_dates, historical_universes, do_normalisation_fitting=True)
 
     def create_predict_data(self, raw_data_dict):
         """
@@ -190,10 +190,10 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         current_market_open = self.get_current_market_date(raw_data_dict)
-        predict_x, _ = self.create_data(raw_data_dict, simulated_market_dates=current_market_open)
+        predict_x, _ = self._create_data(raw_data_dict, simulated_market_dates=current_market_open)
         return predict_x
 
-    def create_data(self, raw_data_dict, simulated_market_dates,
+    def _create_data(self, raw_data_dict, simulated_market_dates,
                     historical_universes=None, do_normalisation_fitting=False):
         """
         Create x and y data
@@ -235,11 +235,11 @@ class FinancialDataTransformation(DataTransformation):
         """Collects sample of x into a dictionary, and applies normalisation"""
 
         x_dict = self.stack_samples_for_each_feature(x_list)
-        x_features = list(x_dict.keys())
 
-        for feat in x_features:
-            x_data = x_dict[feat]
-            self.features[feat].apply_normalisation(x_data, do_normalisation_fitting)
+        for feature in self.features:
+            x_data = x_dict[feature.full_name]
+            normalised_feature = feature.apply_normalisation(x_data, do_normalisation_fitting)
+            x_dict[feature.full_name] = normalised_feature
 
         return x_dict
 

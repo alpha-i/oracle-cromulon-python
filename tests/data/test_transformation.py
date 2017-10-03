@@ -114,9 +114,8 @@ class TestFinancialDataTransformation(TestCase):
         expected_n_features = 3
         expected_n_bins = 5
 
-        training_dates = self.fin_data_transf_nobins.get_training_market_dates(sample_hourly_ohlcv_data_dict)
-        train_x, train_y = self.fin_data_transf_nobins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
-                                                                   sample_historical_universes)
+        train_x, train_y = self.fin_data_transf_nobins.create_train_data(sample_hourly_ohlcv_data_dict,
+                                                                         sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
 
@@ -126,8 +125,8 @@ class TestFinancialDataTransformation(TestCase):
         for key in train_y.keys():
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
 
-        train_x, train_y = self.fin_data_transf_bins.create_data(sample_hourly_ohlcv_data_dict, training_dates,
-                                                                 sample_historical_universes)
+        train_x, train_y = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict,
+                                                                       sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
         for key in train_x.keys():

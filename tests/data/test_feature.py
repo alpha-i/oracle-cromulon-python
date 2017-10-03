@@ -129,8 +129,7 @@ class TestFinancialFeature(TestCase):
         data_frame_x = sample_hourly_ohlcv_data_dict[self.feature_3.name]
         processed_prediction_data_x = self.feature_3.process_prediction_data_x(data_frame_x)
         expected_normalized_log_returns = \
-            preprocessing.StandardScaler().fit_transform(
-                np.log(data_frame_x.pct_change() + 1).replace([np.inf, -np.inf], np.nan).dropna())
+            (np.log(data_frame_x.pct_change() + 1).replace([np.inf, -np.inf], np.nan).dropna()).values
         assert_almost_equal(processed_prediction_data_x, expected_normalized_log_returns, ASSERT_NDECIMALS)
 
     def test_process_prediction_data_x_4(self):
@@ -316,26 +315,6 @@ class TestFinancialFeature(TestCase):
             with pytest.raises(NotImplementedError):
                 feature.declassify_single_predict_y(predict_y)
 
-    def test_inverse_transform_single_predicted_y(self):
-        feature_list = [self.feature_1, self.feature_2, self.feature_3]
-        for feature in feature_list:
-            data_frame_x = sample_hourly_ohlcv_data_dict[feature.name]
-            predict_y = np.ones(shape=(data_frame_x.shape[1],))
-
-            if feature.normalization is not None:
-                with pytest.raises(AttributeError):
-                    feature.inverse_transform_single_predict_y(predict_y)
-
-            feature.process_prediction_data_x(data_frame_x)
-            inverse_transf_predict_y = feature.inverse_transform_single_predict_y(predict_y)
-
-            if feature.normalization:
-                expected_inverse_transf_predict_y = feature.scaler.inverse_transform(predict_y)
-            else:
-                expected_inverse_transf_predict_y = predict_y
-
-            assert_almost_equal(inverse_transf_predict_y, expected_inverse_transf_predict_y, ASSERT_NDECIMALS)
-
     def test_declassify_multi_predict_y(self):
         n_passes = 10
         n_train = 20
@@ -372,12 +351,12 @@ class TestFinancialFeature(TestCase):
         expected_means_list = [
             n_series * [0.5],
             n_series * [0.5],
-            [0.50059, 0.50049, 0.49958, 0.50104, 0.50002],
+            n_series * [0.5],
         ]
         expected_variances_list = [
             n_series * [0.07666667],
             n_series * [0.08166667],
-            [2.93159848e-06, 2.67647671e-06, 3.08804282e-06, 5.03376454e-06, 3.76759147e-06],
+            n_series * [0.10185185],
         ]
         for idx, feature in enumerate(feature_list):
 
