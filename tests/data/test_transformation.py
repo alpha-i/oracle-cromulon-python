@@ -2,7 +2,6 @@ from unittest import TestCase
 
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_almost_equal
 
 from alphai_crocubot_oracle.data.transformation import (
     FinancialDataTransformation,
@@ -108,19 +107,8 @@ class TestFinancialDataTransformation(TestCase):
             assert feature_x_dict[key].shape == (expected_n_time_dict[key], expected_n_symbols)
         assert feature_y_dict is None
 
-    def test_create_predict_data(self):
-        predict_x = self.fin_data_transf_nobins.create_predict_data(sample_hourly_ohlcv_data_dict)
-
-        expected_n_time_dict = {'open_value': 15, 'high_log-return': 14, 'close_log-return': 14}
-        expected_n_symbols = 5
-        expected_n_features = 3
-
-        assert len(predict_x.keys()) == expected_n_features
-        for key in predict_x.keys():
-            assert predict_x[key].shape == (expected_n_time_dict[key], expected_n_symbols)
-
-    def test_create_train_data(self):
-        expected_n_samples = 29
+    def test_create_data(self):
+        expected_n_samples = 30
         expected_n_time_dict = {'open_value': 15, 'high_log-return': 14, 'close_log-return': 14}
         expected_n_symbols = 4
         expected_n_features = 3
@@ -135,7 +123,7 @@ class TestFinancialDataTransformation(TestCase):
             assert train_x[key].shape == (expected_n_samples, expected_n_time_dict[key], expected_n_symbols)
 
         for key in train_y.keys():
-            assert train_y[key].shape == (expected_n_samples, expected_n_symbols,)
+            assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
 
         train_x, train_y = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict,
                                                                        sample_historical_universes)
@@ -147,42 +135,13 @@ class TestFinancialDataTransformation(TestCase):
         for key in train_y.keys():
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
 
-    def test_inverse_transform_single_predict_y(self):
-        predict_x = self.fin_data_transf_nobins.create_predict_data(sample_hourly_ohlcv_data_dict)
-        predict_y = mock_ml_model_single_pass(predict_x)
-        inverse_transform_y = self.fin_data_transf_nobins.inverse_transform_single_predict_y(predict_y)
-        assert inverse_transform_y.shape == predict_y.shape
-        target_feature = self.fin_data_transf_nobins.get_target_feature()
-        expected_transformed_feature_y = target_feature.inverse_transform_single_predict_y(predict_y)
-        assert_almost_equal(inverse_transform_y, expected_transformed_feature_y, ASSERT_NDECIMALS)
-
-    def test_inverse_transform_multi_predict_y(self):
-        n_passes = 10
-        n_bins = 5
-        predict_x = self.fin_data_transf_nobins.create_predict_data(sample_hourly_ohlcv_data_dict)
-        predict_y = mock_ml_model_multi_pass(predict_x, n_passes, None)
-        all_target_means, cov_matrix = self.fin_data_transf_nobins.inverse_transform_multi_predict_y(predict_y)
-
-        target_feature = self.fin_data_transf_nobins.get_target_feature()
-        expected_means, expected_cov_matrix = target_feature.inverse_transform_multi_predict_y(predict_y)
-        assert_almost_equal(all_target_means, expected_means, ASSERT_NDECIMALS)
-        assert_almost_equal(cov_matrix, expected_cov_matrix, ASSERT_NDECIMALS)
-
-        _, _ = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict, sample_historical_universes)
-        predict_x = self.fin_data_transf_bins.create_predict_data(sample_hourly_ohlcv_data_dict)
-        predict_y = mock_ml_model_multi_pass(predict_x, n_passes, n_bins)
-        all_target_means, cov_matrix = self.fin_data_transf_bins.inverse_transform_multi_predict_y(predict_y)
-
-        target_feature = self.fin_data_transf_bins.get_target_feature()
-        expected_means, expected_cov_matrix = target_feature.inverse_transform_multi_predict_y(predict_y)
-        assert_almost_equal(all_target_means, expected_means, ASSERT_NDECIMALS)
-        assert_almost_equal(cov_matrix, expected_cov_matrix, ASSERT_NDECIMALS)
-
 
 def mock_ml_model_single_pass(predict_x):
     mean_list = []
     for key in predict_x.keys():
-        mean_list.append(predict_x[key].mean(axis=0))
+        value = predict_x[key]  # shape eg (1, 15, 5)
+        mean_value = value.mean(axis=1)
+        mean_list.append(mean_value)
     mean_list = np.asarray(mean_list)
     factors = mean_list.mean(axis=0)
     return np.ones(shape=(len(factors),)) * factors
@@ -191,9 +150,9 @@ def mock_ml_model_single_pass(predict_x):
 def mock_ml_model_multi_pass(predict_x, n_passes, nbins):
     mean_list = []
     for key in predict_x.keys():
-        mean_list.append(predict_x[key].mean(axis=0))
+        mean_list.append(predict_x[key].mean(axis=1))
     mean_list = np.asarray(mean_list)
-    factors = mean_list.mean(axis=0)
+    factors = mean_list.mean(axis=1)
     n_series = len(factors)
     if nbins:
         predict_y = np.zeros((n_passes, n_series, nbins))
@@ -202,4 +161,4 @@ def mock_ml_model_multi_pass(predict_x, n_passes, nbins):
                 predict_y[i, j, i % nbins] = 1
         return predict_y
     else:
-        return np.ones(shape=(n_passes, n_series)) * factors
+        raise NotImplementedError("Only classification currently supported")

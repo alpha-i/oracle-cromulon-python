@@ -112,8 +112,7 @@ class CrocubotOracle:
             execution_time,
         ))
 
-        training_dates = self._data_transformation.get_training_market_dates(train_data)
-        train_x, train_y = self._data_transformation.create_data(train_data, training_dates, historical_universes)
+        train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
 
         logging.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x)
@@ -190,8 +189,7 @@ class CrocubotOracle:
         # historical_covariance \
         #     = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
-        current_market_open = self._data_transformation.get_current_market_date(predict_data)
-        predict_x, _ = self._data_transformation.create_data(predict_data, current_market_open)
+        predict_x = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
         start_time = timer()
