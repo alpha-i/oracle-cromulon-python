@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pandas_market_calendars as mcal
 from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
+from sklearn.preprocessing import QuantileTransformer
 
 from alphai_crocubot_oracle.data import FINANCIAL_FEATURE_TRANSFORMATIONS, FINANCIAL_FEATURE_NORMALIZATIONS, \
     MINUTES_IN_TRADING_DAY, MARKET_DAYS_SEARCH_MULTIPLIER, MIN_MARKET_DAYS_SEARCH
@@ -52,6 +53,8 @@ class FinancialFeature(object):
                 self.scaler = MinMaxScaler()
             elif self.normalization == 'standard':
                 self.scaler = StandardScaler()
+            elif self.normalization == 'gaussian':
+                self.scaler = QuantileTransformer(output_distribution='normal')
             else:
                 raise NotImplementedError('Requested normalisation not supported: {}'.format(self.normalization))
         else:
@@ -229,22 +232,24 @@ class FinancialFeature(object):
     def classify_train_data_y(self, train_y):
         """
         Classify training target values.
-        :param ndarray train_y: Training target labels to calculate bin distribution.
-        :return ndarray: classified train_y or input train_y if self.nbins = None
+        :param ndarray train_y: Training target labels to calculate bin distribution. Of shape (batch_size, n_series)
+        :return ndarray: classified train_y. Of shape (batch_size, n_series, n_bins)
         """
 
         if self.nbins is None:
             return train_y
 
         self.bin_distribution = None
-        self.n_series = train_y.shape[0]
+        batch_size = train_y.shape[0]
+        self.n_series = train_y.shape[1]
         self.calculate_bin_distribution(train_y)
 
         if self.classify_per_series:
-            labels = np.zeros((self.n_series, self.nbins))
+            labels = np.zeros((batch_size, self.n_series, self.nbins))
             for i in range(self.n_series):
                 bin_edges = self.bin_distribution[i].bin_edges
-                labels[i, :] = classify_labels(bin_edges, train_y[i, :])
+                labels[:, i, :] = classify_labels(bin_edges, train_y[:, i])
+                # FIXME May have to use swapaxes if this assignment to dims 0,2 doesnt work
         else:
             labels = classify_labels(self.bin_distribution.bin_edges, train_y)
 

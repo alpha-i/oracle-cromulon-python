@@ -226,17 +226,23 @@ class FinancialDataTransformation(DataTransformation):
         if target_market_open is None:
             y_dict = None
         else:
-            y_dict = self.stack_samples_for_each_feature(data_y_list)
-            target_feature = self.get_target_feature()
-            if target_feature.nbins:
-                y_dict = {
-                    target_feature.full_name: target_feature.classify_train_data_y(y_dict[list(y_dict.keys())[0]])}
-            else:
-                raise NotImplementedError('If not using a classifier, we need to implement an inverse y transformation.'
-                                          ' Take care with the discintion between the '
-                                          'timescale for the x and y log returns')
+            y_dict = self._make_classified_y_dict(data_y_list)
 
         return x_dict, y_dict
+
+    def _make_classified_y_dict(self, y_list):
+
+        y_dict = self.stack_samples_for_each_feature(y_list)
+        target_feature = self.get_target_feature()
+        if target_feature.nbins:
+            y_key_list = list(y_dict.keys())
+            y_train_data = y_dict[y_key_list[0]]
+            y_dict = {target_feature.full_name: target_feature.classify_train_data_y(y_train_data)}
+        else:
+            raise NotImplementedError('If not using a classifier, we need to implement an inverse y transformation.'
+                                      ' Take care with the discintion between the '
+                                      'timescale for the x and y log returns')
+        return y_dict
 
     def build_features(self, raw_data_dict, historical_universes, prediction_market_open, target_market_open):
         """ Creates dictionaries of features and labels for a single window
