@@ -44,7 +44,7 @@ class FinancialFeature(object):
 
         self.bin_distribution = None
         self.has_fitted_scaler = False
-        self.classify_per_series = False  #FIXME We'll need to explore whether it is beneficial to hold different bins for each series
+        self.classify_per_series = False
 
         if self.normalization:
             if self.normalization == 'robust':
