@@ -222,7 +222,7 @@ class FinancialFeature(object):
         if self.classify_per_series:
             self.bin_distribution = []
             for i in range(self.n_series):
-                self.bin_distribution.append(BinDistribution(train_y[:, i], self.nbins))
+                self.bin_distribution.append(BinDistribution(train_y[i, :], self.nbins))
         else:
             self.bin_distribution = BinDistribution(train_y, self.nbins)
 
@@ -237,14 +237,14 @@ class FinancialFeature(object):
             return train_y
 
         self.bin_distribution = None
-        self.n_series = train_y.shape[1] # FIXME check if this is the right dimension! If not need to change other lines
+        self.n_series = train_y.shape[0]
         self.calculate_bin_distribution(train_y)
 
         if self.classify_per_series:
-            labels = np.zeros((self.nbins, self.n_series))
+            labels = np.zeros((self.n_series, self.nbins))
             for i in range(self.n_series):
                 bin_edges = self.bin_distribution[i].bin_edges
-                labels[:, i] = classify_labels(bin_edges, train_y[:, i])
+                labels[i, :] = classify_labels(bin_edges, train_y[i, :])
         else:
             labels = classify_labels(self.bin_distribution.bin_edges, train_y)
 
@@ -279,8 +279,13 @@ class FinancialFeature(object):
             means = np.zeros(shape=(n_series,))
             variances = np.zeros(shape=(n_series,))
             for series_idx in range(n_series):
+                if self.classify_per_series:
+                    series_bins = self.bin_distribution[series_idx]
+                else:
+                    series_bins = self.bin_distribution
+
                 means[series_idx], variances[series_idx] = \
-                    declassify_labels(self.bin_distribution, predict_y[:, series_idx, :])
+                    declassify_labels(series_bins, predict_y[:, series_idx, :])
         else:
             means = np.mean(predict_y, axis=0)
             variances = np.var(predict_y, axis=0)

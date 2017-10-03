@@ -286,26 +286,6 @@ class FinancialDataTransformation(DataTransformation):
 
         return stacked_samples
 
-    def inverse_transform_single_predict_y(self, predict_y):
-        """
-        Inverse-transform single-pass predict_y data
-        :param ndarray predict_y: target single-pass prediction data
-        :return ndarray: inversely transformed single-pass predict_y data
-        """
-        target_feature = self.get_target_feature()
-        return target_feature.inverse_transform_single_predict_y(predict_y)
-
-    def inverse_transform_multi_predict_y(self, predict_y):
-        """
-        Inverse-transform multi-pass predict_y data
-        :param ndarray predict_y: target multi-pass prediction data
-        :return ndarray: inversely transformed multi-pass predict_y data
-        """
-        target_feature = self.get_target_feature()
-        means, cov_matrix = target_feature.inverse_transform_multi_predict_y(predict_y)
-
-        return means, cov_matrix
-
     def get_current_market_date(self, raw_data_dict):
         return [self._get_market_open_list(raw_data_dict)[-1]]
 
