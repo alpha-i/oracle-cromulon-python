@@ -130,6 +130,13 @@ class FinancialFeature(object):
 
         return processed_prediction_data_x
 
+    def fit_normalisation_constants(self, data_x):
+        """ Compute normalisation across the entire training set"""
+
+        if self.scaler is not None:
+            data_x.loc[:, :] = self.scaler.fit_transform(data_x)
+            self.has_fitted_scaler = True
+
     def process_prediction_data_y(self, prediction_data_y, prediction_reference_data):
         """
         Apply feature-specific transformations to input prediction_data_y
