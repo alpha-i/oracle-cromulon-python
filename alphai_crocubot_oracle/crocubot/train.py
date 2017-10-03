@@ -147,7 +147,8 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                msg = "Epoch {}... Loss: {:.2e}. in {:.2f} seconds.".format(epoch, epoch_loss, time_epoch)
+                msg = "Epoch {} of {} ... Loss: {:.2e}. in {:.2f} seconds.".format(epoch, n_epochs, epoch_loss,
+                                                                                   time_epoch)
                 logging.info(msg)
 
         out_path = saver.save(sess, save_path)
