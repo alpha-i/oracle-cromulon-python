@@ -198,7 +198,7 @@ class FinancialDataTransformation(DataTransformation):
         """
         Create x and y data
         :param dict raw_data_dict: dictionary of dataframes containing features data.
-        :param market_open_list:
+        :param simulated_market_dates: List of dates for which we generate the 'past' and 'future' data
         :param pd.Dataframe historical_universes: Dataframe with three columns ['start_date', 'end_date', 'assets']
         :return (dict, dict): feature_x_dict, feature_y_dict
         """
@@ -232,7 +232,12 @@ class FinancialDataTransformation(DataTransformation):
         return x_dict, y_dict
 
     def _make_normalised_x_dict(self, x_list, do_normalisation_fitting):
-        """Collects sample of x into a dictionary, and applies normalisation"""
+        """ Collects sample of x into a dictionary, and applies normalisation
+
+        :param x_list: List of unnormalised dictionaries
+        :param bool do_normalisation_fitting: Whether to use pre-fitted normalisation, or set normalisation constants
+        :return: dict Dictionary of normalised features
+        """
 
         x_dict = self.stack_samples_for_each_feature(x_list)
 
@@ -244,6 +249,11 @@ class FinancialDataTransformation(DataTransformation):
         return x_dict
 
     def _make_classified_y_dict(self, y_list):
+        """ Takes list of dictionaries, and classifies them based on the full sample
+
+        :param y_list:  List of unnormalised dictionaries
+        :return: dict Dictionary of labels, encoded in one hot format
+        """
 
         y_dict = self.stack_samples_for_each_feature(y_list)
         target_feature = self.get_target_feature()

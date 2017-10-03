@@ -125,7 +125,12 @@ class FinancialFeature(object):
         return processed_prediction_data_x
 
     def apply_normalisation(self, data_x, do_normalisation_fitting):
-        """ Compute normalisation across the entire training set, or apply predetermined normalistion to prediction"""
+        """ Compute normalisation across the entire training set, or apply predetermined normalistion to prediction.
+
+        :param nparray data_x: Features of shape [n_samples, n_series, n_features]
+        :param bool do_normalisation_fitting: Whether to use pre-fitted normalisation, or set normalisation constants
+        :return:
+        """
 
         if self.scaler is None:
             return data_x
@@ -141,7 +146,11 @@ class FinancialFeature(object):
         return data_x.reshape(original_shape)
 
     def reshape_for_scikit(self, data_x):
-        """Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature."""
+        """ Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature.
+
+        :param data_x: Features of shape [n_samples, n_series, n_features]
+        :return: nparray Same data as input, but now with two dimensions: [samples, f], each f has own normalisation
+        """
 
         if self.normalise_per_series:
             n_series = data_x[1]
