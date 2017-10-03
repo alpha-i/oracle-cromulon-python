@@ -361,7 +361,7 @@ class TestFinancialFeature(TestCase):
             [2.93159848e-06, 2.67647671e-06, 3.08804282e-06, 5.03376454e-06, 3.76759147e-06],
         ]
         for idx, feature in enumerate(feature_list):
-            feature.classify_train_data_y(train_y[list(train_y.keys())[0]])
+            feature.classify_train_data_y(train_y[list(train_y.keys())])
 
             data_frame_x = sample_hourly_ohlcv_data_dict[feature.name]
             feature.process_prediction_data_x(data_frame_x)
