@@ -45,8 +45,8 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.classify_per_series = False
-        self.normalise_per_series = False
+        self.classify_per_series = classify_per_series
+        self.normalise_per_series = normalise_per_series
 
         if self.normalization:
             if self.normalization == 'robust':
