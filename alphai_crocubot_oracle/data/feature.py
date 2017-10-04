@@ -43,8 +43,8 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.classify_per_series = False
-        self.normalise_per_series = False
+        self.classify_per_series = False  #FIXME: Import from config
+        self.normalise_per_series = False  #FIXME: Import from config
 
         if self.normalization:
             if self.normalization == 'robust':
@@ -152,7 +152,6 @@ class FinancialFeature(object):
         :return: nparray Same data as input, but now with two dimensions: [samples, f], each f has own normalisation
         """
 
-        print("data_x shape", data_x.shape)
         if self.normalise_per_series:
             n_series = data_x.shape[1]
             scikit_shape = (-1, n_series)
@@ -256,7 +255,7 @@ class FinancialFeature(object):
         if self.classify_per_series:
             self.bin_distribution = []
             for i in range(self.n_series):
-                self.bin_distribution.append(BinDistribution(train_y[i, :], self.nbins))
+                self.bin_distribution.append(BinDistribution(train_y[:, i], self.nbins))
         else:
             self.bin_distribution = BinDistribution(train_y, self.nbins)
 

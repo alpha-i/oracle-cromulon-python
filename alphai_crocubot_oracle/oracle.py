@@ -73,7 +73,7 @@ class CrocubotOracle:
 
         logging.info('Initialising Crocubot Oracle.')
 
-        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'], configuration['n_series'], configuration['n_classification_bins'])
+        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'], configuration['nassets'], configuration['n_classification_bins'])
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']

@@ -94,11 +94,15 @@ class FinancialDataTransformation(DataTransformation):
             if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x():
                     correct_dimensions = False
-                    print("Found weird x shape:", feature_array.shape)
+                    weird_shape = feature_array.shape
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x() - 1:
                     correct_dimensions = False
-                    print("Found weird x shape:", feature_array.shape)
+                    weird_shape = feature_array.shape
+
+        if not correct_dimensions:
+            print("Found weird x shape:", weird_shape, "Expected shape: ", str(self.get_total_ticks_x() - 1))
+
         return correct_dimensions
 
     def check_y_batch_dimensions(self, feature_y_dict):
@@ -108,12 +112,13 @@ class FinancialDataTransformation(DataTransformation):
         :return bool: False if the dimensions are not those expected
         """
         correct_dimensions = True
+        expected_shape = (self.n_series,)
 
         if feature_y_dict is not None:
             for feature_full_name, feature_array in feature_y_dict.items():
                 if feature_array.shape != (self.n_series,):
                     correct_dimensions = False
-                    print("Found weird y shape:", feature_array.shape)
+                    print("Found weird y shape:", feature_array.shape, "Expected shape: ", expected_shape)
         return correct_dimensions
 
     def _financial_features_factory(self, feature_config_list, n_classification_bins):
