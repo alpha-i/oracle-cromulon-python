@@ -25,6 +25,9 @@ ASSERT_NDECIMALS = 5
 
 class TestFinancialDataTransformation(TestCase):
     def setUp(self):
+
+        # FIXME we need to find a test case for classify_per_series: False and normalise_per_series: False
+
         configuration_nobins = {
             'feature_config_list': sample_fin_data_transf_feature_factory_list_nobins,
             'features_ndays': 2,
@@ -37,6 +40,8 @@ class TestFinancialDataTransformation(TestCase):
             'target_market_minute': 30,
             'n_classification_bins': 5,
             'nassets': 5,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
 
         self.fin_data_transf_nobins = FinancialDataTransformation(configuration_nobins)
@@ -53,6 +58,8 @@ class TestFinancialDataTransformation(TestCase):
             'target_market_minute': 30,
             'n_classification_bins': 5,
             'nassets': 5,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
         self.fin_data_transf_bins = FinancialDataTransformation(configuration_bins)
 
@@ -148,7 +155,8 @@ class TestFinancialDataTransformation(TestCase):
         default_config = {'feature_config_list': sample_fin_data_transf_feature_factory_list_bins, 'features_ndays': 2,
                           'features_resample_minutes': 60, 'features_start_market_minute': 1, 'exchange_name': 'NYSE',
                           'prediction_frequency_ndays': 1, 'prediction_market_minute': 30, 'target_delta_ndays': 5,
-                          'target_market_minute': 30, 'n_classification_bins': 5, 'nassets': expected_n_symbols}
+                          'target_market_minute': 30, 'n_classification_bins': 5, 'nassets': expected_n_symbols,
+                          'classify_per_series': False, 'normalise_per_series': False}
 
         return default_config
 

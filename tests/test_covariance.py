@@ -50,6 +50,8 @@ class TestCrocubot(TestCase):
             'target_market_minute': 60,
             'n_classification_bins': 12,
             'nassets': 3,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
 
         data_transformation = FinancialDataTransformation(configuration)

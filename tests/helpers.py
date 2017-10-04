@@ -104,6 +104,8 @@ def load_default_config():
         'n_train_passes': 30,
         'n_eval_passes': 100,
         'resume_training': False,
+        'classify_per_series': False,
+        'normalise_per_series': False,
 
         # Topology
         'n_series': 3,
