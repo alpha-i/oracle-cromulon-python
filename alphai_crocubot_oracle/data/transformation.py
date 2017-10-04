@@ -246,7 +246,8 @@ class FinancialDataTransformation(DataTransformation):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
 
-        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates), len(data_x_list)))
+        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates),
+                                                                           len(data_x_list)))
 
         x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
