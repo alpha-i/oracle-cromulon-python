@@ -212,7 +212,7 @@ class CrocubotOracle:
         else:
             logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
             covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
-                                           index=predict_data['close'].columns)
+                                      index=predict_data['close'].columns)
 
         return means, covariance
 
