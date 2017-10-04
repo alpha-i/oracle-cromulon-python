@@ -7,8 +7,7 @@ import logging
 import numpy as np
 import tensorflow as tf
 
-# FIXME this classifier is now obsolete. We need to use alphai-finance instead.
-import alphai_crocubot_oracle.classifier as cl
+from alphai_crocubot_oracle.data.classifier import BinDistribution
 import alphai_crocubot_oracle.crocubot.evaluate as eval
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
 import alphai_crocubot_oracle.flags as fl
@@ -57,7 +56,7 @@ def run_timed_benchmark_mnist(series_name, flags, do_training):
     train_time = mid_time - start_time
     print("Training complete.")
 
-    metrics = evaluate_network(topology, series_name, bin_distribution=None)
+    metrics = evaluate_network(topology, series_name, bin_dist=None)
     eval_time = timer() - mid_time
 
     print('Metrics:')
@@ -91,15 +90,14 @@ def run_timed_benchmark_time_series(series_name, flags, do_training=True):
 
     _, labels = io.load_batch(batch_options, data_source)
 
-    bin_distribution = cl.make_template_distribution(labels, topology.n_classification_bins)
-    bin_edges = bin_distribution["bin_edges"]
+    bin_dist = BinDistribution(labels, topology.n_classification_bins)
 
     start_time = timer()
 
     execution_time = datetime.datetime.now()
 
     if do_training:
-        crocubot_train.train(topology, series_name, execution_time, bin_edges=bin_edges)
+        crocubot_train.train(topology, series_name, execution_time, bin_edges=bin_dist.bin_edges)
     else:
         tf.reset_default_graph()
         model = CrocuBotModel(topology)
@@ -109,14 +107,14 @@ def run_timed_benchmark_time_series(series_name, flags, do_training=True):
     train_time = mid_time - start_time
     print("Training complete.")
 
-    evaluate_network(topology, series_name, bin_distribution)
+    evaluate_network(topology, series_name, bin_dist)
     eval_time = timer() - mid_time
 
     print('Metrics:')
     print_time_info(train_time, eval_time)
 
 
-def evaluate_network(topology, series_name, bin_distribution):
+def evaluate_network(topology, series_name, bin_dist):  # bin_dist not used in MNIST case
 
     # Get the test data
     batch_options = BatchOptions(batch_size=100,
@@ -140,7 +138,7 @@ def evaluate_network(topology, series_name, bin_distribution):
         return metric
 
     else:
-        estimated_means, estimated_covariance = eval.forecast_means_and_variance(binned_outputs, bin_distribution)
+        estimated_means, estimated_covariance = eval.forecast_means_and_variance(binned_outputs, bin_dist)
         test_labels = np.squeeze(test_labels)
 
         model_metrics.evaluate_sample_performance(data_source, test_labels, estimated_means, estimated_covariance)

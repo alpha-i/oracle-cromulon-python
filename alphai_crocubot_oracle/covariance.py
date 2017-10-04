@@ -1,4 +1,4 @@
-from alphai_finance.metrics.returns import returns_minutes_after_market_open_data_frame
+from alphai_crocubot_oracle.metrics.returns import returns_minutes_after_market_open_data_frame
 from alphai_covariance.dynamic_cov import estimate_cov
 
 DEFAULT_N_ESTIMATES = 100

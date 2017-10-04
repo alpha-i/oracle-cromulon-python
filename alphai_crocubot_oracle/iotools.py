@@ -4,7 +4,7 @@ import os
 import tensorflow as tf
 
 from alphai_data_sources.generator import BatchGenerator
-import alphai_crocubot_oracle.classifier as cl
+from alphai_crocubot_oracle.data.classifier import classify_labels
 
 FLAGS = tf.app.flags.FLAGS
 batch_generator = BatchGenerator()
@@ -15,7 +15,7 @@ def load_batch(batch_options, data_source, bin_edges=None):
     features, labels = batch_generator.get_batch(batch_options, data_source)
 
     if bin_edges is not None:
-        labels = cl.classify_labels(bin_edges, labels)
+        labels = classify_labels(bin_edges, labels)
 
     return features, labels
 
