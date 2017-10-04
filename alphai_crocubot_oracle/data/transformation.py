@@ -27,7 +27,7 @@ class DataTransformation(metaclass=ABCMeta):
 
 
 class FinancialDataTransformation(DataTransformation):
-    def __init__(self, configuration, n_series, n_classification_bins):
+    def __init__(self, configuration):
         """
         :param dict configuration: dictionary containing the feature details.
             list feature_config_list: list of dictionaries containing feature details.
@@ -49,8 +49,8 @@ class FinancialDataTransformation(DataTransformation):
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
-        self.features = self._financial_features_factory(configuration['feature_config_list'], n_classification_bins)
-        self.n_series = n_series
+        self.features = self._financial_features_factory(configuration['feature_config_list'], configuration['n_classification_bins'])
+        self.n_series = configuration['nassets']
 
     @staticmethod
     def _assert_input(configuration):
