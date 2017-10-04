@@ -49,7 +49,8 @@ class FinancialDataTransformation(DataTransformation):
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
-        self.features = self._financial_features_factory(configuration['feature_config_list'], configuration['n_classification_bins'])
+        self.features = self._financial_features_factory(configuration['feature_config_list'],
+                                                         configuration['n_classification_bins'])
         self.n_series = configuration['nassets']
 
     @staticmethod
