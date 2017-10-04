@@ -152,8 +152,9 @@ class FinancialFeature(object):
         :return: nparray Same data as input, but now with two dimensions: [samples, f], each f has own normalisation
         """
 
+        print("data_x shape", data_x.shape)
         if self.normalise_per_series:
-            n_series = data_x[1]
+            n_series = data_x.shape[1]
             scikit_shape = (-1, n_series)
         else:
             scikit_shape = (-1, 1)

@@ -73,7 +73,7 @@ class CrocubotOracle:
 
         logging.info('Initialising Crocubot Oracle.')
 
-        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'])
+        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'], configuration['n_series'], configuration['n_classification_bins'])
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']
@@ -170,21 +170,21 @@ class CrocubotOracle:
         ))
 
         # Call the covariance library
-        logging.info('Estimating historical covariance matrix.')
-        start_time = timer()
-        cov = estimate_covariance(
-            predict_data,
-            self._covariance_ndays,
-            self._data_transformation.target_market_minute,
-            self._covariance_method,
-            self._data_transformation.exchange_calendar,
-            self._data_transformation.target_delta_ndays
-        )
-        end_time = timer()
-        cov_time = end_time - start_time
-        logging.info("Historical covariance estimation took:{}".format(cov_time))
-        if not np.isfinite(cov).all():
-            raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
+        # logging.info('Estimating historical covariance matrix.')
+        # start_time = timer()
+        # cov = estimate_covariance(
+        #     predict_data,
+        #     self._covariance_ndays,
+        #     self._data_transformation.target_market_minute,
+        #     self._covariance_method,
+        #     self._data_transformation.exchange_calendar,
+        #     self._data_transformation.target_delta_ndays
+        # )
+        # end_time = timer()
+        # cov_time = end_time - start_time
+        # logging.info("Historical covariance estimation took:{}".format(cov_time))
+        # if not np.isfinite(cov).all():
+        #     raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
         # Convert the array into a dataframe
         # historical_covariance \
         #     = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
