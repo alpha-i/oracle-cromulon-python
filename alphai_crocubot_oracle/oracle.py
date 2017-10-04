@@ -242,6 +242,8 @@ class CrocubotOracle:
 
         config["data_transformation"]["n_classification_bins"] = config["n_classification_bins"]
         config["data_transformation"]["nassets"] = config["nassets"]
+        config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
+        config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
 
         return config
 

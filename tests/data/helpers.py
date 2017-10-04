@@ -180,6 +180,8 @@ sample_fin_feature_list = [
         start_market_minute=1,
         is_target=False,
         exchange_calendar=sample_market_calendar,
+        classify_per_series=False,
+        normalise_per_series=False
     ),
     FinancialFeature(
         name='close',
@@ -191,6 +193,8 @@ sample_fin_feature_list = [
         start_market_minute=1,
         is_target=False,
         exchange_calendar=sample_market_calendar,
+        classify_per_series=False,
+        normalise_per_series=False
     ),
     FinancialFeature(
         name='high',
@@ -202,6 +206,8 @@ sample_fin_feature_list = [
         start_market_minute=1,
         is_target=True,
         exchange_calendar=sample_market_calendar,
+        classify_per_series=False,
+        normalise_per_series=False
     ),
 ]
 
