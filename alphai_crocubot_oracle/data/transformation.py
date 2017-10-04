@@ -99,9 +99,6 @@ class FinancialDataTransformation(DataTransformation):
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x() - 1:
                     correct_dimensions = False
-        #  if not correct_dimensions:
-        #    logging.debug("Found weird x shape: {} Expected shape:
-        # ".format(weird_shape, str(self.get_total_ticks_x() - 1)))
 
         return correct_dimensions
 
