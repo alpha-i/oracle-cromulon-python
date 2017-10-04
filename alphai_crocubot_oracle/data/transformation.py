@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from datetime import timedelta
+import logging
 
 import numpy as np
 import pandas_market_calendars as mcal
@@ -11,6 +12,8 @@ from alphai_crocubot_oracle.data.feature import FinancialFeature, get_feature_na
 TOTAL_TICKS_FINANCIAL_FEATURES = ['open_value', 'high_value', 'low_value', 'close_value', 'volume_value']
 TOTAL_TICKS_M1_FINANCIAL_FEATURES = ['open_log-return', 'high_log-return', 'low_log-return', 'close_log-return',
                                      'volume_log-return']
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class DataTransformation(metaclass=ABCMeta):
@@ -46,7 +49,9 @@ class FinancialDataTransformation(DataTransformation):
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
-        self.features = self._financial_features_factory(configuration['feature_config_list'])
+        self.features = self._financial_features_factory(configuration['feature_config_list'],
+                                                         configuration['n_classification_bins'])
+        self.n_series = configuration['nassets']
 
     @staticmethod
     def _assert_input(configuration):
@@ -94,9 +99,26 @@ class FinancialDataTransformation(DataTransformation):
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x() - 1:
                     correct_dimensions = False
+
         return correct_dimensions
 
-    def _financial_features_factory(self, feature_config_list):
+    def check_y_batch_dimensions(self, feature_y_dict):
+        """
+        Evaluate if the y batch has the expected dimensions.
+        :param dict feature_y_dict: batch of y-labels
+        :return bool: False if the dimensions are not those expected
+        """
+        correct_dimensions = True
+        expected_shape = (self.n_series,)
+
+        if feature_y_dict is not None:
+            for feature_full_name, feature_array in feature_y_dict.items():
+                if feature_array.shape != expected_shape:
+                    correct_dimensions = False
+
+        return correct_dimensions
+
+    def _financial_features_factory(self, feature_config_list, n_classification_bins):
         """
         Build list of financial features from list of incomplete feature-config dictionaries (class-specific).
         :param list feature_config_list: list of dictionaries containing feature details.
@@ -110,7 +132,7 @@ class FinancialDataTransformation(DataTransformation):
                 single_feature_dict['name'],
                 single_feature_dict['transformation'],
                 single_feature_dict['normalization'],
-                single_feature_dict['nbins'],
+                n_classification_bins,
                 self.features_ndays,
                 self.features_resample_minutes,
                 self.features_start_market_minute,
@@ -218,9 +240,12 @@ class FinancialDataTransformation(DataTransformation):
             feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes,
                                                                  prediction_market_open, target_market_open)
 
-            if self.check_x_batch_dimensions(feature_x_dict):
+            if self.check_x_batch_dimensions(feature_x_dict) and self.check_y_batch_dimensions(feature_y_dict):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
+
+        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates),
+                                                                           len(data_x_list)))
 
         x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
@@ -239,6 +264,9 @@ class FinancialDataTransformation(DataTransformation):
         :return: dict Dictionary of normalised features
         """
 
+        if len(x_list) == 0:
+            raise ValueError("No valid x samples found.")
+
         x_dict = self.stack_samples_for_each_feature(x_list)
 
         for feature in self.features:
@@ -254,6 +282,9 @@ class FinancialDataTransformation(DataTransformation):
         :param y_list:  List of unnormalised dictionaries
         :return: dict Dictionary of labels, encoded in one hot format
         """
+
+        if len(y_list) == 0:
+            raise ValueError("No valid y samples found.")
 
         y_dict = self.stack_samples_for_each_feature(y_list)
         target_feature = self.get_target_feature()
@@ -299,6 +330,11 @@ class FinancialDataTransformation(DataTransformation):
 
     @staticmethod
     def stack_samples_for_each_feature(samples):
+        """ Collate a list of samples (the training set) into a single dictionary
+
+        :param samples: List of dicts, each dict should be holding the same set of keys
+        :return: Single dictionary with the values stacked together
+        """
         if len(samples) == 0:
             raise ValueError("At least one sample required for stacking samples.")
 
@@ -307,11 +343,24 @@ class FinancialDataTransformation(DataTransformation):
         stacked_samples = {}
 
         for feature_name in feature_names:
+            reference_sample = samples[0]
+            reference_shape = reference_sample[feature_name].shape
             if len(samples) == 1:
-                sample = samples[0]
-                stacked_samples[feature_name] = np.expand_dims(sample[feature_name], axis=0)
+                stacked_samples[feature_name] = np.expand_dims(reference_sample[feature_name], axis=0)
             else:
-                stacked_samples[feature_name] = np.stack([sample[feature_name] for sample in samples])
+                feature_list = []
+                for sample in samples:   # [sample[feature_name] for sample in samples]
+                    feature = sample[feature_name]
+                    if feature.shape == reference_shape:  # Make sure shape is OK
+                        feature_list.append(sample[feature_name])
+                    else:
+                        logging.info("Found unusual sample shape: {}; Expected: {}".format(feature.shape,
+                                                                                           reference_shape))
+
+                if len(feature_list) > 0:
+                    stacked_samples[feature_name] = np.stack(feature_list, axis=0)
+                else:
+                    stacked_samples = None
 
         return stacked_samples
 
