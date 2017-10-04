@@ -15,6 +15,7 @@ TOTAL_TICKS_M1_FINANCIAL_FEATURES = ['open_log-return', 'high_log-return', 'low_
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+
 class DataTransformation(metaclass=ABCMeta):
     @abstractmethod
     def create_train_data(self, *args):
@@ -343,7 +344,7 @@ class FinancialDataTransformation(DataTransformation):
         stacked_samples = {}
 
         for feature_name in feature_names:
-            reference_sample =samples[0]
+            reference_sample = samples[0]
             reference_shape = reference_sample[feature_name].shape
             if len(samples) == 1:
                 stacked_samples[feature_name] = np.expand_dims(reference_sample[feature_name], axis=0)
@@ -351,10 +352,11 @@ class FinancialDataTransformation(DataTransformation):
                 feature_list = []
                 for sample in samples:   # [sample[feature_name] for sample in samples]
                     feature = sample[feature_name]
-                    if feature.shape == reference_shape: # Make sure shape is OK
+                    if feature.shape == reference_shape:  # Make sure shape is OK
                         feature_list.append(sample[feature_name])
                     else:
-                        logging.info("Found unusual sample shape: {}; Expected: {}".format(feature.shape, reference_shape))
+                        logging.info("Found unusual sample shape: {}; Expected: {}".format(feature.shape,
+                                                                                           reference_shape))
 
                 if len(feature_list) > 0:
                     stacked_samples[feature_name] = np.stack(feature_list, axis=0)

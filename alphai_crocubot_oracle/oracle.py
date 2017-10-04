@@ -19,7 +19,7 @@ import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
 from alphai_crocubot_oracle.flags import set_training_flags
 import alphai_crocubot_oracle.topology as tp
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
-from alphai_crocubot_oracle.covariance import estimate_covariance
+# from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
 DEFAULT_N_CORRELATED_SERIES = 5
@@ -73,7 +73,9 @@ class CrocubotOracle:
 
         logging.info('Initialising Crocubot Oracle.')
 
-        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'], configuration['nassets'], configuration['n_classification_bins'])
+        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'],
+                                                                configuration['nassets'],
+                                                                configuration['n_classification_bins'])
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']

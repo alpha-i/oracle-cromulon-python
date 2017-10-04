@@ -43,8 +43,8 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.classify_per_series = False  #FIXME: Import from config
-        self.normalise_per_series = False  #FIXME: Import from config
+        self.classify_per_series = False  # FIXME: Import from config
+        self.normalise_per_series = False  # FIXME: Import from config
 
         if self.normalization:
             if self.normalization == 'robust':
