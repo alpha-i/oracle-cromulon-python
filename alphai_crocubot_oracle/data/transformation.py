@@ -95,14 +95,12 @@ class FinancialDataTransformation(DataTransformation):
             if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x():
                     correct_dimensions = False
-                    weird_shape = feature_array.shape
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x() - 1:
                     correct_dimensions = False
-                    weird_shape = feature_array.shape
-
-        if not correct_dimensions:
-            print("Found weird x shape:", weird_shape, "Expected shape: ", str(self.get_total_ticks_x() - 1))
+        #  if not correct_dimensions:
+        #    logging.debug("Found weird x shape: {} Expected shape:
+        # ".format(weird_shape, str(self.get_total_ticks_x() - 1)))
 
         return correct_dimensions
 
@@ -117,9 +115,9 @@ class FinancialDataTransformation(DataTransformation):
 
         if feature_y_dict is not None:
             for feature_full_name, feature_array in feature_y_dict.items():
-                if feature_array.shape != (self.n_series,):
+                if feature_array.shape != expected_shape:
                     correct_dimensions = False
-                    print("Found weird y shape:", feature_array.shape, "Expected shape: ", expected_shape)
+
         return correct_dimensions
 
     def _financial_features_factory(self, feature_config_list, n_classification_bins):
@@ -247,6 +245,8 @@ class FinancialDataTransformation(DataTransformation):
             if self.check_x_batch_dimensions(feature_x_dict) and self.check_y_batch_dimensions(feature_y_dict):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
+
+        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates), len(data_x_list)))
 
         x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
