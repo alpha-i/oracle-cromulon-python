@@ -74,7 +74,6 @@ def load_default_config():
                         'name': 'log-return'
                     },
                     'normalization': 'standard',
-                    'nbins': 12,
                     'is_target': True,
                 },
             ],
@@ -106,9 +105,12 @@ def load_default_config():
         'n_train_passes': 30,
         'n_eval_passes': 100,
         'resume_training': False,
+        'classify_per_series': False,
+        'normalise_per_series': False,
 
         # Topology
         'n_series': 3,
+        'nassets': 3,
         'n_features_per_series': 271,
         'n_forecasts': 1,
         'n_classification_bins': 12,

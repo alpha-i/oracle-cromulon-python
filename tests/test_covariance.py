@@ -35,11 +35,8 @@ class TestCrocubot(TestCase):
             'feature_config_list': [
                 {
                     'name': 'close',
-                    'transformation': {
-                        'name': 'log-return'
-                    },
                     'normalization': 'standard',
-                    'nbins': 12,
+                    'transformation': {'name': 'log-return'},
                     'is_target': True,
                 },
             ],
@@ -51,6 +48,10 @@ class TestCrocubot(TestCase):
             'prediction_market_minute': 60,
             'target_delta_ndays': 1,
             'target_market_minute': 60,
+            'n_classification_bins': 12,
+            'nassets': 3,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
 
         data_transformation = FinancialDataTransformation(configuration)

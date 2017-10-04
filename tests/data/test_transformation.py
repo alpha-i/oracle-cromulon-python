@@ -25,6 +25,9 @@ ASSERT_NDECIMALS = 5
 
 class TestFinancialDataTransformation(TestCase):
     def setUp(self):
+
+        # FIXME we need to find a test case for classify_per_series: False and normalise_per_series: False
+
         configuration_nobins = {
             'feature_config_list': sample_fin_data_transf_feature_factory_list_nobins,
             'features_ndays': 2,
@@ -35,7 +38,12 @@ class TestFinancialDataTransformation(TestCase):
             'prediction_market_minute': 30,
             'target_delta_ndays': 5,
             'target_market_minute': 30,
+            'n_classification_bins': 5,
+            'nassets': 5,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
+
         self.fin_data_transf_nobins = FinancialDataTransformation(configuration_nobins)
 
         configuration_bins = {
@@ -48,6 +56,10 @@ class TestFinancialDataTransformation(TestCase):
             'prediction_market_minute': 30,
             'target_delta_ndays': 5,
             'target_market_minute': 30,
+            'n_classification_bins': 5,
+            'nassets': 5,
+            'classify_per_series': False,
+            'normalise_per_series': False
         }
         self.fin_data_transf_bins = FinancialDataTransformation(configuration_bins)
 
@@ -114,8 +126,11 @@ class TestFinancialDataTransformation(TestCase):
         expected_n_features = 3
         expected_n_bins = 5
 
-        train_x, train_y = self.fin_data_transf_nobins.create_train_data(sample_hourly_ohlcv_data_dict,
-                                                                         sample_historical_universes)
+        config = self.load_default_config(expected_n_symbols)
+        fintransform = FinancialDataTransformation(config)
+
+        train_x, train_y = fintransform.create_train_data(sample_hourly_ohlcv_data_dict,
+                                                          sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
 
@@ -125,8 +140,8 @@ class TestFinancialDataTransformation(TestCase):
         for key in train_y.keys():
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
 
-        train_x, train_y = self.fin_data_transf_bins.create_train_data(sample_hourly_ohlcv_data_dict,
-                                                                       sample_historical_universes)
+        train_x, train_y = fintransform.create_train_data(sample_hourly_ohlcv_data_dict,
+                                                          sample_historical_universes)
 
         assert len(train_x.keys()) == expected_n_features
         for key in train_x.keys():
@@ -134,6 +149,16 @@ class TestFinancialDataTransformation(TestCase):
 
         for key in train_y.keys():
             assert train_y[key].shape == (expected_n_samples, expected_n_symbols, expected_n_bins)
+
+    def load_default_config(self, expected_n_symbols):
+
+        default_config = {'feature_config_list': sample_fin_data_transf_feature_factory_list_bins, 'features_ndays': 2,
+                          'features_resample_minutes': 60, 'features_start_market_minute': 1, 'exchange_name': 'NYSE',
+                          'prediction_frequency_ndays': 1, 'prediction_market_minute': 30, 'target_delta_ndays': 5,
+                          'target_market_minute': 30, 'n_classification_bins': 5, 'nassets': expected_n_symbols,
+                          'classify_per_series': False, 'normalise_per_series': False}
+
+        return default_config
 
 
 def mock_ml_model_single_pass(predict_x):
