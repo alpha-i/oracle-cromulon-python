@@ -112,10 +112,10 @@ class TestBayesianCost(tf.test.TestCase):
                 log_alpha = tf.get_variable('log_alpha', shape=(), initializer=init_log_alpha)
 
             log_alpha.initializer.run()
-            self.assertEquals(log_alpha.eval(), log_alpha_value)
+            self.assertEqual(log_alpha.eval(), log_alpha_value)
             log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
             # TODO this a now a test get_layer_variable()
-            self.assertEquals(log_alpha_retrieved.eval(), log_alpha_value)
+            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
 
             # case 1 slab prior
             use_double_gaussian_weights_prior = True
@@ -176,10 +176,10 @@ class TestBayesianCost(tf.test.TestCase):
                 log_alpha = tf.get_variable('log_alpha', shape=(), initializer=init_log_alpha)
 
             log_alpha.initializer.run()
-            self.assertEquals(log_alpha.eval(), log_alpha_value)
+            self.assertEqual(log_alpha.eval(), log_alpha_value)
             log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
             # TODO this a now a test get_layer_variable()
-            self.assertEquals(log_alpha_retrieved.eval(), log_alpha_value)
+            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
 
             # case 1 slab prior
             use_double_gaussian_weights_prior = True
@@ -237,10 +237,10 @@ class TestBayesianCost(tf.test.TestCase):
                 log_alpha = tf.get_variable(self.model.VAR_LOG_ALPHA, shape=(), initializer=init_log_alpha)
 
             log_alpha.initializer.run()
-            self.assertEquals(log_alpha.eval(), log_alpha_value)
+            self.assertEqual(log_alpha.eval(), log_alpha_value)
             log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
             # TODO this a now a test get_variable()
-            self.assertEquals(log_alpha_retrieved.eval(), log_alpha_value)
+            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
 
             # case 1 test the hyper prior
             use_double_gaussian_weights_prior = True

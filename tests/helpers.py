@@ -3,8 +3,9 @@ import shutil
 import tempfile
 
 import pandas_market_calendars as mcal
-from alphai_finance.data.cleaning import convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv
-from alphai_finance.data.read_from_hdf5 import read_feature_data_dict_from_hdf5
+from alphai_crocubot_oracle.data.cleaning import (
+    convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv)
+from alphai_crocubot_oracle.data.read_from_hdf5 import read_feature_data_dict_from_hdf5
 
 from alphai_crocubot_oracle.flags import set_training_flags
 from alphai_crocubot_oracle.oracle import CrocubotOracle

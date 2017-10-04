@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 
-from alphai_finance.data.classifier import (
+from alphai_crocubot_oracle.data.classifier import (
     BinDistribution,
     classify_labels,
     declassify_labels,
