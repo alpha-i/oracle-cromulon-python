@@ -27,7 +27,7 @@ class DataTransformation(metaclass=ABCMeta):
 
 
 class FinancialDataTransformation(DataTransformation):
-    def __init__(self, configuration, n_series, n_classification_bins):
+    def __init__(self, configuration):
         """
         :param dict configuration: dictionary containing the feature details.
             list feature_config_list: list of dictionaries containing feature details.
@@ -51,10 +51,9 @@ class FinancialDataTransformation(DataTransformation):
         self.target_market_minute = configuration['target_market_minute']
         self.classify_per_series = configuration['classify_per_series']
         self.normalise_per_series = configuration['normalise_per_series']
-        self.n_series = n_series
-
-        self.features = self._financial_features_factory(configuration['feature_config_list'], n_classification_bins)
-
+        self.features = self._financial_features_factory(configuration['feature_config_list'],
+                                                         configuration['n_classification_bins'])
+        self.n_series = configuration['nassets']
 
     @staticmethod
     def _assert_input(configuration):
@@ -102,9 +101,6 @@ class FinancialDataTransformation(DataTransformation):
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x() - 1:
                     correct_dimensions = False
-        #  if not correct_dimensions:
-        #    logging.debug("Found weird x shape: {} Expected shape:
-        # ".format(weird_shape, str(self.get_total_ticks_x() - 1)))
 
         return correct_dimensions
 

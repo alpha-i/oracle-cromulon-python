@@ -19,7 +19,7 @@ import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
 from alphai_crocubot_oracle.flags import set_training_flags
 import alphai_crocubot_oracle.topology as tp
 from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
-# from alphai_crocubot_oracle.covariance import estimate_covariance
+from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
 DEFAULT_N_CORRELATED_SERIES = 5
@@ -75,12 +75,17 @@ class CrocubotOracle:
 
         configuration = self.update_configuration(configuration)
 
-        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'],
-                                                                configuration['nassets'],
-                                                                configuration['n_classification_bins'])
+        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'])
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']
+
+        # FIXME Temporary use default setting for tests to pass
+        if 'use_historical_covariance' in configuration:
+            self.use_historical_covariance = configuration['use_historical_covariance']
+        else:
+            self.use_historical_covariance = False
+
         self._configuration = configuration
 
         self._train_file_manager = TrainFileManager(
@@ -168,31 +173,9 @@ class CrocubotOracle:
         :return : mean vector (pd.Series) and two covariance matrices (pd.DF)
         """
         latest_train = self._train_file_manager.latest_train_filename(execution_time)
-
         logging.info('Crocubot Oracle prediction on {}.'.format(
             execution_time,
         ))
-
-        # Call the covariance library
-        # logging.info('Estimating historical covariance matrix.')
-        # start_time = timer()
-        # cov = estimate_covariance(
-        #     predict_data,
-        #     self._covariance_ndays,
-        #     self._data_transformation.target_market_minute,
-        #     self._covariance_method,
-        #     self._data_transformation.exchange_calendar,
-        #     self._data_transformation.target_delta_ndays
-        # )
-        # end_time = timer()
-        # cov_time = end_time - start_time
-        # logging.info("Historical covariance estimation took:{}".format(cov_time))
-        # if not np.isfinite(cov).all():
-        #     raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
-        # Convert the array into a dataframe
-        # historical_covariance \
-        #     = pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
-
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
@@ -216,25 +199,49 @@ class CrocubotOracle:
 
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
-
         if not np.isfinite(forecast_covariance).all():
             raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
-
-        logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
-
-        forecast_covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
-                                           index=predict_data['close'].columns)
 
         if not np.isfinite(means).all():
             raise ValueError('Prediction of means failed. Contains non-finite values.')
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
-        # return means, historical_covariance, forecast_covariance
-        return means, forecast_covariance
+
+        if self.use_historical_covariance:
+            covariance = self.calculate_historical_covariance(predict_data)
+        else:
+            logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
+            covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
+                                      index=predict_data['close'].columns)
+
+        return means, covariance
+
+    def calculate_historical_covariance(self, predict_data):
+
+        # Call the covariance library
+        logging.info('Estimating historical covariance matrix.')
+        start_time = timer()
+        cov = estimate_covariance(
+            predict_data,
+            self._covariance_ndays,
+            self._data_transformation.target_market_minute,
+            self._covariance_method,
+            self._data_transformation.exchange_calendar,
+            self._data_transformation.target_delta_ndays
+        )
+        end_time = timer()
+        cov_time = end_time - start_time
+        logging.info("Historical covariance estimation took:{}".format(cov_time))
+        if not np.isfinite(cov).all():
+            raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
+
+        return pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
     def update_configuration(self, config):
         """ Pass on some config entries to data_transformation"""
 
+        config["data_transformation"]["n_classification_bins"] = config["n_classification_bins"]
+        config["data_transformation"]["nassets"] = config["nassets"]
         config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
         config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
 
