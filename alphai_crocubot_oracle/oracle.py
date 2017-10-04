@@ -73,6 +73,8 @@ class CrocubotOracle:
 
         logging.info('Initialising Crocubot Oracle.')
 
+        configuration = self.update_configuration(configuration)
+
         self._data_transformation = FinancialDataTransformation(configuration['data_transformation'],
                                                                 configuration['nassets'],
                                                                 configuration['n_classification_bins'])
@@ -229,6 +231,14 @@ class CrocubotOracle:
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
         # return means, historical_covariance, forecast_covariance
         return means, forecast_covariance
+
+    def update_configuration(self, config):
+        """ Pass on some config entries to data_transformation"""
+
+        config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
+        config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
+
+        return config
 
     def _preprocess_inputs(self, train_x_dict):
         """ Prepare training data to be fed into crocubot. """

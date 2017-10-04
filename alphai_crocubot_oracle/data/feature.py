@@ -15,7 +15,7 @@ from alphai_crocubot_oracle.data.classifier import BinDistribution, classify_lab
 
 class FinancialFeature(object):
     def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
-                 is_target, exchange_calendar):
+                 is_target, exchange_calendar, classify_per_series, normalise_per_series):
         """
         Object containing all the information to manipulate the data relative to a financial feature.
         :param str name: Name of the feature
@@ -43,8 +43,8 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.classify_per_series = False  # FIXME: Import from config
-        self.normalise_per_series = False  # FIXME: Import from config
+        self.classify_per_series = False
+        self.normalise_per_series = False
 
         if self.normalization:
             if self.normalization == 'robust':

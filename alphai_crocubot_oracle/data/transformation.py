@@ -49,8 +49,12 @@ class FinancialDataTransformation(DataTransformation):
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
-        self.features = self._financial_features_factory(configuration['feature_config_list'], n_classification_bins)
+        self.classify_per_series = configuration['classify_per_series']
+        self.normalise_per_series = configuration['normalise_per_series']
         self.n_series = n_series
+
+        self.features = self._financial_features_factory(configuration['feature_config_list'], n_classification_bins)
+
 
     @staticmethod
     def _assert_input(configuration):
@@ -139,7 +143,9 @@ class FinancialDataTransformation(DataTransformation):
                 self.features_resample_minutes,
                 self.features_start_market_minute,
                 single_feature_dict['is_target'],
-                self.exchange_calendar
+                self.exchange_calendar,
+                self.classify_per_series,
+                self.normalise_per_series
             ))
 
         return feature_list
@@ -246,8 +252,8 @@ class FinancialDataTransformation(DataTransformation):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
 
-        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates),
-                                                                           len(data_x_list)))
+        logging.info("{} out of {} samples were found to be valid".format(len(data_x_list),
+                                                                          len(simulated_market_dates)))
 
         x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
