@@ -100,7 +100,7 @@ class CrocubotOracle:
         set_training_flags(configuration)  # Perhaps use separate config dict here?
 
         if FLAGS.predict_single_shares:
-            self._n_input_series = int(np.minimum(DEFAULT_N_CORRELATED_SERIES, configuration['n_series']))
+            self._n_input_series = int(np.minimum(configuration['n_correlated_series'], configuration['n_series']))
             self._n_forecasts = 1
         else:
             self._n_input_series = configuration['n_series']
