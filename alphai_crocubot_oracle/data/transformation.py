@@ -274,14 +274,15 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         x_sample = list(xdict.values())[0]
-        y_sample = list(ydict.values())[0]
-        y_expected_shape = (self.n_series,)
         x_expected_shape = self.get_total_ticks_x() - 1
-
         logging.info("Last rejected xdict: {}".format(x_sample.shape))
         logging.info("x_expected_shape: {}".format(x_expected_shape))
-        logging.info("Last rejected ydict: {}".format(y_sample.shape))
-        logging.info("y_expected_shape: {}".format(y_expected_shape))
+
+        if ydict is not None:
+            y_sample = list(ydict.values())[0]
+            y_expected_shape = (self.n_series,)
+            logging.info("Last rejected ydict: {}".format(y_sample.shape))
+            logging.info("y_expected_shape: {}".format(y_expected_shape))
 
     def _make_normalised_x_dict(self, x_list, do_normalisation_fitting):
         """ Collects sample of x into a dictionary, and applies normalisation
