@@ -99,7 +99,7 @@ class FinancialFeature(object):
 
         if self.transformation['name'] == 'log-return':
             processed_prediction_data_x = np.log(processed_prediction_data_x.pct_change() + 1). \
-                replace([np.inf, -np.inf], np.nan).fillna(value=0, limit=10)
+                replace([np.inf, -np.inf], np.nan).dropna()
 
         if self.transformation['name'] == 'stochastic_k':
 
