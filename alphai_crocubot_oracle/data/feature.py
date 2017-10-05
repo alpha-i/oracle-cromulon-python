@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import timedelta
+import logging
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,8 @@ from alphai_crocubot_oracle.data import FINANCIAL_FEATURE_TRANSFORMATIONS, FINAN
     MINUTES_IN_TRADING_DAY, MARKET_DAYS_SEARCH_MULTIPLIER, MIN_MARKET_DAYS_SEARCH
 
 from alphai_crocubot_oracle.data.classifier import BinDistribution, classify_labels, declassify_labels
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class FinancialFeature(object):
@@ -45,8 +48,8 @@ class FinancialFeature(object):
         self.n_series = None
 
         self.bin_distribution = None
-        self.classify_per_series = False
-        self.normalise_per_series = False
+        self.classify_per_series = classify_per_series
+        self.normalise_per_series = normalise_per_series
 
         if self.normalization:
             if self.normalization == 'robust':
@@ -275,6 +278,10 @@ class FinancialFeature(object):
         batch_size = train_y.shape[0]
         self.n_series = train_y.shape[1]
         self.calculate_bin_distribution(train_y)
+        logging.info("Classifying data of shape {} to {} bins ".format(
+            train_y.shape,
+            self.nbins
+        ))
 
         if self.classify_per_series:
             labels = np.zeros((batch_size, self.n_series, self.nbins))

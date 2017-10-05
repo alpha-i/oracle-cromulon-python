@@ -86,8 +86,12 @@ class CrocubotOracle:
         else:
             self.use_historical_covariance = False
 
-        self._configuration = configuration
+        if 'n_correlated_series' in configuration:
+            n_correlated_series = configuration['n_correlated_series']
+        else:
+            n_correlated_series = DEFAULT_N_CORRELATED_SERIES
 
+        self._configuration = configuration
         self._train_file_manager = TrainFileManager(
             self._train_path,
             TRAIN_FILE_NAME_TEMPLATE,
@@ -100,7 +104,7 @@ class CrocubotOracle:
         set_training_flags(configuration)  # Perhaps use separate config dict here?
 
         if FLAGS.predict_single_shares:
-            self._n_input_series = int(np.minimum(DEFAULT_N_CORRELATED_SERIES, configuration['n_series']))
+            self._n_input_series = int(np.minimum(n_correlated_series, configuration['n_series']))
             self._n_forecasts = 1
         else:
             self._n_input_series = configuration['n_series']
