@@ -91,9 +91,7 @@ class CrocubotOracle:
         else:
             n_correlated_series = DEFAULT_N_CORRELATED_SERIES
 
-
         self._configuration = configuration
-
         self._train_file_manager = TrainFileManager(
             self._train_path,
             TRAIN_FILE_NAME_TEMPLATE,

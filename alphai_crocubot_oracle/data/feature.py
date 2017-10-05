@@ -15,6 +15,7 @@ from alphai_crocubot_oracle.data.classifier import BinDistribution, classify_lab
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+
 class FinancialFeature(object):
     def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
                  is_target, exchange_calendar, classify_per_series=False, normalise_per_series=False):
