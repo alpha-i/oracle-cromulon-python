@@ -94,6 +94,7 @@ class FinancialDataTransformation(DataTransformation):
         :return bool: False if the dimensions are not those expected
         """
         correct_dimensions = True
+
         for feature_full_name, feature_array in feature_x_dict.items():
             if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
                 if feature_array.shape[0] != self.get_total_ticks_x():
@@ -185,7 +186,9 @@ class FinancialDataTransformation(DataTransformation):
                 prediction_timestamp,
                 target_timestamp,
             )
-            feature_x_dict[feature.full_name] = feature_x.values
+
+            if feature_x is not None:
+                feature_x_dict[feature.full_name] = feature_x.values
 
             if feature_y is not None:
                 feature_y_dict[feature.full_name] = feature_y.values
@@ -245,7 +248,7 @@ class FinancialDataTransformation(DataTransformation):
             feature_x_dict, feature_y_dict = self.build_features(raw_data_dict, historical_universes,
                                                                  prediction_market_open, target_market_open)
 
-            if self.check_x_batch_dimensions(feature_x_dict) and self.check_y_batch_dimensions(feature_y_dict):
+            if self.check_x_batch_dimensions(feature_x_dict):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
 
@@ -298,9 +301,13 @@ class FinancialDataTransformation(DataTransformation):
         x_dict = self.stack_samples_for_each_feature(x_list)
 
         for feature in self.features:
-            x_data = x_dict[feature.full_name]
-            normalised_feature = feature.apply_normalisation(x_data, do_normalisation_fitting)
-            x_dict[feature.full_name] = normalised_feature
+            if feature.full_name in x_dict:
+                x_data = x_dict[feature.full_name]
+                normalised_feature = feature.apply_normalisation(x_data, do_normalisation_fitting)
+                x_dict[feature.full_name] = normalised_feature
+            else:
+                logging.info("Failed to find {} in dict: {}".format(feature.full_name, list(x_dict.keys())))
+                logging.info("x_list: {}".format(x_list))
 
         return x_dict
 
@@ -369,7 +376,8 @@ class FinancialDataTransformation(DataTransformation):
         feature_names = samples[0].keys()
 
         stacked_samples = {}
-
+        total_samples = 0
+        unusual_samples = 0
         for feature_name in feature_names:
             reference_sample = samples[0]
             reference_shape = reference_sample[feature_name].shape
@@ -381,14 +389,16 @@ class FinancialDataTransformation(DataTransformation):
                     feature = sample[feature_name]
                     if feature.shape == reference_shape:  # Make sure shape is OK
                         feature_list.append(sample[feature_name])
+                        total_samples += 1
                     else:
-                        logging.info("Found unusual sample shape: {}; Expected: {}".format(feature.shape,
-                                                                                           reference_shape))
+                        unusual_samples += 1
 
                 if len(feature_list) > 0:
                     stacked_samples[feature_name] = np.stack(feature_list, axis=0)
                 else:
                     stacked_samples = None
+
+        logging.info("Found {} unusual samples out of {}".format(unusual_samples, total_samples))
 
         return stacked_samples
 
