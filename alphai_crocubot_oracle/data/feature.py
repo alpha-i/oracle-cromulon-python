@@ -99,7 +99,10 @@ class FinancialFeature(object):
 
         if self.transformation['name'] == 'log-return':
             processed_prediction_data_x = np.log(processed_prediction_data_x.pct_change() + 1). \
-                replace([np.inf, -np.inf], np.nan).dropna()
+                replace([np.inf, -np.inf], np.nan)
+
+            # Remove the zeros / nans associated with log return
+            processed_prediction_data_x = processed_prediction_data_x.iloc[1:]
 
         if self.transformation['name'] == 'stochastic_k':
 
@@ -137,18 +140,22 @@ class FinancialFeature(object):
         :return:
         """
 
-        if self.scaler is None:
-            return data_x
+        if self.scaler is not None:
+            original_shape = data_x.shape
+            data_x = self.reshape_for_scikit(data_x)
+            nan_mask = np.ma.fix_invalid(data_x, fill_value=0)  # FIXME: Ideally fit without Nans rather than filled
 
-        original_shape = data_x.shape
-        data_x = self.reshape_for_scikit(data_x)
+            if do_normalisation_fitting:
+                data_x = self.scaler.fit_transform(nan_mask.data)
+            else:
+                data_x = self.scaler.transform(nan_mask.data)
 
-        if do_normalisation_fitting:
-            data_x = self.scaler.fit_transform(data_x)
-        else:
-            data_x = self.scaler.transform(data_x)
+            # Put the nans back in so we know to avoid them
+            data_x[nan_mask.mask] = np.nan
 
-        return data_x.reshape(original_shape)
+            data_x = data_x.reshape(original_shape)
+
+        return data_x
 
     def reshape_for_scikit(self, data_x):
         """ Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature.
@@ -178,7 +185,7 @@ class FinancialFeature(object):
 
         if self.transformation['name'] == 'log-return':
             processed_prediction_data_y = np.log(prediction_data_y / prediction_reference_data). \
-                replace([np.inf, -np.inf], np.nan).dropna()
+                replace([np.inf, -np.inf], np.nan)
 
         if self.scaler:
             if self.nbins is None:
@@ -260,9 +267,13 @@ class FinancialFeature(object):
         if self.classify_per_series:
             self.bin_distribution = []
             for i in range(self.n_series):
-                self.bin_distribution.append(BinDistribution(train_y[:, i], self.nbins))
+                series_data = train_y[:, i].flatten()
+                cleaned_data = series_data[np.isfinite(series_data)]
+                self.bin_distribution.append(BinDistribution(cleaned_data, self.nbins))
         else:
-            self.bin_distribution = BinDistribution(train_y, self.nbins)
+            series_data = train_y.flatten()
+            cleaned_data = series_data[np.isfinite(series_data)]
+            self.bin_distribution = BinDistribution(cleaned_data, self.nbins)
 
     def classify_train_data_y(self, train_y):
         """

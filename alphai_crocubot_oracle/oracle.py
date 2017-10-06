@@ -6,6 +6,7 @@
 
 import logging
 from timeit import default_timer as timer
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -130,6 +131,10 @@ class CrocubotOracle:
         logging.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x)
         train_y = self._preprocess_outputs(train_y)
+        logging.info("Processed train_x shape {}".format(train_x.shape))
+        train_x, train_y = self.filter_nan_samples(train_x, train_y)
+        logging.info("Filtered train_x shape {}".format(train_x.shape))
+        self.verify_data(train_x, train_y)
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         self._topology = tp.Topology(
@@ -176,10 +181,13 @@ class CrocubotOracle:
 
         :return : mean vector (pd.Series) and two covariance matrices (pd.DF)
         """
+
+        if self._topology is None:
+            raise ValueError('Not ready for prediction - run train first')
+
+        logging.info('Crocubot Oracle prediction on {}.'.format(execution_time))
+
         latest_train = self._train_file_manager.latest_train_filename(execution_time)
-        logging.info('Crocubot Oracle prediction on {}.'.format(
-            execution_time,
-        ))
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
@@ -219,6 +227,46 @@ class CrocubotOracle:
                                       index=predict_data['close'].columns)
 
         return means, covariance
+
+    def filter_nan_samples(self, train_x, train_y):
+        """ Remove any sample in zeroth dimension which holds a nan """
+
+        n_samples = train_x.shape[0]
+        if n_samples != train_y.shape[0]:
+            raise ValueError("x and y sample lengths don't match")
+
+        validity_array = np.zeros(n_samples)
+        for i in range(n_samples):
+            x_sample = train_x[i, :]
+            y_sample = train_y[i, :]
+            validity_array[i] = np.isfinite(x_sample).all() and np.isfinite(y_sample).all()
+
+        mask = np.where(validity_array)[0]
+
+        return train_x[mask, :], train_y[mask, :]
+
+    def verify_data(self, train_x, train_y):
+        """Check for nans or crazy numbers.
+         """
+        testx = deepcopy(train_x).flatten()
+        testy = deepcopy(train_y).flatten()
+
+        xnans = np.isnan(testx).sum()
+        ynans = np.isnan(testy).sum()
+
+        xinfs = np.isinf(testx).sum()
+        yinfs = np.isinf(testy).sum()
+
+        xmax = np.max(testx)
+        ymax = np.max(testy)
+
+        xmin = np.min(testx)
+        ymin = np.min(testy)
+
+        logging.info("Nans: {}, {}".format(xnans, ynans))
+        logging.info("Infs: {}, {}".format(xinfs, yinfs))
+        logging.info("Maxs: {}, {}".format(xmax, ymax))
+        logging.info("Mins: {}, {}".format(xmin, ymin))
 
     def calculate_historical_covariance(self, predict_data):
 
