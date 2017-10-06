@@ -81,7 +81,7 @@ class BinDistribution:
 
         :return float: The amount by which the variance of the discrete pdf overestimates the continuous pdf
         """
-        return np.mean(self.bin_widths ** 2) / 12
+        return np.median(self.bin_widths ** 2) / 12
 
 
 def classify_labels(bin_edges, labels):
@@ -99,9 +99,13 @@ def classify_labels(bin_edges, labels):
     n_labels = len(labels)
     n_bins = len(bin_edges) - 1
     binned_labels = np.zeros((n_labels, n_bins))
+    nan_bins = np.array([np.nan] * n_bins)
 
     for i in range(n_labels):
-        binned_labels[i, :], _ = np.histogram(labels[i], bin_edges, density=False)
+        if np.isfinite(labels[i]):
+            binned_labels[i, :], _ = np.histogram(labels[i], bin_edges, density=False)
+        else:
+            binned_labels[i, :] = nan_bins
 
     if n_label_dimensions == 2:
         binned_labels = binned_labels.reshape(label_shape[0], label_shape[1], n_bins)
