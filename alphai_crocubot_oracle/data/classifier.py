@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 
 
@@ -46,10 +44,6 @@ class BinDistribution:
         n_xvals = len(self.training_labels)
         xrange = np.linspace(0, n_xvals - 1, self.n_bins + 1)
         n_array = np.arange(n_xvals)
-        logging.info("Assigning {} to {} bins ".format(
-            self.training_labels.shape,
-            self.n_bins
-        ))
 
         return np.interp(xrange, n_array, np.sort(self.training_labels))
 

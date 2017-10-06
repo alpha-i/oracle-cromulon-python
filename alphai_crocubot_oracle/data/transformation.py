@@ -49,6 +49,8 @@ class FinancialDataTransformation(DataTransformation):
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
+        self.classify_per_series = configuration['classify_per_series']
+        self.normalise_per_series = configuration['normalise_per_series']
         self.features = self._financial_features_factory(configuration['feature_config_list'],
                                                          configuration['n_classification_bins'])
         self.n_series = configuration['nassets']
@@ -137,7 +139,9 @@ class FinancialDataTransformation(DataTransformation):
                 self.features_resample_minutes,
                 self.features_start_market_minute,
                 single_feature_dict['is_target'],
-                self.exchange_calendar
+                self.exchange_calendar,
+                self.classify_per_series,
+                self.normalise_per_series
             ))
 
         return feature_list
@@ -225,6 +229,7 @@ class FinancialDataTransformation(DataTransformation):
         :return (dict, dict): feature_x_dict, feature_y_dict
         """
 
+        n_samples = len(simulated_market_dates)
         market_open_list = self._get_market_open_list(raw_data_dict)
         data_x_list, data_y_list = [], []
 
@@ -244,8 +249,12 @@ class FinancialDataTransformation(DataTransformation):
                 data_x_list.append(feature_x_dict)
                 data_y_list.append(feature_y_dict)
 
-        logging.info("Out of {} samples, {} were found to be valid".format(len(simulated_market_dates),
-                                                                           len(data_x_list)))
+        n_valid_samples = len(data_x_list)
+
+        if n_valid_samples < n_samples:
+            logging.info("{} out of {} samples were found to be valid".format(n_valid_samples, n_samples))
+            if n_valid_samples == 0:
+                self.print_diagnostics(feature_x_dict, feature_y_dict)
 
         x_dict = self._make_normalised_x_dict(data_x_list, do_normalisation_fitting)
 
@@ -255,6 +264,25 @@ class FinancialDataTransformation(DataTransformation):
             y_dict = self._make_classified_y_dict(data_y_list)
 
         return x_dict, y_dict
+
+    def print_diagnostics(self, xdict, ydict):
+        """
+
+        :param xdict:
+        :param ydict:
+        :return:
+        """
+
+        x_sample = list(xdict.values())[0]
+        x_expected_shape = self.get_total_ticks_x() - 1
+        logging.info("Last rejected xdict: {}".format(x_sample.shape))
+        logging.info("x_expected_shape: {}".format(x_expected_shape))
+
+        if ydict is not None:
+            y_sample = list(ydict.values())[0]
+            y_expected_shape = (self.n_series,)
+            logging.info("Last rejected ydict: {}".format(y_sample.shape))
+            logging.info("y_expected_shape: {}".format(y_expected_shape))
 
     def _make_normalised_x_dict(self, x_list, do_normalisation_fitting):
         """ Collects sample of x into a dictionary, and applies normalisation

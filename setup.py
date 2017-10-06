@@ -11,14 +11,13 @@ setup(
     packages=find_packages(exclude=['doc', 'tests*']),
     install_requires=[
         'alphai-time-series>=0.0.3',
-        'alphai-finance<=1.2.1',
         'pandas-market-calendars>=0.6',
         'alphai_covariance>=0.1.3',
         'alphai-data-sources>=1.0.1',
         'tensorflow>=1.3.0',
         'numpy>=1.11.3',
         'pandas>=0.18.1',
-
+        'scikit-learn'
     ],
     dependency_links=[
         'git+ssh://git@github.com/alpha-i/library-alphai-covariance.git@0.1.3#egg=alphai_covariance-0.1.3',
