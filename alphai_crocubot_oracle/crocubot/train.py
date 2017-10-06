@@ -144,6 +144,9 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
 
             time_epoch = timer() - start_time
 
+            if epoch_loss != epoch_loss:
+                raise ValueError("Found nan value for epoch loss.")
+
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:

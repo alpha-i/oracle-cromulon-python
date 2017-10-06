@@ -15,4 +15,4 @@ exclude=
     examples/benchmark_prototype.py
     setup.py
 
-max-complexity = 14
+max-complexity = 15
