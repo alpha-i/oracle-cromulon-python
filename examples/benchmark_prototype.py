@@ -205,10 +205,13 @@ def print_MNIST_accuracy(metrics):
 
     total_tests = len(results)
     correct = np.sum(results)
-    accuracy = correct / total_tests * 100
+    accuracy = correct / total_tests
 
-    print('MNIST accuracy of ', accuracy, '%')
+    theoretical_max_log_likelihood_per_sample = np.log(0.5)*(1 - accuracy)
+
+    print('MNIST accuracy of ', accuracy * 100, '%')
     print('Log Likelihood per sample of ', metrics["log_likelihood_per_sample"])
+    print('Theoretical limit for given accuracy ', theoretical_max_log_likelihood_per_sample)
     print('Median probability assigned to true outcome:', metrics["median_probability"])
     print('Mean probability assigned to successful forecast:', metrics["mean_p_success"])
     print('Mean probability assigned to unsuccessful forecast:', metrics["mean_p_fail"])
@@ -217,14 +220,21 @@ def print_MNIST_accuracy(metrics):
     return accuracy
 
 
-def run_mnist_test(train_path, tensorboard_log_path):
+def run_mnist_test(train_path, tensorboard_log_path, use_full_train_set=True):
+
+    if use_full_train_set:
+        n_training_samples = 50000
+        n_epochs = 10
+    else:
+        n_training_samples = 500
+        n_epochs = 100
 
     config = load_default_config()
-    config["n_epochs"] = 10
+    config["n_epochs"] = n_epochs
     config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
-    config['n_training_samples_benchmark'] = 50000
+    config['n_training_samples_benchmark'] = n_training_samples
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
@@ -323,7 +333,7 @@ def load_default_config():
         'activation_functions': ['relu', 'relu', 'relu'],
 
         # Initial conditions
-        'INITIAL_ALPHA': 0.2,
+        'INITIAL_ALPHA': 0.8,
         'INITIAL_WEIGHT_UNCERTAINTY': 0.05,
         'INITIAL_BIAS_UNCERTAINTY': 0.005,
         'INITIAL_WEIGHT_DISPLACEMENT': 0.02,
@@ -332,8 +342,8 @@ def load_default_config():
 
         # Priors
         'double_gaussian_weights_prior': False,
-        'wide_prior_std': 0.1,
-        'narrow_prior_std': 0.005,
+        'wide_prior_std': 1.0,
+        'narrow_prior_std': 0.001,
         'spike_slab_weighting': 0.5
     }
 
@@ -351,4 +361,4 @@ if __name__ == '__main__':
     tensorboard_log_path = '/tmp/'
 
     # run_stochastic_test(train_path, tensorboard_log_path)
-    run_mnist_test(train_path, tensorboard_log_path)
+    run_mnist_test(train_path, tensorboard_log_path,  use_full_train_set=False)

@@ -48,14 +48,9 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
     :return: epoch_loss_list
     """
 
+    _verify_topology(topology)
     tensorboard_log_dir = get_tensorboard_log_dir_current_execution(FLAGS.learning_rate, FLAGS.batch_size,
                                                                     FLAGS.tensorboard_log_path, execution_time)
-
-    if topology.n_parameters > 1e7:
-        logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
-    else:
-        logging.info("Number of parameters: {}".format(topology.n_parameters))
-
     # Start from a clean graph
     tf.reset_default_graph()
     model = CrocuBotModel(topology, FLAGS)
@@ -71,7 +66,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
     if use_data_loader:
         data_source_generator = DataSourceGenerator()
         batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype='float32')
-        print(series_name)
+        print('Loading data series: ', series_name)
         data_source = data_source_generator.make_data_source(series_name)
 
     # Placeholders for the inputs and outputs of neural networks
@@ -143,6 +138,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
                     summary_writer.add_summary(summary_results, summary_index)
 
             time_epoch = timer() - start_time
+            io.reset_mnist()
 
             if epoch_loss != epoch_loss:
                 raise ValueError("Found nan value for epoch loss.")
@@ -205,3 +201,14 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches):
         raise NotImplementedError
 
     return tf.reduce_mean(operator)
+
+
+def _verify_topology(topology):
+    """Check topology is sensible """
+
+    logging.info("Requested topology: {}".format(topology.layers))
+
+    if topology.n_parameters > 1e7:
+        logging.warning("Ambitious number of parameters: {}".format(topology.n_parameters))
+    else:
+        logging.info("Number of parameters: {}".format(topology.n_parameters))
