@@ -28,7 +28,8 @@ FLAGS = tf.app.flags.FLAGS
 TIME_LIMIT = 600
 D_TYPE = 'float32'
 
-def run_timed_benchmark_mnist(series_name, flags, do_training):
+
+def run_timed_benchmark_mnist(series_name, do_training):
 
     topology = load_default_topology(series_name)
 
@@ -161,6 +162,7 @@ def evaluate_network(topology, series_name, bin_dist):  # bin_dist not used in M
         metrics["median_probability"] = median_probability
         metrics["mean_p_success"] = np.mean(np.stack(p_success))
         metrics["mean_p_fail"] = np.mean(np.stack(p_fail))
+        metrics["min_p_fail"] = np.min(np.stack(p_fail))
 
         return metrics
 
@@ -210,6 +212,7 @@ def print_MNIST_accuracy(metrics):
     print('Median probability assigned to true outcome:', metrics["median_probability"])
     print('Mean probability assigned to successful forecast:', metrics["mean_p_success"])
     print('Mean probability assigned to unsuccessful forecast:', metrics["mean_p_fail"])
+    print('Min probability assigned to unsuccessful forecast:', metrics["min_p_fail"])
 
     return accuracy
 
@@ -230,8 +233,8 @@ def run_mnist_test(train_path, tensorboard_log_path):
     config['train_path'] = train_path
     config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
-    config['n_train_passes'] = 8
-    config['n_eval_passes'] = 8
+    config['n_train_passes'] = 16
+    config['n_eval_passes'] = 16
 
     fl.set_training_flags(config)
     # this flag is only used in benchmark.
@@ -239,7 +242,7 @@ def run_mnist_test(train_path, tensorboard_log_path):
                                 """Number of samples for benchmarking.""")
     FLAGS._parse_flags()
     print("Epochs to evaluate:", FLAGS.n_epochs)
-    run_timed_benchmark_mnist(series_name="mnist", flags=FLAGS, do_training=True)
+    run_timed_benchmark_mnist(series_name="mnist", do_training=True)
 
 
 def run_stochastic_test(train_path, tensorboard_log_path):
@@ -329,8 +332,8 @@ def load_default_config():
 
         # Priors
         'double_gaussian_weights_prior': False,
-        'wide_prior_std': 1.2,
-        'narrow_prior_std': 0.05,
+        'wide_prior_std': 0.1,
+        'narrow_prior_std': 0.005,
         'spike_slab_weighting': 0.5
     }
 
