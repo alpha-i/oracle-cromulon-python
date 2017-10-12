@@ -182,7 +182,7 @@ class FinancialDataTransformation(DataTransformation):
                 universe = raw_data_dict[feature.name].columns
 
             feature_x, feature_y = feature.get_prediction_data(
-                raw_data_dict[feature.name][universe],
+                raw_data_dict[feature.name].loc[:, universe],
                 prediction_timestamp,
                 target_timestamp,
             )
