@@ -2,88 +2,82 @@
 
 This page describes the keys required to define the Crocubot oracle.
 ```yaml
-oracle_arguments:
-  data_transformation:
-    feature_config_list:
-    - name: close
-      order: log-return
-      is_target: True
-      nbins: 6
-      normalization: standard
-    exchange_name: 'NYSE'
-    features_ndays: 10
-    features_resample_minutes: 15
-    features_start_market_minute: 60
-    prediction_frequency_ndays: 1
-    prediction_market_minute: 60
-    target_delta_ndays: 1
-    target_market_minute: 60
-  n_training_samples_benchmark: 1000
-  train_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\train'
-  tensorboard_log_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\temp'
-  covariance_method: 'Ledoit'
-  covariance_ndays: 9
-  model_save_path: 'D:\Zipline\20100101_20150101_500S\crocoubot_runs\model'
-  d_type: float32
-  tf_type: 32
-  random_seed: 0
-  predict_single_shares: True
-  n_epochs: 200
-  n_retrain_epochs: 5
-  n_training_samples: 15800
-  learning_rate: 0.0001
-  batch_size: 100
-  cost_type: 'bayes'
-  n_train_passes: 16
-  n_eval_passes: 16
-  resume_training: True
-  n_series: 1
-  n_features_per_series: 271
-  n_forecasts: 1
-  n_classification_bins: 6
-  layer_heights:
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  - 100
-  layer_widths:
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  - 1
-  activation_functions:
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  - relu
-  INITIAL_ALPHA: 0.2
-  INITIAL_WEIGHT_UNCERTAINTY: 0.01
-  INITIAL_BIAS_UNCERTAINTY: 0.01
-  INITIAL_WEIGHT_DISPLACEMENT: 0.2
-  INITIAL_BIAS_DISPLACEMENT: 0.01
-  USE_PERFECT_NOISE: False
-  double_gaussian_weights_prior: True
-  wide_prior_std: 1.5
-  narrow_prior_std: 1e-05
-  spike_slab_weighting: 0.25
+    oracle_arguments:
+      data_transformation:
+        feature_config_list:
+        - is_target: True
+          normalization: gaussian
+          name: close
+          transformation:
+            name: log-return
+        exchange_name: "NYSE"
+        features_ndays: 10
+        features_resample_minutes: 15
+        features_start_market_minute: 60
+        prediction_frequency_ndays: 1
+        prediction_market_minute: 60
+        target_delta_ndays: 1
+        target_market_minute: 60
+
+      train_path: 'D:\Zipline\19990101_20161231_723S\crocubot_runs\train'
+      tensorboard_log_path: 'D:\Zipline\19990101_20161231_723S\crocubot_runs\tensorboard'
+      covariance_method: Ledoit
+      covariance_ndays: 9
+      model_save_path: 'D:\Zipline\19990101_20161231_723S\crocubot_runs\model'
+      d_type: float32
+      tf_type: 32
+      random_seed: 0
+      predict_single_shares: True
+      n_epochs: 10
+      n_retrain_epochs: 1
+      n_training_samples: 15800
+      learning_rate: 1e-05
+      batch_size: 100
+      cost_type: bayes
+      n_train_passes: 2
+      n_eval_passes: 2
+      resume_training: True
+      n_series: 1
+      nassets: 400
+      n_features_per_series: 271
+      n_forecasts: 1
+      n_classification_bins: 2
+      classify_per_series: False
+      normalise_per_series: False
+      layer_heights:
+      - 600
+      - 600
+      - 600
+      - 600
+
+      layer_widths:
+      - 1
+      - 1
+      - 1
+      - 1
+
+      activation_functions:
+      - selu
+      - selu
+      - selu
+      - selu
+
+      INITIAL_ALPHA: 0.01
+      INITIAL_WEIGHT_UNCERTAINTY: 0.01
+      INITIAL_BIAS_UNCERTAINTY: 0.01
+      INITIAL_WEIGHT_DISPLACEMENT: 0.2
+      INITIAL_BIAS_DISPLACEMENT: 0.2
+      USE_PERFECT_NOISE: True
+      double_gaussian_weights_prior: True
+      wide_prior_std: 1.0
+      narrow_prior_std: 0.001
+      spike_slab_weighting: 0.25
+      n_training_samples_benchmark: 1000
+
+
+
+      use_historical_covariance: False
+      n_correlated_series: 5
 ```
 
 | key | description |
@@ -105,9 +99,12 @@ oracle_arguments:
 | `n_eval_passes` | number of forward passes for computing the mean and the covariance in the inference stage |
 | `resume_training` | whether we should resume training from a previously saved position? |
 | `n_series` | number of time series in the data. *this should be identical to the zipline data passed* :exclamation: NEED TO INFER THIS FROM THE DATA |
+| `nassets` | number of assets in the data. *this should be identical to the zipline data passed* :exclamation: NEED TO INFER THIS FROM THE DATA |
 | `n_features_per_series` | number of data points/features per time series |
 | `n_forecasts` | number of points to forecast per series in the future. only accepts `1` now. :exclamation: THIS SHOULD BE RENAMED AS `n_forecasts_per_series`|
 | `n_classification_bins` | number of classification bins in the data |
+| `classify_per_series` | if True, make the classification bins for each series |
+| `normalise_per_series` | if True, do the normalisation per series. |
 | `layer_heights` | a list of numbers indicating the heights of the layers |
 | `layer_widths` | a list of numbers indicating the widths of the layers |
 | `activation_functions` | a list of strings indicating the activation function of the layers |
@@ -121,6 +118,10 @@ oracle_arguments:
 | `wide_prior_std` | standard deviation of the *slab-prior* in the *Bayes-by-backprop* method |
 | `narrow_prior_std` | standard deviation of the *spike-prior* in the *Bayes-by-backprop* method |
 | `spike_slab_weighting` | the ratio or slab/spike in the prior. |
+| `use_historical_covariance` | whether to use historical covariance instead of forecasted covariance. |
+| `n_correlated_series` | the number of top correlated series used for prediction of a single series |
+
+
 
 
 ## `data_transformation`
@@ -128,7 +129,7 @@ The data transformation needs to be specified as a subsection with the following
 
 | key | description |
 | --- | --- |
-| `feature_config_list` | specified as a subsection containing `name`, `order`, `normalization`, `nbins` and `is_target` |
+| `feature_config_list` | specified as a subsection containing `name`, `transformation`, `normalization`, `nbins` and `is_target` |
 | `exchange_name` | name of the stock-exchange |
 | `features_ndays` | the number days of historical data used for inference. :exclamation: SHOULD BE <= `trade_history_ndays` |
 | `features_resample_minutes` | re-sample frequency of the data :exclamation: SHOULD BE IDENTICAL TO `trade_resample_rule` AND `train_resample_rule` |
