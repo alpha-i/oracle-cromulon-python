@@ -1,6 +1,12 @@
 import unittest
 
-from alphai_crocubot_oracle.topology import Topology, DEFAULT_HEIGHT, DEFAULT_WIDTH, DEFAULT_N_SERIES, DEFAULT_FEAT_PER_SERIES
+from alphai_crocubot_oracle.topology import (
+    Topology,
+    DEFAULT_HEIGHT,
+    DEFAULT_WIDTH,
+    DEFAULT_N_SERIES,
+    DEFAULT_FEAT_PER_SERIES
+)
 
 
 class TestTopology(unittest.TestCase):
