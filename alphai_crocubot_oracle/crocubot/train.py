@@ -35,7 +35,8 @@ def get_tensorboard_log_dir_current_execution(execution_time):
     :return: A unique directory path inside tensorboard path.
     """
     hyper_param_string = "lr={}_bs={}".format(FLAGS.learning_rate, FLAGS.batch_size)
-    return os.path.join(FLAGS.tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
+    return os.path.join(FLAGS.tensorboard_log_path, hyper_param_string,
+                        execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
 
 def train(topology, series_name, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,

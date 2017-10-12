@@ -187,7 +187,7 @@ class Topology(object):
         """
 
         layer_heights = [DEFAULT_N_SERIES] + [DEFAULT_HEIGHT] * n_hidden_layers + [DEFAULT_N_FORECASTS]
-        layer_widths = [DEFAULT_FEAT_PER_SERIES] + [DEFAULT_WIDTH] * n_hidden_layers + [ DEFAULT_BINS]
+        layer_widths = [DEFAULT_FEAT_PER_SERIES] + [DEFAULT_WIDTH] * n_hidden_layers + [DEFAULT_BINS]
         activation_functions = ['linear'] + [DEFAULT_ACT_FUNCTION] * n_hidden_layers + ['linear']
 
         return layer_heights, layer_widths, activation_functions
