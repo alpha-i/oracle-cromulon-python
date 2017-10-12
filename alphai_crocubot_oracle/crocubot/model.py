@@ -182,7 +182,6 @@ class Estimator:
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
 
         return tf.reduce_logsumexp(collated_outputs, axis=[0])
-               # - tf.log(tf.to_float(number_of_passes)) # This is technically true but will only reduce numerical precision
 
     def collate_multiple_passes(self, x, number_of_passes):
         """

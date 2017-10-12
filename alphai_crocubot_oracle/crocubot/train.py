@@ -65,7 +65,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
     if use_data_loader:
         data_source_generator = DataSourceGenerator()
         batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype=FLAGS.d_type)
-        print('Loading data series: ', series_name)
+        logging.info('Loading data series: {}'.format(series_name))
         data_source = data_source_generator.make_data_source(series_name)
 
     # Placeholders for the inputs and outputs of neural networks
