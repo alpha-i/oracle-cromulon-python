@@ -19,7 +19,7 @@ PRINT_LOSS_INTERVAL = 1
 PRINT_SUMMARY_INTERVAL = 5
 
 
-def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorboard_log_path, execution_time):
+def get_tensorboard_log_dir_current_execution(execution_time):
     """
     A function that creates unique tensorboard directory given a set of hyper parameters and execution time.
 
@@ -34,8 +34,8 @@ def get_tensorboard_log_dir_current_execution(learning_rate, batch_size, tensorb
     :param execution_time: The execution time for which a unique directory is to be created.
     :return: A unique directory path inside tensorboard path.
     """
-    hyper_param_string = "lr={}_bs={}".format(learning_rate, batch_size)
-    return os.path.join(tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
+    hyper_param_string = "lr={}_bs={}".format(FLAGS.learning_rate, FLAGS.batch_size)
+    return os.path.join(FLAGS.tensorboard_log_path, hyper_param_string, execution_time.strftime(DATETIME_FORMAT_COMPACT))
 
 
 def train(topology, series_name, execution_time, train_x=None, train_y=None, bin_edges=None, save_path=None,
@@ -49,8 +49,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
     """
 
     _verify_topology(topology)
-    tensorboard_log_dir = get_tensorboard_log_dir_current_execution(FLAGS.learning_rate, FLAGS.batch_size,
-                                                                    FLAGS.tensorboard_log_path, execution_time)
+    tensorboard_log_dir = get_tensorboard_log_dir_current_execution(execution_time)
     # Start from a clean graph
     tf.reset_default_graph()
     model = CrocuBotModel(topology, FLAGS)
@@ -65,7 +64,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
 
     if use_data_loader:
         data_source_generator = DataSourceGenerator()
-        batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype='float32')
+        batch_options = BatchOptions(FLAGS.batch_size, batch_number=0, train=True, dtype=FLAGS.d_type)
         print('Loading data series: ', series_name)
         data_source = data_source_generator.make_data_source(series_name)
 
@@ -138,7 +137,6 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
                     summary_writer.add_summary(summary_results, summary_index)
 
             time_epoch = timer() - start_time
-            io.reset_mnist()
 
             if epoch_loss != epoch_loss:
                 raise ValueError("Found nan value for epoch loss.")
@@ -146,7 +144,7 @@ def train(topology, series_name, execution_time, train_x=None, train_y=None, bin
             epoch_loss_list.append(epoch_loss)
 
             if (epoch % PRINT_LOSS_INTERVAL) == 0:
-                msg = "Epoch {} of {} ... Loss: {:.2e}. in {:.2f} seconds.".format(epoch, n_epochs, epoch_loss,
+                msg = "Epoch {} of {} ... Loss: {:.2e}. in {:.2f} seconds.".format(epoch + 1, n_epochs, epoch_loss,
                                                                                    time_epoch)
                 logging.info(msg)
 
