@@ -125,16 +125,16 @@ The `portfolio` section can be used to specify the portfolio creation. The follo
 
 | key | description |
 | --- | --- |
-| `max_individual_weight` | ?? |
-| `min_individual_weight` | ?? |
-| `max_aggregate_exposure` | ?? |
-| `min_aggregate_exposure` | ?? |
-| `margin_ratio` | ??  |
-| `max_annualised_std` | ?? |
-| `alpha_plus` | ?? |
-| `alpha_minus` | ?? |
-| `beta_plus` | ?? |
-| `beta_minus` | ??  |
+| `max_individual_weight` | scalar - bound on long positions for individual stocks |
+| `min_individual_weight` |scalar - bound on short positions for individual stocks |
+| `max_aggregate_exposure` | scalar - bound on net long position for portfolio |
+| `min_aggregate_exposure` | scalar - bound on net short position for portfolio |
+| `margin_ratio` | scalar > 1 - max allowed ratio of invested capital to real value of assets  |
+| `max_annualised_std` | scalar - max standard deviation of the portfolio over a year |
+| `alpha_plus` | scalar - linear cost for buying a unit of stock |
+| `alpha_minus` | scalar - linear cost for shorting a unit of stock |
+| `beta_plus` | scalar - fixed cost for buying a nonzero quantity of stock |
+| `beta_minus` | scalar - fixed cost for shorting a nonzero quantity of stock  |
 
 ### `universe` 
 The `universe` section deals with the universe creation. This section requires the key `method` to be specified. It 
