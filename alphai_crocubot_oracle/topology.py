@@ -14,9 +14,10 @@ DEFAULT_N_SERIES = 3
 DEFAULT_FEAT_PER_SERIES = 10
 DEFAULT_BINS = 10
 DEFAULT_N_FORECASTS = 3
-DEFAULT_HEIGHTS = [DEFAULT_N_SERIES, 400, 400, DEFAULT_N_FORECASTS]  # NB this is the dimension which gets shuffled
-DEFAULT_WIDTHS = [DEFAULT_FEAT_PER_SERIES, 1, 1, DEFAULT_BINS]  # NB noise in this dimension is not shuffled
-DEFAULT_ACT_FUNCTIONS = ['linear', 'relu', 'relu', 'relu']
+DEFAULT_HIDDEN_LAYERS = 5
+DEFAULT_HEIGHT = 400  # NB this is the dimension which gets shuffled
+DEFAULT_WIDTH = 1  # NB noise in this dimension is not shuffled
+DEFAULT_ACT_FUNCTION = 'selu'
 
 
 class Topology(object):
@@ -26,8 +27,8 @@ class Topology(object):
     """
 
     def __init__(self, layers=None, n_series=DEFAULT_N_SERIES, n_features_per_series=DEFAULT_FEAT_PER_SERIES,
-                 n_forecasts=DEFAULT_N_FORECASTS, n_classification_bins=DEFAULT_BINS, layer_heights=DEFAULT_HEIGHTS,
-                 layer_widths=DEFAULT_WIDTHS, activation_functions=DEFAULT_ACT_FUNCTIONS):
+                 n_forecasts=DEFAULT_N_FORECASTS, n_classification_bins=DEFAULT_BINS, layer_heights=None,
+                 layer_widths=None, activation_functions=None):
         """
         Following info is required to construct a topology object
         :param layers: Full list of layers can be provided, or:
@@ -39,6 +40,10 @@ class Topology(object):
         :param layer_widths:
         :param activation_functions:
         """
+
+        if layer_heights is None:
+            assert layer_widths is None and activation_functions is None
+            layer_heights, layer_widths, activation_functions = self.get_default_layers(DEFAULT_HIDDEN_LAYERS)
 
         if layers is None:
             layers = self._build_layers(layer_heights, layer_widths, activation_functions)
@@ -173,3 +178,16 @@ class Topology(object):
             layers.append(layer)
 
         return layers
+
+    @staticmethod
+    def get_default_layers(n_hidden_layers):
+        """ Compiles the list of layer heights, widths and activation funcs to be used if none are provided
+
+        :return:
+        """
+
+        layer_heights = [DEFAULT_N_SERIES] + [DEFAULT_HEIGHT] * n_hidden_layers + [DEFAULT_N_FORECASTS]
+        layer_widths = [DEFAULT_FEAT_PER_SERIES] + [DEFAULT_WIDTH] * n_hidden_layers + [ DEFAULT_BINS]
+        activation_functions = ['linear'] + [DEFAULT_ACT_FUNCTION] * n_hidden_layers + ['linear']
+
+        return layer_heights, layer_widths, activation_functions
