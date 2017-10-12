@@ -6,7 +6,8 @@ DEFAULT_SPLIT_STEPS = 1
 DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR = 3
 
 
-def estimate_covariance(data, ndays, minutes_after_open, estimation_method, exchange_calendar, forecast_interval_in_days):
+def estimate_covariance(data, ndays, minutes_after_open, estimation_method,
+                        exchange_calendar, forecast_interval_in_days):
     """
     :param data: OHLCV data
     :param ndays: number of historical days expected for the covariance estimate
