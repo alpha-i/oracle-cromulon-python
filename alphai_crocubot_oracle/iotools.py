@@ -10,6 +10,10 @@ FLAGS = tf.app.flags.FLAGS
 batch_generator = BatchGenerator()
 
 
+def reset_mnist():
+    batch_generator.reset_mnist()
+
+
 def load_batch(batch_options, data_source, bin_edges=None):
 
     features, labels = batch_generator.get_batch(batch_options, data_source)
