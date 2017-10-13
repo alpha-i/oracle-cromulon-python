@@ -181,9 +181,9 @@ class Estimator:
 
         collated_outputs = self.collate_multiple_passes(data, number_of_passes)
 
-        return tf.reduce_logsumexp(collated_outputs, axis=[0]) - tf.log(tf.to_float(number_of_passes))
+        return tf.reduce_logsumexp(collated_outputs, axis=[0])
 
-    def collate_multiple_passes(self, x, number_of_passes=50):
+    def collate_multiple_passes(self, x, number_of_passes):
         """
         Collate outputs from many realisations of weights from a bayesian network.
 
