@@ -69,8 +69,8 @@ class BayesianCost(object):
         """
 
         if self._use_double_gaussian_weights_prior:
-            log_p_spike = tf.log(self._spike_slab_weighting) + tm.log_gaussian(weights, 0., self._spike_std_dvn)
-            log_p_slab = tf.log(1 - self._spike_slab_weighting) + tm.log_gaussian(weights, 0., self._slab_std_dvn)
+            log_p_spike = tf.log(1 - self._spike_slab_weighting) + tm.log_gaussian(weights, 0., self._spike_std_dvn)
+            log_p_slab = tf.log(self._spike_slab_weighting) + tm.log_gaussian(weights, 0., self._slab_std_dvn)
 
             p_total = tf.stack([log_p_spike, log_p_slab], axis=0)
             log_pw = tf.reduce_logsumexp(p_total, axis=0)
