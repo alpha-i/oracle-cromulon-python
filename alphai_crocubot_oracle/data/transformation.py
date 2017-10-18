@@ -387,9 +387,9 @@ class FinancialDataTransformation(DataTransformation):
                 feature_list = []
                 for sample in samples:   # [sample[feature_name] for sample in samples]
                     feature = sample[feature_name]
+                    total_samples += 1
                     if feature.shape == reference_shape:  # Make sure shape is OK
                         feature_list.append(sample[feature_name])
-                        total_samples += 1
                     else:
                         unusual_samples += 1
 
@@ -398,7 +398,8 @@ class FinancialDataTransformation(DataTransformation):
                 else:
                     stacked_samples = None
 
-        logging.info("Found {} unusual samples out of {}".format(unusual_samples, total_samples))
+        if len(samples) > 1:
+            logging.info("Found {} unusual samples out of {}".format(unusual_samples, total_samples))
 
         return stacked_samples
 
