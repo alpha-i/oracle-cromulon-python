@@ -1,6 +1,9 @@
 import numpy as np
 import logging
 
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+
 class BinDistribution:
 
     def __init__(self, training_labels, n_bins):
