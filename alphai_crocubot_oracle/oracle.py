@@ -209,10 +209,12 @@ class CrocubotOracle:
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
         if not np.isfinite(forecast_covariance).all():
-            raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
+            logging.warning('Prediction of forecast covariance failed. Contains non-finite values.')
+            logging.warning('forecast_covariance: {}'.format(forecast_covariance))
 
         if not np.isfinite(means).all():
-            raise ValueError('Prediction of means failed. Contains non-finite values.')
+            logging.warning('Prediction of means failed. Contains non-finite values.')
+            logging.warning('Means: {}'.format(means))
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
 
