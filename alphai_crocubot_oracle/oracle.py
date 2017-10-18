@@ -282,7 +282,11 @@ class CrocubotOracle:
         cov_time = end_time - start_time
         logging.info("Historical covariance estimation took:{}".format(cov_time))
         if not np.isfinite(cov).all():
-            raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
+            logging.warning('Covariance matrix computation failed. Contains non-finite values.')
+            logging.warning('Problematic data: {}'.format(predict_data))
+            logging.warning('Derived covariance: {}'.format(cov))
+            cov[cov == -np.inf] = 1.0
+            cov[cov == np.inf] = 1.0
 
         return pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
@@ -368,8 +372,7 @@ class CrocubotOracle:
                     corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
 
         if found_duplicates:
-            logging.warning('A series should always be most correlated with itself!'
-                            ' Probably duplicate series in the data')
+            logging.warning('Some NaNs or duplicate series were found in the data')
 
         return corr_train_x
 
