@@ -1,5 +1,5 @@
 import numpy as np
-
+import logging
 
 class BinDistribution:
 
@@ -152,10 +152,24 @@ def extract_point_estimates(bin_centres, pdf_array):
     points = np.zeros(n_points)
 
     normalisation_offset = np.sum(pdf_array[0, :]) - 1.0
-    assert np.abs(normalisation_offset) < 1e-3, 'Probability mass function not normalised'
+
+    if np.abs(normalisation_offset) > 1e-3:
+
+        logging.warning('Probability mass function not normalised')
+        logging.info('PDF Array shape: {}'.format(pdf_array.shape))
+        logging.info('Normalisation offset: {}'.format(normalisation_offset))
+        logging.info('Full pdf array: {}'.format(pdf_array))
+        logging.info('Bin centres: {}'.format(bin_centres))
+
+        logging.warning('Attempting to continue with pathological distribution')
+        for i in range(n_points):
+            pdf_array[i, :] = pdf_array[i, :] / np.sum(pdf_array[i, :])
 
     for i in range(n_points):
         pdf = pdf_array[i, :]
         points[i] = np.sum(bin_centres * pdf)
+
+    if np.abs(normalisation_offset) > 1e-3:
+        logging.info('Derived points: {}'.format(points))
 
     return points

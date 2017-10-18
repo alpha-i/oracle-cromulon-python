@@ -162,6 +162,7 @@ def evaluate_network(topology, series_name, bin_dist):  # bin_dist not used in M
         metrics["median_probability"] = median_probability
         metrics["mean_p_success"] = np.mean(np.stack(p_success))
         metrics["mean_p_fail"] = np.mean(np.stack(p_fail))
+        metrics["mean_p"] = np.mean(np.stack(forecasts))
         metrics["min_p_fail"] = np.min(np.stack(p_fail))
 
         return metrics
@@ -213,6 +214,7 @@ def print_MNIST_accuracy(metrics):
     print('Log Likelihood per sample of ', metrics["log_likelihood_per_sample"])
     print('Theoretical limit for given accuracy ', theoretical_max_log_likelihood_per_sample)
     print('Median probability assigned to true outcome:', metrics["median_probability"])
+    print('Mean probability assigned to forecasts:', metrics["mean_p"])
     print('Mean probability assigned to successful forecast:', metrics["mean_p_success"])
     print('Mean probability assigned to unsuccessful forecast:', metrics["mean_p_fail"])
     print('Min probability assigned to unsuccessful forecast:', metrics["min_p_fail"])
@@ -224,14 +226,14 @@ def run_mnist_test(train_path, tensorboard_log_path, use_full_train_set=True):
 
     if use_full_train_set:
         n_training_samples = 50000
-        n_epochs = 10
+        n_epochs = 300
     else:
         n_training_samples = 500
         n_epochs = 100
 
     config = load_default_config()
     config["n_epochs"] = n_epochs
-    config["learning_rate"] = 3e-3   # Use high learning rate for testing purposes
+    config["learning_rate"] = 2e-3   # Use high learning rate for testing purposes
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'hellinger'
     config['batch_size'] = 200
     config['n_training_samples_benchmark'] = n_training_samples
@@ -243,8 +245,8 @@ def run_mnist_test(train_path, tensorboard_log_path, use_full_train_set=True):
     config['train_path'] = train_path
     config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
-    config['n_train_passes'] = 16
-    config['n_eval_passes'] = 16
+    config['n_train_passes'] = 1
+    config['n_eval_passes'] = 40
 
     fl.set_training_flags(config)
     # this flag is only used in benchmark.
@@ -334,15 +336,15 @@ def load_default_config():
 
         # Initial conditions
         'INITIAL_ALPHA': 0.8,
-        'INITIAL_WEIGHT_UNCERTAINTY': 0.05,
-        'INITIAL_BIAS_UNCERTAINTY': 0.005,
-        'INITIAL_WEIGHT_DISPLACEMENT': 0.02,
-        'INITIAL_BIAS_DISPLACEMENT': 0.0005,
+        'INITIAL_WEIGHT_UNCERTAINTY': 0.01,
+        'INITIAL_BIAS_UNCERTAINTY': 0.001,
+        'INITIAL_WEIGHT_DISPLACEMENT': 0.001,
+        'INITIAL_BIAS_DISPLACEMENT': 0.0001,
         'USE_PERFECT_NOISE': False,
 
         # Priors
-        'double_gaussian_weights_prior': False,
-        'wide_prior_std': 1.0,
+        'double_gaussian_weights_prior': True,
+        'wide_prior_std': 0.8,
         'narrow_prior_std': 0.001,
         'spike_slab_weighting': 0.5
     }
@@ -361,4 +363,4 @@ if __name__ == '__main__':
     tensorboard_log_path = '/tmp/'
 
     # run_stochastic_test(train_path, tensorboard_log_path)
-    run_mnist_test(train_path, tensorboard_log_path,  use_full_train_set=False)
+    run_mnist_test(train_path, tensorboard_log_path,  use_full_train_set=True)
