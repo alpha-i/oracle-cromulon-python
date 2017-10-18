@@ -137,16 +137,9 @@ class CrocubotOracle:
         self.verify_data(train_x, train_y)
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
-        self._topology = tp.Topology(
-            layers=None,
-            n_series=self._n_input_series,
-            n_features_per_series=train_x.shape[1],
-            n_forecasts=self._n_forecasts,
-            n_classification_bins=self._configuration['n_classification_bins'],
-            layer_heights=self._configuration['layer_heights'],
-            layer_widths=self._configuration['layer_widths'],
-            activation_functions=self._configuration['activation_functions']
-        )
+        if self._topology is None:
+            features_per_series = train_x.shape[1]
+            self.initialise_topology(features_per_series)
 
         logging.info('Initialised network topology: {}.'.format(self._topology.layers))
 
@@ -191,16 +184,8 @@ class CrocubotOracle:
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
         if self._topology is None:
-            self._topology = tp.Topology(
-                layers=None,
-                n_series=self._n_input_series,
-                n_features_per_series=predict_x.shape[1],
-                n_forecasts=self._n_forecasts,
-                n_classification_bins=self._configuration['n_classification_bins'],
-                layer_heights=self._configuration['layer_heights'],
-                layer_widths=self._configuration['layer_widths'],
-                activation_functions=self._configuration['activation_functions']
-            )
+            features_per_series = predict_x.shape[1]
+            self.initialise_topology(features_per_series)
 
         logging.info('Predicting mean values.')
         start_time = timer()
@@ -387,3 +372,18 @@ class CrocubotOracle:
                             ' Probably duplicate series in the data')
 
         return corr_train_x
+
+    def initialise_topology(self, features_per_series):
+        """ Set up the network topology based upon the configuration file, and shape of input data. """
+
+        self._topology = tp.Topology(
+            layers=None,
+            n_series=self._n_input_series,
+            n_features_per_series=features_per_series,
+            n_forecasts=self._n_forecasts,
+            n_classification_bins=self._configuration['n_classification_bins'],
+            layer_heights=self._configuration['layer_heights'],
+            layer_widths=self._configuration['layer_widths'],
+            activation_functions=self._configuration['activation_functions']
+        )
+
