@@ -190,7 +190,7 @@ class CrocubotOracle:
         latest_train = self._train_file_manager.latest_train_filename(execution_time)
         predict_x = self._data_transformation.create_predict_data(predict_data)
 
-        if self.topology is None:
+        if self._topology is None:
             self._topology = tp.Topology(
                 layers=None,
                 n_series=self._n_input_series,
