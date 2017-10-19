@@ -23,7 +23,7 @@ from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
-CLIP_VALUE = 8.0 # Largest number allowed to enter the network
+CLIP_VALUE = 8.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
@@ -44,7 +44,6 @@ class CrocubotOracle:
                     start_min_after_market_open: start time of feature data_x in minutes after market open.
                     is_target: boolean to define if this feature is a target (y). The feature is always consider as x.
                 exchange_name: name of the exchange to create the market calendar
-                prediction_frequency_ndays: frequency of the prediction in days
                 prediction_min_after_market_open: prediction time in number of minutes after market open
                 target_delta_ndays: days difference between prediction and target
                 target_min_after_market_open: target time in number of minutes after market open
@@ -404,4 +403,3 @@ class CrocubotOracle:
             layer_widths=self._configuration['layer_widths'],
             activation_functions=self._configuration['activation_functions']
         )
-
