@@ -35,7 +35,6 @@ class FinancialDataTransformation(DataTransformation):
             int features_ndays: number of trading days worth of data the feature should use.
             int features_resample_minutes: resampling frequency in number of minutes.
             int features_start_market_minute: number of minutes after market open the data collection should start from
-            int prediction_frequency_ndays: prediction frequency in number of days
             int prediction_market_minute: number of minutes after market open for the prediction timestamp
             int target_delta_ndays: target time horizon in number of days
             int target_market_minute: number of minutes after market open for the target timestamp
@@ -45,7 +44,6 @@ class FinancialDataTransformation(DataTransformation):
         self.features_ndays = configuration['features_ndays']
         self.features_resample_minutes = configuration['features_resample_minutes']
         self.features_start_market_minute = configuration['features_start_market_minute']
-        self.prediction_frequency_ndays = configuration['prediction_frequency_ndays']
         self.prediction_market_minute = configuration['prediction_market_minute']
         self.target_delta_ndays = configuration['target_delta_ndays']
         self.target_market_minute = configuration['target_market_minute']
@@ -63,7 +61,6 @@ class FinancialDataTransformation(DataTransformation):
             and configuration['features_resample_minutes'] >= 0
         assert isinstance(configuration['features_start_market_minute'], int)
         assert configuration['features_start_market_minute'] < MINUTES_IN_TRADING_DAY
-        assert configuration['prediction_frequency_ndays'] >= 0
         assert configuration['prediction_market_minute'] >= 0
         assert configuration['prediction_market_minute'] < MINUTES_IN_TRADING_DAY
         assert configuration['target_delta_ndays'] >= 0
