@@ -23,6 +23,7 @@ from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
+CLIP_VALUE = 8.0 # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
@@ -134,7 +135,7 @@ class CrocubotOracle:
         logging.info("Processed train_x shape {}".format(train_x.shape))
         train_x, train_y = self.filter_nan_samples(train_x, train_y)
         logging.info("Filtered train_x shape {}".format(train_x.shape))
-        self.verify_data(train_x, train_y)
+        train_x = self.verify_data(train_x, train_y)
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         if self._topology is None:
@@ -215,11 +216,14 @@ class CrocubotOracle:
         if not np.isfinite(means).all():
             logging.warning('Prediction of means failed. Contains non-finite values.')
             logging.warning('Means: {}'.format(means))
+        else:
+            logging.info('Samples from predicted means: {}'.format(means[0:10]))
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
 
         if self.use_historical_covariance:
             covariance = self.calculate_historical_covariance(predict_data)
+            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance)[0:5]))
         else:
             logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
             covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
@@ -266,6 +270,15 @@ class CrocubotOracle:
         logging.info("Infs: {}, {}".format(xinfs, yinfs))
         logging.info("Maxs: {}, {}".format(xmax, ymax))
         logging.info("Mins: {}, {}".format(xmin, ymin))
+
+        if xmax > CLIP_VALUE or xmin < -CLIP_VALUE:
+            n_clipped_elements = np.sum(xmax < np.abs(testx))
+            n_elements = len(testx)
+            train_x = np.clip(train_x, a_min=-CLIP_VALUE, a_max=CLIP_VALUE)
+            logging.warning("Large inputs detected: clip values exceeding {}".format(CLIP_VALUE))
+            logging.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
+
+        return train_x
 
     def calculate_historical_covariance(self, predict_data):
 
