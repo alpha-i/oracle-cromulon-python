@@ -23,6 +23,7 @@ from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
 from alphai_crocubot_oracle.helpers import TrainFileManager
 
+CLIP_VALUE = 8.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 FLAGS = tf.app.flags.FLAGS
@@ -43,7 +44,6 @@ class CrocubotOracle:
                     start_min_after_market_open: start time of feature data_x in minutes after market open.
                     is_target: boolean to define if this feature is a target (y). The feature is always consider as x.
                 exchange_name: name of the exchange to create the market calendar
-                prediction_frequency_ndays: frequency of the prediction in days
                 prediction_min_after_market_open: prediction time in number of minutes after market open
                 target_delta_ndays: days difference between prediction and target
                 target_min_after_market_open: target time in number of minutes after market open
@@ -134,19 +134,12 @@ class CrocubotOracle:
         logging.info("Processed train_x shape {}".format(train_x.shape))
         train_x, train_y = self.filter_nan_samples(train_x, train_y)
         logging.info("Filtered train_x shape {}".format(train_x.shape))
-        self.verify_data(train_x, train_y)
+        train_x = self.verify_data(train_x, train_y)
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
-        self._topology = tp.Topology(
-            layers=None,
-            n_series=self._n_input_series,
-            n_features_per_series=train_x.shape[1],
-            n_forecasts=self._n_forecasts,
-            n_classification_bins=self._configuration['n_classification_bins'],
-            layer_heights=self._configuration['layer_heights'],
-            layer_widths=self._configuration['layer_widths'],
-            activation_functions=self._configuration['activation_functions']
-        )
+        if self._topology is None:
+            features_per_series = train_x.shape[1]
+            self.initialise_topology(features_per_series)
 
         logging.info('Initialised network topology: {}.'.format(self._topology.layers))
 
@@ -183,12 +176,16 @@ class CrocubotOracle:
         """
 
         if self._topology is None:
-            raise ValueError('Not ready for prediction - run train first')
+            logging.warning('Not ready for prediction - safer to run train first')
 
         logging.info('Crocubot Oracle prediction on {}.'.format(execution_time))
 
         latest_train = self._train_file_manager.latest_train_filename(execution_time)
         predict_x = self._data_transformation.create_predict_data(predict_data)
+
+        if self._topology is None:
+            features_per_series = predict_x.shape[1]
+            self.initialise_topology(features_per_series)
 
         logging.info('Predicting mean values.')
         start_time = timer()
@@ -212,15 +209,20 @@ class CrocubotOracle:
         predict_y = np.squeeze(predict_y, axis=1)
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
         if not np.isfinite(forecast_covariance).all():
-            raise ValueError('Prediction of forecast covariance failed. Contains non-finite values.')
+            logging.warning('Prediction of forecast covariance failed. Contains non-finite values.')
+            logging.warning('forecast_covariance: {}'.format(forecast_covariance))
 
         if not np.isfinite(means).all():
-            raise ValueError('Prediction of means failed. Contains non-finite values.')
+            logging.warning('Prediction of means failed. Contains non-finite values.')
+            logging.warning('Means: {}'.format(means))
+        else:
+            logging.info('Samples from predicted means: {}'.format(means[0:10]))
 
         means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
 
         if self.use_historical_covariance:
             covariance = self.calculate_historical_covariance(predict_data)
+            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance)[0:5]))
         else:
             logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
             covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
@@ -268,6 +270,15 @@ class CrocubotOracle:
         logging.info("Maxs: {}, {}".format(xmax, ymax))
         logging.info("Mins: {}, {}".format(xmin, ymin))
 
+        if xmax > CLIP_VALUE or xmin < -CLIP_VALUE:
+            n_clipped_elements = np.sum(xmax < np.abs(testx))
+            n_elements = len(testx)
+            train_x = np.clip(train_x, a_min=-CLIP_VALUE, a_max=CLIP_VALUE)
+            logging.warning("Large inputs detected: clip values exceeding {}".format(CLIP_VALUE))
+            logging.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
+
+        return train_x
+
     def calculate_historical_covariance(self, predict_data):
 
         # Call the covariance library
@@ -285,7 +296,9 @@ class CrocubotOracle:
         cov_time = end_time - start_time
         logging.info("Historical covariance estimation took:{}".format(cov_time))
         if not np.isfinite(cov).all():
-            raise ValueError('Covariance matrix computation failed. Contains non-finite values.')
+            logging.warning('Covariance matrix computation failed. Contains non-finite values.')
+            logging.warning('Problematic data: {}'.format(predict_data))
+            logging.warning('Derived covariance: {}'.format(cov))
 
         return pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
@@ -371,7 +384,20 @@ class CrocubotOracle:
                     corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
 
         if found_duplicates:
-            logging.warning('A series should always be most correlated with itself!'
-                            ' Probably duplicate series in the data')
+            logging.warning('Some NaNs or duplicate series were found in the data')
 
         return corr_train_x
+
+    def initialise_topology(self, features_per_series):
+        """ Set up the network topology based upon the configuration file, and shape of input data. """
+
+        self._topology = tp.Topology(
+            layers=None,
+            n_series=self._n_input_series,
+            n_features_per_series=features_per_series,
+            n_forecasts=self._n_forecasts,
+            n_classification_bins=self._configuration['n_classification_bins'],
+            layer_heights=self._configuration['layer_heights'],
+            layer_widths=self._configuration['layer_widths'],
+            activation_functions=self._configuration['activation_functions']
+        )

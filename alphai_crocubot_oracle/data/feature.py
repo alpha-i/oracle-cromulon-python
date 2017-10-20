@@ -154,6 +154,8 @@ class FinancialFeature(object):
             data_x[nan_mask.mask] = np.nan
 
             data_x = data_x.reshape(original_shape)
+        else:
+            logging.warning("Feature lacks normalisation scaler.")
 
         return data_x
 
