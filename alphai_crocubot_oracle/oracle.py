@@ -299,8 +299,6 @@ class CrocubotOracle:
             logging.warning('Covariance matrix computation failed. Contains non-finite values.')
             logging.warning('Problematic data: {}'.format(predict_data))
             logging.warning('Derived covariance: {}'.format(cov))
-            cov[cov == -np.inf] = 1.0
-            cov[cov == np.inf] = 1.0
 
         return pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
 
