@@ -3,13 +3,21 @@
 
 import tensorflow as tf
 import argparse
-FLAGS = tf.app.flags.FLAGS
 
 
-def set_training_flags(config):
+def build_tensorflow_flags(config):
     """ Assigns flags based on entries in dictionary"""
 
     tf.flags._global_parser = argparse.ArgumentParser()
+
+    if 'optimisation_method' not in config:
+        config['optimisation_method'] = 'GDO'
+
+    if 'use_convolution' not in config:
+        config['use_convolution'] = 'False'
+
+    tf.app.flags.DEFINE_boolean('use_convolution', config['use_convolution'],
+                                """Whether to set the first layer to a convolutional layer""")
 
     tf.app.flags.DEFINE_boolean('predict_single_shares', config['predict_single_shares'],
                                 """Whether the network predicts one share at a time.""")
@@ -21,6 +29,7 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_integer('random_seed', 0, """Seed used to identify random noise realisiation.""")
     tf.app.flags.DEFINE_integer('n_classification_bins', config['n_classification_bins'], """How many bins to use for classification.""")
     tf.app.flags.DEFINE_string('model_save_path', config['model_save_path'], """Path to save graph.""")
+    tf.app.flags.DEFINE_string('optimisation_method', config['optimisation_method'], """Algorithm for training""")
 
     # Training specific
     tf.app.flags.DEFINE_integer('n_epochs', config['n_epochs'], """How many epochs to be used for training.""")
@@ -47,7 +56,9 @@ def set_training_flags(config):
     tf.app.flags.DEFINE_float('narrow_prior_std', config['narrow_prior_std'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('spike_slab_weighting', config['spike_slab_weighting'], """Initial standard deviation on weights.""")
 
-    FLAGS._parse_flags()
+    tf.app.flags.FLAGS._parse_flags()
+
+    return tf.app.flags.FLAGS
 
 
 def dtype_from_tf_type(tf_dtype):

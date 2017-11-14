@@ -10,23 +10,24 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 
+from alphai_crocubot_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
+from alphai_crocubot_oracle.data.providers import TrainDataProvider
 from alphai_crocubot_oracle.data.transformation import FinancialDataTransformation
 from alphai_time_series.transform import gaussianise
 
 import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
-from alphai_crocubot_oracle.flags import set_training_flags
+from alphai_crocubot_oracle.flags import build_tensorflow_flags
 import alphai_crocubot_oracle.topology as tp
-from alphai_crocubot_oracle.constants import DATETIME_FORMAT_COMPACT
+from alphai_crocubot_oracle import DATETIME_FORMAT_COMPACT
 from alphai_crocubot_oracle.covariance import estimate_covariance
-from alphai_crocubot_oracle.helpers import TrainFileManager
+from alphai_crocubot_oracle.helpers import TrainFileManager, logtime
 
-CLIP_VALUE = 8.0  # Largest number allowed to enter the network
+CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
+FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
-FLAGS = tf.app.flags.FLAGS
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -75,22 +76,16 @@ class CrocubotOracle:
         logging.info('Initialising Crocubot Oracle.')
 
         configuration = self.update_configuration(configuration)
+        feature_list = configuration['data_transformation']['feature_config_list']
 
         self._data_transformation = FinancialDataTransformation(configuration['data_transformation'])
         self._train_path = configuration['train_path']
         self._covariance_method = configuration['covariance_method']
         self._covariance_ndays = configuration['covariance_ndays']
+        self._n_features = len(feature_list)
 
-        # FIXME Temporary use default setting for tests to pass
-        if 'use_historical_covariance' in configuration:
-            self.use_historical_covariance = configuration['use_historical_covariance']
-        else:
-            self.use_historical_covariance = False
-
-        if 'n_correlated_series' in configuration:
-            n_correlated_series = configuration['n_correlated_series']
-        else:
-            n_correlated_series = DEFAULT_N_CORRELATED_SERIES
+        self.use_historical_covariance = configuration.get('use_historical_covariance', False)
+        n_correlated_series = configuration.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
 
         self._configuration = configuration
         self._train_file_manager = TrainFileManager(
@@ -102,9 +97,9 @@ class CrocubotOracle:
         self._train_file_manager.ensure_path_exists()
         self._est_cov = None
 
-        set_training_flags(configuration)  # Perhaps use separate config dict here?
+        self._tensorflow_flags = build_tensorflow_flags(configuration)  # Perhaps use separate config dict here?
 
-        if FLAGS.predict_single_shares:
+        if self._tensorflow_flags.predict_single_shares:
             self._n_input_series = int(np.minimum(n_correlated_series, configuration['n_series']))
             self._n_forecasts = 1
         else:
@@ -126,20 +121,20 @@ class CrocubotOracle:
             execution_time,
         ))
 
-        train_x, train_y = self._data_transformation.create_train_data(train_data, historical_universes)
+        self.verify_pricing_data(train_data)
+        train_x_dict, train_y_dict = self._data_transformation.create_train_data(train_data, historical_universes)
 
         logging.info("Preprocessing training data")
-        train_x = self._preprocess_inputs(train_x)
-        train_y = self._preprocess_outputs(train_y)
+        train_x = self._preprocess_inputs(train_x_dict)
+        train_y = self._preprocess_outputs(train_y_dict)
         logging.info("Processed train_x shape {}".format(train_x.shape))
         train_x, train_y = self.filter_nan_samples(train_x, train_y)
         logging.info("Filtered train_x shape {}".format(train_x.shape))
-        train_x = self.verify_data(train_x, train_y)
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         if self._topology is None:
-            features_per_series = train_x.shape[1]
-            self.initialise_topology(features_per_series)
+            n_timesteps = train_x.shape[2]
+            self.initialise_topology(n_timesteps)
 
         logging.info('Initialised network topology: {}.'.format(self._topology.layers))
 
@@ -152,19 +147,26 @@ class CrocubotOracle:
 
         resume_train_path = None
 
-        if FLAGS.resume_training:
+        if self._tensorflow_flags.resume_training:
             try:
                 resume_train_path = self._train_file_manager.latest_train_filename(execution_time)
-            except:
+            except ValueError:
                 pass
+
         train_path = self._train_file_manager.new_filename(execution_time)
-        data_source = 'financial_stuff'
-        start_time = timer()  # FIXME we should find a way to make some function 'temporizable' with a python decorator
-        crocubot.train(self._topology, data_source, execution_time, train_x, train_y, save_path=train_path,
-                       restore_path=resume_train_path)
-        end_time = timer()
-        train_time = end_time - start_time
-        logging.info("Training took: {} seconds".format(train_time))
+
+        tensorflow_path = TensorflowPath(train_path, resume_train_path)
+        tensorboard_options = TensorboardOptions(self._tensorflow_flags.tensorboard_log_path,
+                                                 self._tensorflow_flags.learning_rate,
+                                                 self._tensorflow_flags.batch_size,
+                                                 execution_time
+                                                 )
+        data_provider = TrainDataProvider(train_x, train_y, self._tensorflow_flags.batch_size)
+        self._do_train(tensorflow_path, tensorboard_options, data_provider)
+
+    @logtime(message="Training the model.")
+    def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
+        crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
 
     def predict(self, predict_data, execution_time):
         """
@@ -180,34 +182,42 @@ class CrocubotOracle:
 
         logging.info('Crocubot Oracle prediction on {}.'.format(execution_time))
 
-        latest_train = self._train_file_manager.latest_train_filename(execution_time)
-        predict_x = self._data_transformation.create_predict_data(predict_data)
-
-        if self._topology is None:
-            features_per_series = predict_x.shape[1]
-            self.initialise_topology(features_per_series)
+        self.verify_pricing_data(predict_data)
+        latest_train_file = self._train_file_manager.latest_train_filename(execution_time)
+        predict_x, symbols = self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
         start_time = timer()
         predict_x = self._preprocess_inputs(predict_x)
 
+        if self._topology is None:
+            n_timesteps = predict_x.shape[2]
+            self.initialise_topology(n_timesteps)
+
         # Verify data is the correct shape
-        topology_shape = (self._topology.n_features_per_series, self._topology.n_series)
+        network_input_shape = self._topology.get_network_input_shape()
+        data_input_shape = predict_x.shape[-3:]
 
-        if predict_x.shape[-2:] != topology_shape:
-            raise ValueError('Data shape' + str(predict_x.shape) + " doesnt match network input " + str(topology_shape))
+        if data_input_shape != network_input_shape:
+            err_msg = 'Data shape' + str(data_input_shape) + " doesnt match network input " + str(network_input_shape)
+            raise ValueError(err_msg)
 
-        predict_y = crocubot_eval.eval_neural_net(predict_x, topology=self._topology, save_file=latest_train)
+        predict_y = crocubot_eval.eval_neural_net(
+            predict_x, self._topology,
+            self._tensorflow_flags,
+            latest_train_file
+        )
 
         end_time = timer()
         eval_time = end_time - start_time
         logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
 
-        if FLAGS.predict_single_shares:  # Return batch axis to series position
+        if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
             predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
 
         predict_y = np.squeeze(predict_y, axis=1)
-        means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y)
+
+        means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y, symbols)
         if not np.isfinite(forecast_covariance).all():
             logging.warning('Prediction of forecast covariance failed. Contains non-finite values.')
             logging.warning('forecast_covariance: {}'.format(forecast_covariance))
@@ -218,15 +228,16 @@ class CrocubotOracle:
         else:
             logging.info('Samples from predicted means: {}'.format(means[0:10]))
 
-        means = pd.Series(np.squeeze(means), index=predict_data['close'].columns)
+        means = pd.Series(np.squeeze(means), index=symbols)
 
         if self.use_historical_covariance:
-            covariance = self.calculate_historical_covariance(predict_data)
-            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance)[0:5]))
+            covariance_matrix = self.calculate_historical_covariance(predict_data, symbols)
+            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance_matrix)[0:5]))
         else:
-            logging.info("Samples from forecast_covariance: {}".format(np.diag(forecast_covariance)[0:5]))
-            covariance = pd.DataFrame(data=forecast_covariance, columns=predict_data['close'].columns,
-                                      index=predict_data['close'].columns)
+            covariance_matrix = forecast_covariance
+            logging.info("Samples from forecast_covariance: {}".format(np.diag(covariance_matrix)[0:5]))
+
+        covariance = pd.DataFrame(data=covariance_matrix, columns=symbols, index=symbols)
 
         return means, covariance
 
@@ -247,60 +258,70 @@ class CrocubotOracle:
 
         return train_x[mask, :], train_y[mask, :]
 
-    def verify_data(self, train_x, train_y):
+    def print_verification_report(self, data, data_name):
+
+        data = data.flatten()
+        nans = np.isnan(data).sum()
+        infs = np.isinf(data).sum()
+        finite_data = data[np.isfinite(data)]
+        max_data = np.max(finite_data)
+        min_data = np.min(finite_data)
+        logging.info("{} Infs: {}".format(data_name, infs))
+        logging.info("{} Nans: {}".format(data_name, nans))
+        logging.info("{} Maxs: {}".format(data_name, max_data))
+        logging.info("{} Mins: {}".format(data_name, min_data))
+        return min_data, max_data
+
+    def verify_pricing_data(self, predict_data):
+        """ Check for any issues in raw data. """
+
+        close = predict_data['close'].values
+        min_price, max_price = self.print_verification_report(close, 'Close')
+        if min_price < 1e-3:
+            logging.warning("Found an unusually small price: {}".format(min_price))
+
+    def verify_y_data(self, y_data):
+        testy = deepcopy(y_data)
+        self.print_verification_report(testy, 'Y_data')
+
+    def verify_x_data(self, x_data):
         """Check for nans or crazy numbers.
          """
-        testx = deepcopy(train_x).flatten()
-        testy = deepcopy(train_y).flatten()
-
-        xnans = np.isnan(testx).sum()
-        ynans = np.isnan(testy).sum()
-
-        xinfs = np.isinf(testx).sum()
-        yinfs = np.isinf(testy).sum()
-
-        xmax = np.max(testx)
-        ymax = np.max(testy)
-
-        xmin = np.min(testx)
-        ymin = np.min(testy)
-
-        logging.info("Nans: {}, {}".format(xnans, ynans))
-        logging.info("Infs: {}, {}".format(xinfs, yinfs))
-        logging.info("Maxs: {}, {}".format(xmax, ymax))
-        logging.info("Mins: {}, {}".format(xmin, ymin))
+        testx = deepcopy(x_data).flatten()
+        xmin, xmax = self.print_verification_report(testx, 'X_data')
 
         if xmax > CLIP_VALUE or xmin < -CLIP_VALUE:
-            n_clipped_elements = np.sum(xmax < np.abs(testx))
+            n_clipped_elements = np.sum(CLIP_VALUE < np.abs(testx))
             n_elements = len(testx)
-            train_x = np.clip(train_x, a_min=-CLIP_VALUE, a_max=CLIP_VALUE)
+            x_data = np.clip(x_data, a_min=-CLIP_VALUE, a_max=CLIP_VALUE)
             logging.warning("Large inputs detected: clip values exceeding {}".format(CLIP_VALUE))
             logging.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
 
-        return train_x
+        return x_data
 
-    def calculate_historical_covariance(self, predict_data):
-
+    def calculate_historical_covariance(self, predict_data, symbols):
         # Call the covariance library
         logging.info('Estimating historical covariance matrix.')
         start_time = timer()
         cov = estimate_covariance(
-            predict_data,
-            self._covariance_ndays,
-            self._data_transformation.target_market_minute,
-            self._covariance_method,
-            self._data_transformation.exchange_calendar,
-            self._data_transformation.target_delta_ndays
+            data=predict_data,
+            n_days=self._covariance_ndays,
+            minutes_after_open=self._data_transformation.target_market_minute,
+            estimation_method=self._covariance_method,
+            exchange_calendar=self._data_transformation.exchange_calendar,
+            forecast_interval_in_days=self._data_transformation.target_delta_ndays,
+            target_symbols=symbols
         )
         end_time = timer()
         cov_time = end_time - start_time
         logging.info("Historical covariance estimation took:{}".format(cov_time))
+        logging.info("Cov shape:{}".format(cov.shape))
         if not np.isfinite(cov).all():
             logging.warning('Covariance matrix computation failed. Contains non-finite values.')
             logging.warning('Problematic data: {}'.format(predict_data))
             logging.warning('Derived covariance: {}'.format(cov))
 
-        return pd.DataFrame(data=cov, columns=predict_data['close'].columns, index=predict_data['close'].columns)
+        return pd.DataFrame(data=cov, columns=symbols, index=symbols)
 
     def update_configuration(self, config):
         """ Pass on some config entries to data_transformation"""
@@ -317,24 +338,36 @@ class CrocubotOracle:
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
-            numpy_arrays.append(value)
+            # Trim entries which are not log-returns, to allow stacking of features
+            if key.startswith('volume'):
+                value = value[:, 1:, :]
 
-        train_x = np.concatenate(numpy_arrays, axis=1)
+            numpy_arrays.append(value)
+            logging.info("Appending feature of shape".format(value.shape))
+
+        # Now train_x will have dimensions [features; sampes; timesteps; symbols]
+        train_x = np.stack(numpy_arrays, axis=0)
+
+        train_x = self.reorder_input_dimensions(train_x)
 
         # Expand dataset if requested
-        if FLAGS.predict_single_shares:
+        if self._tensorflow_flags.predict_single_shares:
             train_x = self.expand_input_data(train_x)
+
+        train_x = self.verify_x_data(train_x)
 
         return train_x.astype(np.float32)  # FIXME: set float32 in data transform, conditional on config file
 
     def _preprocess_outputs(self, train_y_dict):
-        # jut one loop below. a convoluted way of getting the only value out of a dictionary
-        for key, value in train_y_dict.items():  # FIXME move this preprocess_outputs
-            train_y = value
 
-        if FLAGS.predict_single_shares:
+        train_y = list(train_y_dict.values())[0]
+        train_y = np.swapaxes(train_y, axis1=1, axis2=2)
+
+        if self._tensorflow_flags.predict_single_shares:
             n_feat_y = train_y.shape[2]
-            train_y = np.reshape(train_y, [-1, 1, n_feat_y])
+            train_y = np.reshape(train_y, [-1, 1, 1, n_feat_y])
+
+        self.verify_y_data(train_y)
 
         return train_y.astype(np.float32)  # FIXME:set float32 in data transform, conditional on config file
 
@@ -353,51 +386,82 @@ class CrocubotOracle:
 
         return train_x
 
+    def reorder_input_dimensions(self, train_x):
+        """ Reassign ordering of dimensions.
+
+        :param train_x:  Enters with dimensions  [features; samples; timesteps; series]
+        :return: train_x  Now with dimensions  [samples; series ; time; features]
+        """
+
+        source = [0, 1, 2, 3]
+        destination = [3, 0, 2, 1]
+        return np.moveaxis(train_x, source, destination)
+
     def expand_input_data(self, train_x):
         """Converts to the form where each time series is predicted separately, though companion time series are
             included as auxilliary features
-        :param nparray train_x: The log returns in format [batches, features, series]. Ideally these have been
-            Gaussianised already
-        :return: nparray The expanded training dataset, still in the format [batches, features, series]
+        :param nparray train_x: [samples; series ; time; features]
+        :return: nparray The expanded training dataset, still in the format [samples; series ; time; features]
         """
 
-        n_batches = train_x.shape[0]
-        n_feat_x = train_x.shape[1]
-        n_series = train_x.shape[2]
-        n_total_samples = n_batches * n_series
+        n_samples = train_x.shape[0]
+        n_series = train_x.shape[1]
+        n_timesteps = train_x.shape[2]
+        n_features = train_x.shape[3]
+        n_expanded_samples = n_samples * n_series
+        logging.info("Data found to hold {} samples, {} series, {} timesteps, {} features.".format(
+                n_samples, n_series, n_timesteps, n_features))
 
-        corr_train_x = np.zeros(shape=[n_total_samples, n_feat_x, self._n_input_series])
+        target_shape = [n_expanded_samples, self._n_input_series, n_timesteps, n_features]
         found_duplicates = False
 
-        for batch in range(n_batches):
-            # Series ordering may differ between batches - so we need the correlations for each batch
-            batch_data = train_x[batch, :, :]
-            neg_correlation_matrix = - np.corrcoef(batch_data, rowvar=False)  # False since each col represents a var
-            correlation_indices = neg_correlation_matrix.argsort(axis=1)  # Sort negative corr to get descending order
+        if self._n_input_series == 1:
+            corr_train_x = train_x.reshape(target_shape)
+        else:
+            corr_train_x = np.zeros(shape=target_shape)
 
-            for series_index in range(n_series):
-                if correlation_indices[series_index, [0]] != series_index:
-                    found_duplicates = True
-                sample_number = batch * n_series + series_index
-                for i in range(self._n_input_series):
-                    corr_series_index = correlation_indices[series_index, i]
-                    corr_train_x[sample_number, :, i] = train_x[batch, :, corr_series_index]
+            for sample in range(n_samples):
+                # Series ordering may differ between batches - so we need the correlations for each batch
+                data_sample = train_x[sample, :, :, FEATURE_TO_RANK_CORRELATIONS]
+                neg_correlation_matrix = - np.corrcoef(data_sample, rowvar=False)  # False since col represents a var
+                correlation_indices = neg_correlation_matrix.argsort(axis=1)  # Sort negatives to get descending order
+
+                for series_index in range(n_series):
+                    if correlation_indices[series_index, [0]] != series_index:
+                        found_duplicates = True
+                    sample_number = sample * n_series + series_index
+                    for i in range(self._n_input_series):
+                        corr_series_index = correlation_indices[series_index, i]
+                        corr_train_x[sample_number, :, i] = train_x[sample, :, corr_series_index]
 
         if found_duplicates:
             logging.warning('Some NaNs or duplicate series were found in the data')
 
         return corr_train_x
 
-    def initialise_topology(self, features_per_series):
+    def initialise_topology(self, n_timesteps):
         """ Set up the network topology based upon the configuration file, and shape of input data. """
 
+        layer_heights = self._configuration['layer_heights']
+        layer_widths = self._configuration['layer_widths']
+        layer_depths = np.ones(len(layer_heights), dtype=np.int)
+        default_layer_types = ['full'] * len(layer_heights)
+        layer_types = self._configuration.get('layer_types', default_layer_types)
+
+        # Override input layer to match data
+        layer_depths[0] = int(self._n_input_series)
+        layer_heights[0] = n_timesteps
+        layer_widths[0] = self._n_features
+
         self._topology = tp.Topology(
-            layers=None,
             n_series=self._n_input_series,
-            n_features_per_series=features_per_series,
+            n_timesteps=n_timesteps,
             n_forecasts=self._n_forecasts,
             n_classification_bins=self._configuration['n_classification_bins'],
-            layer_heights=self._configuration['layer_heights'],
-            layer_widths=self._configuration['layer_widths'],
-            activation_functions=self._configuration['activation_functions']
+            layer_heights=layer_heights,
+            layer_widths=layer_widths,
+            layer_depths=layer_depths,
+            layer_types=layer_types,
+            activation_functions=self._configuration['activation_functions'],
+            n_features=self._n_features
         )
