@@ -28,6 +28,8 @@ from alphai_crocubot_oracle.helpers import TrainFileManager, logtime
 
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
+DEFAULT_N_CONV_FILTERS = 5
+DEFAULT_CONV_KERNEL_SIZE = [3, 3, 1]
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_net"
 DEFAULT_NETWORK = 'crocubot'
@@ -487,6 +489,13 @@ class CrocubotOracle:
         layer_heights[0] = n_timesteps
         layer_widths[0] = self._n_features
 
+        # Setup convolutional layer configuration
+        conv_config = {}
+        conv_config["kernel_size"] = self._configuration.get('kernel_size', DEFAULT_CONV_KERNEL_SIZE)
+        conv_config["n_kernels"] = self._configuration.get('n_kernels', DEFAULT_N_CONV_FILTERS)
+        conv_config["dilation_rates"] = self._configuration.get('dilation_rates', 1)
+        conv_config["strides"] = self._configuration.get('strides', 1)
+
         self._topology = tp.Topology(
             n_series=self._n_input_series,
             n_timesteps=n_timesteps,
@@ -497,5 +506,6 @@ class CrocubotOracle:
             layer_depths=layer_depths,
             layer_types=layer_types,
             activation_functions=self._configuration['activation_functions'],
-            n_features=self._n_features
+            n_features=self._n_features,
+            conv_config=conv_config
         )

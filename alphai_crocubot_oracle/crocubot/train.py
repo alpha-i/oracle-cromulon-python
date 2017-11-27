@@ -50,6 +50,7 @@ def train(topology,
     all_summaries = tf.summary.merge_all()
 
     saver = tf.train.Saver()
+    epoch_loss_list = []
 
     # Launch the graph
     logging.info("Launching Graph.")
@@ -59,6 +60,8 @@ def train(topology,
         number_of_epochs = tf_flags.n_epochs
 
         if tensorflow_path.can_restore_model():
+            if tf_flags.n_retrain_epochs < 1:
+                return epoch_loss_list  # Don't waste time loading model
             try:
                 logging.info("Attempting to load model from {}".format(tensorflow_path.model_restore_path))
                 saver.restore(sess, tensorflow_path.model_restore_path)
@@ -74,8 +77,6 @@ def train(topology,
             sess.run(tf.global_variables_initializer())
 
         summary_writer = tf.summary.FileWriter(tensorboard_options.get_log_dir())
-
-        epoch_loss_list = []
 
         for epoch in range(number_of_epochs):
 

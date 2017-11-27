@@ -17,14 +17,10 @@ import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
 
 CONVOLUTIONAL_LAYER_1D = 'conv1d'
-CONVOLUTIONAL_LAYER_2D = 'conv2d'
 CONVOLUTIONAL_LAYER_3D = 'conv3d'
 FULLY_CONNECTED_LAYER = 'full'
 RESIDUAL_LAYER = 'res'
 POOL_LAYER_2D = 'pool2d'
-KERNEL_HEIGHT = 5  # Size of kernel along time dimension. Hard coded for now
-KERNEL_WIDTH = 2  # Size of kernel along features dimension. Hard coded for now
-KERNEL_DEPTH = 1  # Size of kernel along series dimension. Hard coded for now
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
 DATA_FORMAT = 'channels_last'
 
@@ -272,8 +268,6 @@ class Estimator:
 
         if layer_type == CONVOLUTIONAL_LAYER_1D:
             signal = self.convolutional_layer_1d(signal)
-        elif layer_type == CONVOLUTIONAL_LAYER_2D:
-            signal = self.convolutional_layer_2d(signal)
         elif layer_type == CONVOLUTIONAL_LAYER_3D:
             signal = self.convolutional_layer_3d(signal, layer_number)
         elif layer_type == FULLY_CONNECTED_LAYER:
@@ -326,33 +320,6 @@ class Estimator:
 
         return signal
 
-    def convolutional_layer_2d(self, signal):
-        """ Sets a convolutional layer with a two-dimensional kernel. """
-
-        n_kernels = self._model._topology.n_kernels
-        try:
-            signal = tf.layers.conv2d(
-                inputs=signal,
-                filters=n_kernels,
-                kernel_size=[KERNEL_HEIGHT, KERNEL_WIDTH],
-                padding=DEFAULT_PADDING,
-                activation=None,
-                data_format=DATA_FORMAT,
-                name='conv2d',
-                reuse=False)
-        except:
-            signal = tf.layers.conv2d(
-                inputs=signal,
-                filters=n_kernels,
-                kernel_size=[KERNEL_HEIGHT, KERNEL_WIDTH],
-                padding=DEFAULT_PADDING,
-                activation=None,
-                data_format=DATA_FORMAT,
-                name='conv2d',
-                reuse=True)
-
-        return signal
-
     def convolutional_layer_3d(self, signal, layer_number):
         """  Sets a convolutional layer with a three-dimensional kernel.
         The ordering of the dimensions in the inputs: DATA_FORMAT = `channels_last` corresponds to inputs with shape
@@ -365,6 +332,9 @@ class Estimator:
 
         signal = tf.expand_dims(signal, axis=-1)
         n_kernels = self._model._topology.n_kernels
+        dilation_rate = self._model._topology.dilation_rates
+        strides = self._model._topology.strides
+
         kernel_size = self.calculate_3d_kernel_size()
         op_name = CONVOLUTIONAL_LAYER_3D + str(layer_number)
 
@@ -376,6 +346,8 @@ class Estimator:
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
+                dilation_rate=dilation_rate,
+                strides=strides,
                 name=op_name,
                 reuse=True)
         except:
@@ -386,6 +358,8 @@ class Estimator:
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
+                dilation_rate=dilation_rate,
+                strides=strides,
                 name=op_name,
                 reuse=False)
 
@@ -421,9 +395,11 @@ class Estimator:
         :return:
         """
 
+        target_kernel_size = self._model._topology.kernel_size
         input_layer = self._model._topology.layers[0]
-        k_depth = min(KERNEL_DEPTH, input_layer['depth'])
-        k_height = min(KERNEL_HEIGHT, input_layer['height'])
-        k_width = min(KERNEL_WIDTH, input_layer['width'])
+
+        k_depth = min(target_kernel_size[0], input_layer['depth'])
+        k_height = min(target_kernel_size[1], input_layer['height'])
+        k_width = min(target_kernel_size[2], input_layer['width'])
 
         return [k_depth, k_height, k_width]
