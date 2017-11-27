@@ -18,7 +18,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class FinancialFeature(object):
     def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
-                 is_target, exchange_calendar, classify_per_series=False, normalise_per_series=False):
+                 is_target, exchange_calendar, classify_per_series=False, normalise_per_series=False, length=None):
         """
         Object containing all the information to manipulate the data relative to a financial feature.
         :param str name: Name of the feature
@@ -31,6 +31,7 @@ class FinancialFeature(object):
         :param int start_market_minute: number of minutes after market open the data collection should start from.
         :param bool is_target: if True the feature is a target.
         :param pandas_market_calendar exchange_calendar: exchange calendar.
+        :param int length: expected number of elements in the feature
         """
         # FIXME the get_default_flags args are temporary. We need to load a get_default_flags config in the unit tests.
 
@@ -46,6 +47,11 @@ class FinancialFeature(object):
         self.is_target = is_target
         self.exchange_calendar = exchange_calendar
         self.n_series = None
+
+        if length is None:
+            prediction_market_minute = 15  #FIXME shouldnt be hardcoded
+            length = get_total_ticks_x(ndays, resample_minutes, prediction_market_minute, start_market_minute)
+        self.length = length
 
         self.bin_distribution = None
         if self.nbins:
@@ -264,8 +270,17 @@ class FinancialFeature(object):
         :param Timestamp prediction_timestamp: Timestamp when the prediction is made
         :return pd.Dataframe: selected x-data (unprocessed)
         """
-        prediction_index_selection_x = self._index_selection_x(data_frame.index, prediction_timestamp)
-        return data_frame[prediction_index_selection_x]
+
+        try:
+            end_point = data_frame.index.get_loc(prediction_timestamp, method='pad')
+            end_index = end_point + 1  # +1 because iloc is not inclusive of end index
+            start_index = end_point - self.length
+        except:
+            logging.warning('Prediction timestamp {} not found in dataframe'.format(prediction_timestamp))
+            start_index = 0
+            end_index = -1
+
+        return data_frame.iloc[start_index:end_index, :]
 
     def get_prediction_data(self, data_frame, prediction_timestamp, target_timestamp=None):
         """
@@ -401,3 +416,16 @@ def get_feature_max_ndays(feature_list):
     :return int: max ndays of feature list
     """
     return max([feature.ndays for feature in feature_list])
+
+
+def get_total_ticks_x(ndays, resample_minutes, prediction_market_minute, start_market_minute):
+    """
+    Calculate expected total ticks for x data
+    :return int: expected total number of ticks for x data
+    """
+
+    ticks_in_a_day = np.floor(MINUTES_IN_TRADING_DAY / resample_minutes) + 1
+    intra_day_ticks = np.floor((prediction_market_minute - start_market_minute) /
+                               resample_minutes)
+    total_ticks = ticks_in_a_day * ndays + intra_day_ticks + 1
+    return int(total_ticks)

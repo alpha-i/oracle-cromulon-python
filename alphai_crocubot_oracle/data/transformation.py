@@ -49,8 +49,10 @@ class FinancialDataTransformation(DataTransformation):
         self.target_market_minute = configuration['target_market_minute']
         self.classify_per_series = configuration['classify_per_series']
         self.normalise_per_series = configuration['normalise_per_series']
+        feature_length = self.get_total_x_ticks()
         self.features = self._financial_features_factory(configuration['feature_config_list'],
-                                                         configuration['n_classification_bins'])
+                                                         configuration['n_classification_bins'],
+                                                         feature_length)
         self.n_series = configuration['nassets']
         self.configuration = configuration
 
@@ -74,16 +76,13 @@ class FinancialDataTransformation(DataTransformation):
                 n_targets += 1
         assert n_targets == 1
 
-    def get_total_ticks_x(self):
+    def get_total_x_ticks(self):
         """
         Calculate expected total ticks for x data
         :return int: expected total number of ticks for x data
         """
-        ticks_in_a_day = np.floor(MINUTES_IN_TRADING_DAY / self.features_resample_minutes) + 1
-        intra_day_ticks = np.floor((self.prediction_market_minute - self.features_start_market_minute) /
-                                   self.features_resample_minutes)
-        total_ticks = ticks_in_a_day * self.features_ndays + intra_day_ticks + 1
-        return int(total_ticks)
+        return get_total_ticks_x(self.features_ndays, self.features_resample_minutes, self.prediction_market_minute,
+                                 self.features_start_market_minute)
 
     def check_x_batch_dimensions(self, feature_x_dict):
         """
@@ -95,10 +94,10 @@ class FinancialDataTransformation(DataTransformation):
 
         for feature_full_name, feature_array in feature_x_dict.items():
             if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
-                if feature_array.shape[0] != self.get_total_ticks_x():
+                if feature_array.shape[0] != self.get_total_x_ticks():
                     correct_dimensions = False
             elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
-                if feature_array.shape[0] != self.get_total_ticks_x() - 1:
+                if feature_array.shape[0] != self.get_total_x_ticks() - 1:
                     correct_dimensions = False
 
         return correct_dimensions
@@ -119,7 +118,7 @@ class FinancialDataTransformation(DataTransformation):
 
         return correct_dimensions
 
-    def _financial_features_factory(self, feature_config_list, n_classification_bins):
+    def _financial_features_factory(self, feature_config_list, n_classification_bins, n_ticks):
         """
         Build list of financial features from list of incomplete feature-config dictionaries (class-specific).
         :param list feature_config_list: list of dictionaries containing feature details.
@@ -140,7 +139,8 @@ class FinancialDataTransformation(DataTransformation):
                 single_feature_dict['is_target'],
                 self.exchange_calendar,
                 self.classify_per_series,
-                self.normalise_per_series
+                self.normalise_per_series,
+                n_ticks
             ))
 
         return feature_list
@@ -298,7 +298,7 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         x_sample = list(xdict.values())[0]
-        x_expected_shape = self.get_total_ticks_x() - 1
+        x_expected_shape = self.get_total_x_ticks() - 1
         logging.info("Last rejected xdict: {}".format(x_sample.shape))
         logging.info("x_expected_shape: {}".format(x_expected_shape))
 
@@ -540,6 +540,19 @@ def get_unique_symbols(data_list):
             symbols.update(feat_symbols)
 
     return symbols
+
+
+def get_total_ticks_x(ndays, resample_minutes, prediction_market_minute, start_market_minute):
+    """
+    Calculate expected total ticks for x data
+    :return int: expected total number of ticks for x data
+    """
+
+    ticks_in_a_day = np.floor(MINUTES_IN_TRADING_DAY / resample_minutes) + 1
+    intra_day_ticks = np.floor((prediction_market_minute - start_market_minute) /
+                               resample_minutes)
+    total_ticks = ticks_in_a_day * ndays + intra_day_ticks + 1
+    return int(total_ticks)
 
 
 def remove_nans_from_dict(x_dict, y_dict=None):

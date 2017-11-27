@@ -237,7 +237,7 @@ class TestFinancialFeature(TestCase):
         end_date = data_frame.index[-1].date()
 
         market_open_list = sample_market_calendar.schedule(str(start_date), str(end_date)).market_open
-        prediction_timestamp = market_open_list[20] + timedelta(minutes=15)
+        prediction_timestamp = market_open_list[20] + timedelta(minutes=60)
 
         selected_prediction_data = \
             self.feature_1._select_prediction_data_x(data_frame, prediction_timestamp)

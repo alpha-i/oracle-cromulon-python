@@ -63,8 +63,8 @@ class TestFinancialDataTransformation(TestCase):
         }
         self.fin_data_transf_bins = FinancialDataTransformation(configuration_bins)
 
-    def test_get_total_ticks_x(self):
-        assert self.fin_data_transf_nobins.get_total_ticks_x() == 15
+    def test_get_total_x_ticks(self):
+        assert self.fin_data_transf_nobins.get_total_x_ticks() == 15
 
     def test_get_market_open_list(self):
         market_open_list = self.fin_data_transf_nobins._get_market_open_list(sample_hourly_ohlcv_data_dict)
