@@ -7,7 +7,7 @@ import pandas_market_calendars as mcal
 import pandas as pd
 
 from alphai_crocubot_oracle.data import MINUTES_IN_TRADING_DAY
-from alphai_crocubot_oracle.data.feature import FinancialFeature, get_feature_names, get_feature_max_ndays
+from alphai_crocubot_oracle.data.feature import FinancialFeature, get_feature_names
 
 TOTAL_TICKS_FINANCIAL_FEATURES = ['open_value', 'high_value', 'low_value', 'close_value', 'volume_value']
 TOTAL_TICKS_M1_FINANCIAL_FEATURES = ['open_log-return', 'high_log-return', 'low_log-return', 'close_log-return',
@@ -49,7 +49,7 @@ class FinancialDataTransformation(DataTransformation):
         self.target_market_minute = configuration['target_market_minute']
         self.classify_per_series = configuration['classify_per_series']
         self.normalise_per_series = configuration['normalise_per_series']
-        feature_length = self.get_total_x_ticks()
+        feature_length = self.get_feature_length()
         self.features = self._financial_features_factory(configuration['feature_config_list'],
                                                          configuration['n_classification_bins'],
                                                          feature_length)
@@ -76,7 +76,7 @@ class FinancialDataTransformation(DataTransformation):
                 n_targets += 1
         assert n_targets == 1
 
-    def get_total_x_ticks(self):
+    def get_feature_length(self):
         """
         Calculate expected total ticks for x data
         :return int: expected total number of ticks for x data
@@ -94,10 +94,7 @@ class FinancialDataTransformation(DataTransformation):
 
         for feature_full_name, feature_array in feature_x_dict.items():
             if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
-                if feature_array.shape[0] != self.get_total_x_ticks():
-                    correct_dimensions = False
-            elif feature_full_name in TOTAL_TICKS_M1_FINANCIAL_FEATURES:
-                if feature_array.shape[0] != self.get_total_x_ticks() - 1:
+                if feature_array.shape[0] != self.get_feature_length():
                     correct_dimensions = False
 
         return correct_dimensions
@@ -127,20 +124,18 @@ class FinancialDataTransformation(DataTransformation):
         assert isinstance(feature_config_list, list)
 
         feature_list = []
+
         for single_feature_dict in feature_config_list:
             feature_list.append(FinancialFeature(
                 single_feature_dict['name'],
                 single_feature_dict['transformation'],
                 single_feature_dict['normalization'],
                 n_classification_bins,
-                self.features_ndays,
-                self.features_resample_minutes,
-                self.features_start_market_minute,
+                self.get_feature_length(),
                 single_feature_dict['is_target'],
                 self.exchange_calendar,
                 self.classify_per_series,
                 self.normalise_per_series,
-                n_ticks
             ))
 
         return feature_list
@@ -298,7 +293,7 @@ class FinancialDataTransformation(DataTransformation):
         """
 
         x_sample = list(xdict.values())[0]
-        x_expected_shape = self.get_total_x_ticks() - 1
+        x_expected_shape = self.get_feature_length() - 1
         logging.info("Last rejected xdict: {}".format(x_sample.shape))
         logging.info("x_expected_shape: {}".format(x_expected_shape))
 
@@ -512,9 +507,11 @@ class FinancialDataTransformation(DataTransformation):
     def get_training_market_dates(self, raw_data_dict):
         """ Returns all dates on which we have both x and y data"""
 
-        max_feature_ndays = get_feature_max_ndays(self.features)
+        start_date_index = self.features_ndays + 1
+        end_date_index = -self.target_delta_ndays
+        market_open_dates = self._get_market_open_list(raw_data_dict)
 
-        return self._get_market_open_list(raw_data_dict)[max_feature_ndays:-self.target_delta_ndays]
+        return market_open_dates[start_date_index:end_date_index]
 
 
 def _get_universe_from_date(date, historical_universes):
@@ -591,3 +588,4 @@ def remove_nans_from_dict(x_dict, y_dict=None):
         return x_dict, y_dict
     else:
         return x_dict
+

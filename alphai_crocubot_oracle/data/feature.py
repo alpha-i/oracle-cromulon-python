@@ -1,5 +1,4 @@
 from copy import deepcopy
-from datetime import timedelta
 import logging
 
 import numpy as np
@@ -8,17 +7,17 @@ import pandas_market_calendars as mcal
 from sklearn.preprocessing import RobustScaler, MinMaxScaler, StandardScaler
 from sklearn.preprocessing import QuantileTransformer
 
-from alphai_crocubot_oracle.data import FINANCIAL_FEATURE_TRANSFORMATIONS, FINANCIAL_FEATURE_NORMALIZATIONS, \
-    MINUTES_IN_TRADING_DAY, MARKET_DAYS_SEARCH_MULTIPLIER, MIN_MARKET_DAYS_SEARCH
+from alphai_crocubot_oracle.data import FINANCIAL_FEATURE_TRANSFORMATIONS, FINANCIAL_FEATURE_NORMALIZATIONS
 
 from alphai_crocubot_oracle.data.classifier import BinDistribution, classify_labels, declassify_labels
 
+SCIKIT_SHAPE = (-1, 1)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class FinancialFeature(object):
-    def __init__(self, name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
-                 is_target, exchange_calendar, classify_per_series=False, normalise_per_series=False, length=None):
+    def __init__(self, name, transformation, normalization, nbins, length,
+                 is_target, exchange_calendar, classify_per_series=False, normalise_per_series=False):
         """
         Object containing all the information to manipulate the data relative to a financial feature.
         :param str name: Name of the feature
@@ -26,31 +25,20 @@ class FinancialFeature(object):
             FINANCIAL_FEATURE_TRANSFORMATIONS
         :param str/None normalization: type of normalization. Can be None.
         :param int/None nbins: number of bins to be used for target classification. Can be None.
-        :param int ndays: number of trading days worth of data the feature should use.
-        :param int resample_minutes: resampling frequency in number of minutes.
-        :param int start_market_minute: number of minutes after market open the data collection should start from.
+        :param int length: expected number of elements in the feature
         :param bool is_target: if True the feature is a target.
         :param pandas_market_calendar exchange_calendar: exchange calendar.
-        :param int length: expected number of elements in the feature
         """
         # FIXME the get_default_flags args are temporary. We need to load a get_default_flags config in the unit tests.
 
-        self._assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
-                           is_target)
+        self._assert_input(name, transformation, normalization, nbins, length, is_target)
         self.name = name
         self.transformation = transformation
         self.normalization = normalization
         self.nbins = nbins
-        self.ndays = ndays
-        self.resample_minutes = resample_minutes
-        self.start_market_minute = start_market_minute
         self.is_target = is_target
         self.exchange_calendar = exchange_calendar
         self.n_series = None
-
-        if length is None:
-            prediction_market_minute = 15  #FIXME shouldnt be hardcoded
-            length = get_total_ticks_x(ndays, resample_minutes, prediction_market_minute, start_market_minute)
         self.length = length
 
         self.bin_distribution = None
@@ -83,18 +71,14 @@ class FinancialFeature(object):
         return '{}_{}'.format(self.name, self.transformation['name'])
 
     @staticmethod
-    def _assert_input(name, transformation, normalization, nbins, ndays, resample_minutes, start_market_minute,
-                      is_target):
+    def _assert_input(name, transformation, normalization, nbins, length, is_target):
         assert isinstance(name, str)
         assert isinstance(transformation, dict)
         assert 'name' in transformation, 'The transformation dict does not contain the key "name"'
         assert transformation['name'] in FINANCIAL_FEATURE_TRANSFORMATIONS
         assert normalization in FINANCIAL_FEATURE_NORMALIZATIONS
         assert (isinstance(nbins, int) and nbins > 0) or nbins is None
-        assert isinstance(ndays, int) and ndays >= 0
-        assert isinstance(resample_minutes, int) and resample_minutes >= 0
-        assert isinstance(start_market_minute, int)
-        assert start_market_minute < MINUTES_IN_TRADING_DAY
+        assert (isinstance(length, int) and length > 0)
         assert isinstance(is_target, bool)
         if transformation['name'] == 'ewma':
             assert 'halflife' in transformation
@@ -154,7 +138,7 @@ class FinancialFeature(object):
 
         symbol_data.flatten()
         symbol_data = symbol_data[np.isfinite(symbol_data)]
-        symbol_data = symbol_data.reshape(-1, 1)  # Reshape for scikitlearn
+        symbol_data = reshape_scikit(symbol_data)  # Reshape for scikitlearn
 
         if symbol:
             self.scaler_dict[symbol] = deepcopy(self.scaler)
@@ -165,49 +149,45 @@ class FinancialFeature(object):
     def apply_normalisation(self, dataframe):
         """ Compute normalisation across the entire training set, or apply predetermined normalistion to prediction.
 
-        :param pd dataframe data_x: Features of shape [n_samples, n_series, n_features]
+        :param pd dataframe: Features of shape [n_samples, n_series, n_features]
         :return:
         """
 
         for symbol in dataframe:
             data_x = dataframe[symbol].values
             original_shape = data_x.shape
-            data_x = data_x.reshape(-1, 1)
+            data_x = data_x.flatten()
+            valid_data = data_x[np.isfinite(data_x)]
+            flat_shape = valid_data.shape
 
-            nan_mask = np.ma.fix_invalid(data_x, fill_value=0)
+            if len(valid_data) > 0:
+                scaler = self.get_scaler(symbol)
 
-            if self.normalise_per_series:
-                if symbol in self.scaler_dict:
-                    data_x = self.scaler_dict[symbol].transform(nan_mask.data)
-                    # Put the nans back in so we know to avoid them
-                    data_x[nan_mask.mask] = np.nan
-                    dataframe[symbol] = data_x.reshape(original_shape)
-                else:
+                if scaler is None:
                     logging.warning("Symbol lacks normalisation scaler: {}".format(symbol))
                     logging.warning("Dropping symbol from dataframe: {}".format(symbol))
                     dataframe.drop(symbol, axis=1, inplace=True)
-            else:
-                data_x = self.scaler.transform(nan_mask.data)
-                # Put the nans back in so we know to avoid them
-                data_x[nan_mask.mask] = np.nan
-                dataframe[symbol] = data_x.reshape(original_shape)
+                else:
+                    valid_data = valid_data.reshape(SCIKIT_SHAPE)
+                    scaler.transform(valid_data, copy=False)
+                    data_x[np.isfinite(data_x)] = valid_data.reshape(flat_shape)
+                    dataframe[symbol] = data_x.reshape(original_shape)
 
         return dataframe
 
-    def reshape_for_scikit(self, data_x):
-        """ Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature.
+    def get_scaler(self, symbol):
+        """ Returns scaler for a given symbol
 
-        :param data_x: Features of shape [n_samples, n_series, n_features]
-        :return: nparray Same data as input, but now with two dimensions: [samples, f], each f has own normalisation
+        :param str symbol: The time series we wish to transform
+        :return: scikit scaler: The scikitlearn scaler
         """
 
         if self.normalise_per_series:
-            n_series = data_x.shape[1]
-            scikit_shape = (-1, n_series)
+            scaler = self.scaler_dict.get(symbol, None)
         else:
-            scikit_shape = (-1, 1)
+            scaler = self.scaler
 
-        return data_x.reshape(scikit_shape)
+        return scaler
 
     def process_prediction_data_y(self, prediction_data_y, prediction_reference_data):
         """
@@ -230,39 +210,6 @@ class FinancialFeature(object):
 
         return processed_prediction_data_y
 
-    def _get_safe_schedule_start_date(self, prediction_timestamp):
-        """
-        Calculate a safe schedule start date from input timestamp so that at least self.ndays trading days are available
-        :param Timestamp prediction_timestamp: Timestamp when the prediction is made
-        :return Timestamp: schedule_start_date
-        """
-        safe_ndays = max(MIN_MARKET_DAYS_SEARCH, MARKET_DAYS_SEARCH_MULTIPLIER * self.ndays)
-        return prediction_timestamp - timedelta(days=safe_ndays)
-
-    def _get_start_timestamp_x(self, prediction_timestamp):
-        """
-        Calculate the start timestamp of x-data for a given prediction timestamp.
-        :param Timestamp prediction_timestamp: Timestamp when the prediction is made
-        :return Timestamp: start timestamp of x-data
-        """
-        schedule_start_date = str(self._get_safe_schedule_start_date(prediction_timestamp))
-        schedule_end_date = str(prediction_timestamp.date())
-        market_open_list = self.exchange_calendar.schedule(schedule_start_date, schedule_end_date).market_open
-        prediction_market_open = market_open_list[prediction_timestamp.date()]
-        prediction_market_open_idx = np.argwhere(market_open_list == prediction_market_open).flatten()[0]
-        start_timestamp_x = market_open_list[prediction_market_open_idx - self.ndays] + timedelta(
-            minutes=self.start_market_minute)
-        return start_timestamp_x
-
-    def _index_selection_x(self, date_time_index, prediction_timestamp):
-        """
-        Create index selection rule for x data
-        :param Timestamp prediction_timestamp: Timestamp when the prediction is made
-        :return: index selection rule
-        """
-        start_timestamp_x = self._get_start_timestamp_x(prediction_timestamp)
-        return (date_time_index >= start_timestamp_x) & (date_time_index <= prediction_timestamp)
-
     def _select_prediction_data_x(self, data_frame, prediction_timestamp):
         """
         Select the x-data relevant for a input prediction timestamp.
@@ -276,7 +223,7 @@ class FinancialFeature(object):
             end_index = end_point + 1  # +1 because iloc is not inclusive of end index
             start_index = end_point - self.length
         except:
-            logging.warning('Prediction timestamp {} not found in dataframe'.format(prediction_timestamp))
+            logging.warning('Prediction timestamp {} not within range of dataframe'.format(prediction_timestamp))
             start_index = 0
             end_index = -1
 
@@ -328,10 +275,12 @@ class FinancialFeature(object):
 
             if symbol in self.bin_distribution_dict:
                 symbol_binning = self.bin_distribution_dict[symbol]
-                hot_dataframe[symbol] = np.squeeze(classify_labels(symbol_binning.bin_edges, data_y))
+                one_hot_labels = classify_labels(symbol_binning.bin_edges, data_y)
+                if len(one_hot_labels) > 1:
+                    hot_dataframe[symbol] = np.squeeze(one_hot_labels)
             else:
                 logging.warning("Symbol lacks clasification bins: {}".format(symbol))
-                dataframe.drop(symbol, axis=1, inplace=True)
+                #  dataframe.drop(symbol, axis=1, inplace=True)
                 logging.warning("Dropping {} from dataframe.".format(symbol))
 
         return hot_dataframe
@@ -378,9 +327,7 @@ def single_financial_feature_factory(feature_config):
         feature_config['transformation'],
         feature_config['normalization'],
         feature_config['nbins'],
-        feature_config['ndays'],
-        feature_config['resample_minutes'],
-        feature_config['start_market_minute'],
+        feature_config['length'],
         feature_config['is_target'],
         mcal.get_calendar(feature_config['exchange_name']))
 
@@ -409,23 +356,11 @@ def get_feature_names(feature_list):
     return list(set([feature.name for feature in feature_list]))
 
 
-def get_feature_max_ndays(feature_list):
-    """
-    Return max ndays of feature list
-    :param list feature_list: list of Feature objects
-    :return int: max ndays of feature list
-    """
-    return max([feature.ndays for feature in feature_list])
+def reshape_scikit(data_x):
+    """ Scikit expects an input of the form [samples, features]; normalisation applied separately to each feature.
 
-
-def get_total_ticks_x(ndays, resample_minutes, prediction_market_minute, start_market_minute):
-    """
-    Calculate expected total ticks for x data
-    :return int: expected total number of ticks for x data
+    :param data_x: Features of any shape
+    :return: nparray Same data as input, but now with two dimensions: [samples, f], each f has own normalisation
     """
 
-    ticks_in_a_day = np.floor(MINUTES_IN_TRADING_DAY / resample_minutes) + 1
-    intra_day_ticks = np.floor((prediction_market_minute - start_market_minute) /
-                               resample_minutes)
-    total_ticks = ticks_in_a_day * ndays + intra_day_ticks + 1
-    return int(total_ticks)
+    return data_x.reshape(SCIKIT_SHAPE)

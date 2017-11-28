@@ -282,10 +282,15 @@ class CrocubotOracle:
         finite_data = data[np.isfinite(data)]
         max_data = np.max(finite_data)
         min_data = np.min(finite_data)
+        mean = np.mean(finite_data)
+        sigma = np.std(finite_data)
+
         logging.info("{} Infs: {}".format(data_name, infs))
         logging.info("{} Nans: {}".format(data_name, nans))
         logging.info("{} Maxs: {}".format(data_name, max_data))
         logging.info("{} Mins: {}".format(data_name, min_data))
+        logging.info("{} Mean: {}".format(data_name, mean))
+        logging.info("{} Sigma: {}".format(data_name, sigma))
         return min_data, max_data
 
     def verify_pricing_data(self, predict_data):
