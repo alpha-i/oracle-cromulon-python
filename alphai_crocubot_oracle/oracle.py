@@ -308,8 +308,11 @@ class CrocubotOracle:
         logging.info("{} Mean: {}".format(data_name, mean))
         logging.info("{} Sigma: {}".format(data_name, sigma))
 
-        if data_name == 'X_data' and np.abs(mean) < 1e-2:
+        if data_name == 'X_data' and np.abs(mean) > 1e-2:
             logging.warning('Mean of input data is too large')
+
+        if data_name == 'Y_data' and max_data < 1e-2:
+            raise ValueError("Y Data not classified")
 
         return min_data, max_data
 

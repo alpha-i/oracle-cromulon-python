@@ -276,7 +276,7 @@ class FinancialFeature(object):
             if symbol in self.bin_distribution_dict:
                 symbol_binning = self.bin_distribution_dict[symbol]
                 one_hot_labels = classify_labels(symbol_binning.bin_edges, data_y)
-                if len(one_hot_labels) > 1:
+                if one_hot_labels.shape[-1] > 1:
                     hot_dataframe[symbol] = np.squeeze(one_hot_labels)
             else:
                 logging.warning("Symbol lacks clasification bins: {}".format(symbol))
