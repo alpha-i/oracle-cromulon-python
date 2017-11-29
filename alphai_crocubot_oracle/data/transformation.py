@@ -93,9 +93,8 @@ class FinancialDataTransformation(DataTransformation):
         correct_dimensions = True
 
         for feature_full_name, feature_array in feature_x_dict.items():
-            if feature_full_name in TOTAL_TICKS_FINANCIAL_FEATURES:
-                if feature_array.shape[0] != self.get_feature_length():
-                    correct_dimensions = False
+            if feature_array.shape[0] != self.get_feature_length():
+                correct_dimensions = False
 
         return correct_dimensions
 

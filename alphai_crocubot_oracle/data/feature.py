@@ -98,9 +98,6 @@ class FinancialFeature(object):
             processed_prediction_data_x = np.log(processed_prediction_data_x.pct_change() + 1). \
                 replace([np.inf, -np.inf], np.nan)
 
-            # Remove the zeros / nans associated with log return
-            processed_prediction_data_x = processed_prediction_data_x.iloc[1:]
-
         if self.transformation['name'] == 'stochastic_k':
             columns = processed_prediction_data_x.columns
             processed_prediction_data_x \
@@ -126,7 +123,7 @@ class FinancialFeature(object):
             processed_prediction_data_x = direction / volatility
             processed_prediction_data_x.dropna(axis=0, inplace=True)
 
-        return processed_prediction_data_x
+        return processed_prediction_data_x.iloc[1:]  # Discard first element, often an unwanted zero or nan
 
     def fit_normalisation(self, symbol_data, symbol=None):
         """ Creates a scikitlearn scalar, assigns it to a dictionary, fits it to the data
@@ -169,7 +166,10 @@ class FinancialFeature(object):
                     dataframe.drop(symbol, axis=1, inplace=True)
                 else:
                     valid_data = valid_data.reshape(SCIKIT_SHAPE)
-                    scaler.transform(valid_data, copy=False)
+                    try:
+                        scaler.transform(valid_data, copy=False)
+                    except:  # Some scalers cannot be performed in situ
+                        valid_data = scaler.transform(valid_data)
                     data_x[np.isfinite(data_x)] = valid_data.reshape(flat_shape)
                     dataframe[symbol] = data_x.reshape(original_shape)
 
