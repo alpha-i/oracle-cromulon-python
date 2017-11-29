@@ -18,6 +18,8 @@ from alphai_time_series.transform import gaussianise
 
 import alphai_crocubot_oracle.crocubot.train as crocubot
 import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
+import alphai_crocubot_oracle.dropout.train as dropout
+import alphai_crocubot_oracle.dropout.evaluate as dropout_eval
 from alphai_crocubot_oracle.flags import build_tensorflow_flags
 import alphai_crocubot_oracle.topology as tp
 from alphai_crocubot_oracle import DATETIME_FORMAT_COMPACT
@@ -27,7 +29,8 @@ from alphai_crocubot_oracle.helpers import TrainFileManager, logtime
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_net"  # TBC add name of net
+DEFAULT_NETWORK = 'crocubot'
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
@@ -73,7 +76,8 @@ class CrocubotOracle:
             save_model: If true, save every trained model.
         """
 
-        logging.info('Initialising Crocubot Oracle.')
+        self.network = configuration.get('network', DEFAULT_NETWORK)
+        logging.info('Initialising {} Oracle.'.format(self.network))
 
         configuration = self.update_configuration(configuration)
         feature_list = configuration['data_transformation']['feature_config_list']
@@ -90,7 +94,7 @@ class CrocubotOracle:
         self._configuration = configuration
         self._train_file_manager = TrainFileManager(
             self._train_path,
-            TRAIN_FILE_NAME_TEMPLATE,
+            self._get_train_template(),
             DATETIME_FORMAT_COMPACT
         )
 
@@ -169,7 +173,13 @@ class CrocubotOracle:
 
     @logtime(message="Training the model.")
     def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
-        crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
+        if self.network == 'crocubot':
+            crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
+        else:
+            dropout.train(data_provider, tensorflow_path, self._tensorflow_flags)
+
+    def _get_train_template(self):
+        return "{}_train_" + self.network
 
     def predict(self, predict_data, execution_time):
         """
@@ -183,7 +193,7 @@ class CrocubotOracle:
         if self._topology is None:
             logging.warning('Not ready for prediction - safer to run train first')
 
-        logging.info('Crocubot Oracle prediction on {}.'.format(execution_time))
+        logging.info('Oracle prediction on {}.'.format(execution_time))
 
         self.verify_pricing_data(predict_data)
         latest_train_file = self._train_file_manager.latest_train_filename(execution_time)
@@ -197,28 +207,34 @@ class CrocubotOracle:
             n_timesteps = predict_x.shape[2]
             self.initialise_topology(n_timesteps)
 
-        # Verify data is the correct shape
-        network_input_shape = self._topology.get_network_input_shape()
-        data_input_shape = predict_x.shape[-3:]
+        if self.network == 'crocubot':
+            # Verify data is the correct shape
+            network_input_shape = self._topology.get_network_input_shape()
+            data_input_shape = predict_x.shape[-3:]
 
-        if data_input_shape != network_input_shape:
-            err_msg = 'Data shape' + str(data_input_shape) + " doesnt match network input " + str(network_input_shape)
-            raise ValueError(err_msg)
+            if data_input_shape != network_input_shape:
+                err_msg = 'Data shape' + str(data_input_shape) + " doesnt match network input " + str(
+                    network_input_shape)
+                raise ValueError(err_msg)
 
-        predict_y = crocubot_eval.eval_neural_net(
-            predict_x, self._topology,
-            self._tensorflow_flags,
-            latest_train_file
-        )
+            predict_y = crocubot_eval.eval_neural_net(
+                predict_x, self._topology,
+                self._tensorflow_flags,
+                latest_train_file
+            )
+        else:
+            predict_y = dropout_eval.eval_neural_net(predict_x, self._tensorflow_flags, latest_train_file)
 
         end_time = timer()
         eval_time = end_time - start_time
-        logging.info("Crocubot evaluation took: {} seconds".format(eval_time))
+        logging.info("Network evaluation took: {} seconds".format(eval_time))
 
-        if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
-            predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
-
-        predict_y = np.squeeze(predict_y, axis=1)
+        if self.network == 'crocubot':
+            if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
+                predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
+            predict_y = np.squeeze(predict_y, axis=1)
+        else:
+            predict_y = np.expand_dims(predict_y, axis=0)
 
         means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y, symbols)
         if not np.isfinite(forecast_covariance).all():
@@ -291,6 +307,10 @@ class CrocubotOracle:
         logging.info("{} Mins: {}".format(data_name, min_data))
         logging.info("{} Mean: {}".format(data_name, mean))
         logging.info("{} Sigma: {}".format(data_name, sigma))
+
+        if data_name == 'X_data' and np.abs(mean) < 1e-2:
+            logging.warning('Mean of input data is too large')
+
         return min_data, max_data
 
     def verify_pricing_data(self, predict_data):
@@ -359,21 +379,30 @@ class CrocubotOracle:
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
-            # Trim entries which are not log-returns, to allow stacking of features
-            if key.startswith('volume'):
-                value = value[:, 1:, :]
-
             numpy_arrays.append(value)
             logging.info("Appending feature of shape".format(value.shape))
 
-        # Now train_x will have dimensions [features; sampes; timesteps; symbols]
+        # Currently train_x will have dimensions [features; samples; timesteps; symbols]
         train_x = np.stack(numpy_arrays, axis=0)
-
         train_x = self.reorder_input_dimensions(train_x)
 
         # Expand dataset if requested
         if self._tensorflow_flags.predict_single_shares:
             train_x = self.expand_input_data(train_x)
+
+        if self.network == 'dropout':
+            logging.info("Reshaping and padding")
+            n_samples = train_x.shape[0]
+
+            train_x = np.reshape(train_x, [n_samples, 1, -1, 1])
+            n_ticks = train_x.shape[2]
+            reps = int(784 / n_ticks)
+            if reps > 1:
+                train_x = np.tile(train_x, (1, 1, reps, 1))
+
+            pad_elements = 784 - train_x.shape[2]
+            train_x = np.pad(train_x, [(0, 0), (0, 0), (0, pad_elements), (0, 0)], mode='reflect')
+            train_x = np.reshape(train_x, [n_samples, 28, 28, 1])
 
         train_x = self.verify_x_data(train_x)
 
@@ -387,6 +416,10 @@ class CrocubotOracle:
         if self._tensorflow_flags.predict_single_shares:
             n_feat_y = train_y.shape[2]
             train_y = np.reshape(train_y, [-1, 1, 1, n_feat_y])
+
+        if self.network == 'dropout':
+            train_y = np.squeeze(train_y)
+            assert(train_y.shape[1] == 10)
 
         self.verify_y_data(train_y)
 
