@@ -29,7 +29,7 @@ from alphai_crocubot_oracle.helpers import TrainFileManager, logtime
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_net"  # TBC add name of net
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_net"
 DEFAULT_NETWORK = 'crocubot'
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
@@ -38,7 +38,8 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class CrocubotOracle:
     def __init__(self, configuration):
         """
-        :param configuration: dictionary containing all the parameters.
+        :param configuration: Dictionary containing all the parameters. Full specifications can be found at:
+        oracle-crocubot-python/docs/crocubot_options.md
         """
 
         self.network = configuration.get('network', DEFAULT_NETWORK)
