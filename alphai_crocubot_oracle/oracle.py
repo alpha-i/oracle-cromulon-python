@@ -38,46 +38,11 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class CrocubotOracle:
     def __init__(self, configuration):
         """
-        :param configuration: dictionary containing all the parameters
-            data_transformation: Dictionary containing the financial-data-transformation configuration:
-                features_dict: Dictionary containing the financial-features configuration, with feature names as keys:
-                    order: ['value', 'log-return']
-                    normalization: [None, 'robust', 'min_max', 'standard']
-                    resample_minutes: resample frequency of feature data_x in minutes.
-                    ndays: number of days of feature data_x.
-                    start_min_after_market_open: start time of feature data_x in minutes after market open.
-                    is_target: boolean to define if this feature is a target (y). The feature is always consider as x.
-                exchange_name: name of the exchange to create the market calendar
-                prediction_min_after_market_open: prediction time in number of minutes after market open
-                target_delta_ndays: days difference between prediction and target
-                target_min_after_market_open: target time in number of minutes after market open
-            covariance_config:
-                covariance_method: The name of the covariance estimation method.
-                covariance_ndays: The number of previous days those are needed for the covariance estimate (int).
-                use_forecast_covariance: (bool) Whether to use the covariance of the forecast.
-                    (If False uses historical data)
-            network_config:
-                n_series: Number of input time series
-                n_features_per_series: Number of inputs associated with each time series
-                n_forecasts: Number of outputs to be classified (usually n_series but potentially differs)
-                n_classification_bins: Number of bins used for the classification of each forecast
-                layer_heights: List of the number of neurons in each layer
-                layer_widths: List of the number of neurons in each layer
-                activation_functions: list of the activation functions in each layer
-                model_save_path: directory where the model is stored
-            training_config:
-                epochs: The number of epochs in the model training as an integer.
-                learning_rate: The learning rate of the model as a float.
-                batch_size:  The batch size in training as an integer
-                cost_type:  The method for evaluating the loss (default: 'bayes')
-                train_path: The path to a folder in which the training data is to be stored.
-                resume_training: (bool) whether to load an pre-trained model
-            verbose: Is a verbose output required? (bool)
-            save_model: If true, save every trained model.
+        :param configuration: dictionary containing all the parameters.
         """
 
         self.network = configuration.get('network', DEFAULT_NETWORK)
-        logging.info('Initialising {} Oracle.'.format(self.network))
+        logging.info('Initialising {} oracle.'.format(self.network))
 
         configuration = self.update_configuration(configuration)
         feature_list = configuration['data_transformation']['feature_config_list']
@@ -422,7 +387,7 @@ class CrocubotOracle:
 
         if self.network == 'dropout':
             train_y = np.squeeze(train_y)
-            assert(train_y.shape[1] == 10)
+            assert(train_y.shape[1] == 10), "Must have 10 classification bins."
 
         self.verify_y_data(train_y)
 
