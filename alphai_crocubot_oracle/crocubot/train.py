@@ -43,7 +43,7 @@ def train(topology,
     global_step = tf.Variable(0, trainable=False, name='global_step')
     n_batches = data_provider.number_of_batches
 
-    cost_operator, log_predict = _set_cost_operator(model, x, y, n_batches, tf_flags)
+    cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags)
     tf.summary.scalar("cost", cost_operator)
     optimize = _set_training_operator(cost_operator, global_step, tf_flags)
 
@@ -82,6 +82,7 @@ def train(topology,
             data_provider.shuffle_data()
 
             epoch_loss = 0.
+            epoch_likeli = 0
             start_time = timer()
 
             for batch_number in range(n_batches):  # The randomly sampled weights are fixed within single batch
@@ -97,9 +98,10 @@ def train(topology,
                         batch_labels.shape
                     ))
 
-                _, batch_loss, summary_results = sess.run([optimize, cost_operator, all_summaries],
-                                                          feed_dict={x: batch_features, y: batch_labels})
+                _, batch_loss, batch_likeli, summary_results = \
+                    sess.run([optimize, cost_operator, log_likeli, all_summaries], feed_dict={x: batch_features, y: batch_labels})
                 epoch_loss += batch_loss
+                epoch_likeli += batch_likeli
 
                 is_time_to_save_summary = epoch * batch_number % PRINT_SUMMARY_INTERVAL
                 if is_time_to_save_summary:
@@ -113,7 +115,7 @@ def train(topology,
 
             epoch_loss_list.append(epoch_loss)
 
-            _log_epoch_loss_if_needed(epoch, epoch_loss, number_of_epochs, time_epoch, tf_flags.use_convolution)
+            _log_epoch_loss_if_needed(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch, tf_flags.use_convolution)
 
         sample_log_predictions = sess.run(log_predict, feed_dict={x: batch_features, y: batch_labels})
         log_network_confidence(sample_log_predictions)
@@ -123,7 +125,7 @@ def train(topology,
     return epoch_loss_list
 
 
-def _log_epoch_loss_if_needed(epoch, epoch_loss, n_epochs, time_epoch, use_convolution):
+def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use_convolution):
     """
     Logs the Loss according to PRINT_LOSS_INTERVAL
     :param int epoch:
@@ -134,8 +136,8 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, n_epochs, time_epoch, use_convo
     :return:
     """
     if (epoch % PRINT_LOSS_INTERVAL) == 0:
-        msg = "Epoch {} of {} ... Loss: {:.2e}. in {:.2f} seconds."
-        logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, time_epoch))
+        msg = "Epoch {} of {} ... Loss: {:.2e}. LogLikeli: {:.2e} in {:.2f} seconds."
+        logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
 
         if PRINT_KERNEL and use_convolution:
             gr = tf.get_default_graph()
@@ -169,17 +171,21 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
     log_predictions = estimator.average_multiple_passes(x, tf_flags.n_train_passes)
 
     if tf_flags.cost_type == 'bbalpha':
-        operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)
+        cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)
+        log_likelihood = tf.reduce_mean(cost_operator)
     elif tf_flags.cost_type == 'bayes':
-        operator = cost_object.get_bayesian_cost(log_predictions, labels)
+        cost_operator = cost_object.get_bayesian_cost(log_predictions, labels)
+        likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
+        log_likelihood = tf.reduce_mean(likelihood_op)
     elif tf_flags.cost_type == 'softmax':
-        operator = tf.nn.softmax_cross_entropy_with_logits(logits=log_predictions, labels=labels)
+        cost_operator = tf.nn.softmax_cross_entropy_with_logits(logits=log_predictions, labels=labels)
+        log_likelihood = tf.reduce_mean(cost_operator)
     else:
         raise NotImplementedError('Unsupported cost type:', tf_flags.cost_type)
 
-    total_cost = tf.reduce_mean(operator)
+    total_cost = tf.reduce_mean(cost_operator)
 
-    return total_cost, log_predictions
+    return total_cost, log_predictions, log_likelihood
 
 
 def _log_topology_parameters_size(topology):
