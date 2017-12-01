@@ -22,7 +22,7 @@ def eval_neural_net(predict_x, tf_flags, load_file):
 
     x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='Inputs')
     is_training = tf.placeholder(tf.bool, name='IsTraining')
-    logits = dropout_net(x, is_training, scope='DropoutNetTrain')
+    logits = dropout_net(x, is_training, scope='DropoutNetTrain', n_classification_bins=tf_flags.n_classification_bins)
     eval_operator = tf.nn.softmax(logits, dim=-1)
 
     saver = tf.train.Saver()
@@ -41,6 +41,6 @@ def eval_neural_net(predict_x, tf_flags, load_file):
         if PRINT_SAMPLE_WEIGHTS:
             sample_weights = sess.run(SAMPLE_WEIGHTS).flatten()
             logging.info("Sample of weights from first layer:{}".format(sample_weights[0:9]))
-            logging.info("First prediction:{}".format(prediction.flatten()[0:9]))
+            logging.info("First prediction:{}".format(prediction[0, :]))
 
     return prediction

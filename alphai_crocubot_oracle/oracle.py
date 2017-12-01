@@ -100,9 +100,12 @@ class CrocubotOracle:
         logging.info("Processed train_x shape {}".format(train_x.shape))
         train_x, train_y = self.filter_nan_samples(train_x, train_y)
         logging.info("Filtered train_x shape {}".format(train_x.shape))
+        n_valid_samples = train_x.shape[0]
 
-        if train_x.shape[0] == 0:
+        if n_valid_samples == 0:
             raise ValueError("Aborting training: No valid samples")
+        elif n_valid_samples < 2e4:
+            logging.warning("Low number of training samples: {}".format(n_valid_samples))
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         if self._topology is None:
@@ -134,6 +137,9 @@ class CrocubotOracle:
                                                  self._tensorflow_flags.batch_size,
                                                  execution_time
                                                  )
+
+        first_sample = train_x[0, :].flatten()
+        logging.info("Sample from first example in train_x: {}".format(first_sample[0:8]))
         data_provider = TrainDataProvider(train_x, train_y, self._tensorflow_flags.batch_size)
         self._do_train(tensorflow_path, tensorboard_options, data_provider)
 
@@ -141,8 +147,13 @@ class CrocubotOracle:
     def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
         if self.network == 'crocubot':
             crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
-        else:
+        elif self.network == 'dropout':
             dropout.train(data_provider, tensorflow_path, self._tensorflow_flags)
+        elif self.network == 'inception':
+            raise NotImplementedError('Requested network not supported:', self.network)
+            # inception.train(data_provider, tensorflow_path, self._tensorflow_flags)
+        else:
+            raise NotImplementedError('Requested network not supported:', self.network)
 
     def _get_train_template(self):
         return "{}_train_" + self.network
@@ -210,19 +221,23 @@ class CrocubotOracle:
         if not np.isfinite(means).all():
             logging.warning('Means found to contain non-finite values.')
 
-        means = pd.Series(np.squeeze(means), index=symbols)
+        means_pd = pd.Series(np.squeeze(means), index=symbols)
 
         if self.use_historical_covariance:
-            covariance_matrix = self.calculate_historical_covariance(predict_data, symbols)
-            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance_matrix)[0:5]))
+            covariance = self.calculate_historical_covariance(predict_data, symbols)
+            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance)[0:5]))
+            logging.warning('Invoking temporary covariance hack')
+            cov_diag = np.diag(covariance) + 1e-4
+            covariance = np.diag(cov_diag)
+
         else:
-            covariance_matrix = forecast_covariance
-            logging.info("Samples from forecast_covariance: {}".format(np.diag(covariance_matrix)[0:5]))
+            covariance = forecast_covariance
+            logging.info("Samples from forecast_covariance: {}".format(np.diag(covariance)[0:5]))
 
-        covariance = pd.DataFrame(data=covariance_matrix, columns=symbols, index=symbols)
+        covariance_pd = pd.DataFrame(data=covariance, columns=symbols, index=symbols)
 
-        means, covariance = self.filter_predictions(means, covariance)
-        return means, covariance
+        means_pd, covariance_pd = self.filter_predictions(means_pd, covariance_pd)
+        return means_pd, covariance_pd
 
     def filter_predictions(self, means, covariance):
         """ Remove nans from the series and remove those symbols from the covariance dataframe
@@ -267,12 +282,9 @@ class CrocubotOracle:
         mean = np.mean(finite_data)
         sigma = np.std(finite_data)
 
-        logging.info("{} Infs: {}".format(data_name, infs))
-        logging.info("{} Nans: {}".format(data_name, nans))
-        logging.info("{} Maxs: {}".format(data_name, max_data))
-        logging.info("{} Mins: {}".format(data_name, min_data))
-        logging.info("{} Mean: {}".format(data_name, mean))
-        logging.info("{} Sigma: {}".format(data_name, sigma))
+        logging.info("{} Infs, Nans: {}, {}".format(data_name, infs, nans))
+        logging.info("{} Min, Max: {}, {}".format(data_name, min_data, max_data))
+        logging.info("{} Mean, Sigma: {}, {}".format(data_name, mean, sigma))
 
         if data_name == 'X_data' and np.abs(mean) > 1e-2:
             logging.warning('Mean of input data is too large')
@@ -311,7 +323,7 @@ class CrocubotOracle:
 
     def calculate_historical_covariance(self, predict_data, symbols):
         # Call the covariance library
-        logging.info('Estimating historical covariance matrix.')
+
         start_time = timer()
         cov = estimate_covariance(
             data=predict_data,
@@ -388,7 +400,6 @@ class CrocubotOracle:
 
         if self.network == 'dropout':
             train_y = np.squeeze(train_y)
-            assert(train_y.shape[1] == 10), "Must have 10 classification bins."
 
         self.verify_y_data(train_y)
 

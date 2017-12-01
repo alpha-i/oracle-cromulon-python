@@ -2,8 +2,9 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-def dropout_net(inputs, is_training, scope='dropout_net'):
+def dropout_net(inputs, is_training, scope='dropout_net', n_classification_bins=10):
     with tf.variable_scope(scope, 'dropout_net'):
+
         # First Group: Convolution + Pooling 28x28x1 => 28x28x20 => 14x14x20
         net = slim.conv2d(inputs, 20, [5, 5], padding='SAME', scope='layer1-conv')
         net = slim.max_pool2d(net, 2, stride=2, scope='layer2-max-pool')
@@ -23,8 +24,8 @@ def dropout_net(inputs, is_training, scope='dropout_net'):
         net = slim.fully_connected(net, 1000, scope='layer6')
         net = slim.dropout(net, is_training=is_training, scope='layer6-dropout')
 
-        # Output Layer: 1000x1 => 10x1
-        net = slim.fully_connected(net, 10, scope='output')
+        # Output Layer: 1000x1 => nx1
+        net = slim.fully_connected(net, n_classification_bins, scope='output')
         net = slim.dropout(net, is_training=is_training, scope='output-dropout')
 
         return net

@@ -161,8 +161,7 @@ class FinancialFeature(object):
                 scaler = self.get_scaler(symbol)
 
                 if scaler is None:
-                    logging.warning("Symbol lacks normalisation scaler: {}".format(symbol))
-                    logging.warning("Dropping symbol from dataframe: {}".format(symbol))
+                    logging.warning("Symbol lacks normalisation scaler: {}. Dropping from dataframe.".format(symbol))
                     dataframe.drop(symbol, axis=1, inplace=True)
                 else:
                     valid_data = valid_data.reshape(SCIKIT_SHAPE)
@@ -280,7 +279,7 @@ class FinancialFeature(object):
                     hot_dataframe[symbol] = np.squeeze(one_hot_labels)
             else:
                 logging.warning("Symbol lacks clasification bins: {}".format(symbol))
-                #  dataframe.drop(symbol, axis=1, inplace=True)
+                dataframe.drop(symbol, axis=1, inplace=True)
                 logging.warning("Dropping {} from dataframe.".format(symbol))
 
         return hot_dataframe

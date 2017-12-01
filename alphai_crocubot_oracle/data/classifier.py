@@ -8,7 +8,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class BinDistribution:
 
-    def __init__(self, data, n_bins, use_centred_bins=False):
+    def __init__(self, data, n_bins, use_centred_bins=True):
 
         data = data.flatten()
         n_datapoints = len(data)
@@ -63,8 +63,11 @@ class BinDistribution:
         n_array = np.arange(n_xvals)
 
         if use_centred_bins:
-            unit_gaussian_edges = _calculate_unit_gaussian_edges(self.n_bins + 1)
-            bin_edges = unit_gaussian_edges * self.sigma
+            if self.n_bins == 2:
+                bin_edges = np.array([-10., 0., 10.]) * self.sigma
+            else:
+                unit_gaussian_edges = _calculate_unit_gaussian_edges(self.n_bins + 1)
+                bin_edges = unit_gaussian_edges * self.sigma
         else:  # Original bin definition
             xrange = np.linspace(0, n_xvals - 1, self.n_bins + 1)
             bin_edges = np.interp(xrange, n_array, np.sort(data))
