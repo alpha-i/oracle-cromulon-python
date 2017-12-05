@@ -39,7 +39,8 @@ class Topology(object):
 
     def __init__(self, n_series=DEFAULT_N_SERIES, n_timesteps=DEFAULT_TIMESTEPS,
                  n_forecasts=DEFAULT_N_FORECASTS, n_classification_bins=DEFAULT_BINS, layer_heights=None,
-                 layer_widths=None, layer_depths=None, activation_functions=None, layer_types=None, n_features=1):
+                 layer_widths=None, layer_depths=None, activation_functions=None, layer_types=None, n_features=1,
+                 conv_config=None):
         """
         Following info is required to construct a topology object
         :param n_series:
@@ -81,7 +82,18 @@ class Topology(object):
         self.n_forecasts = n_forecasts
         self.n_classification_bins = n_classification_bins
         self.n_parameters = self._calculate_number_of_parameters(layers)
-        self.n_kernels = DEFAULT_N_KERNELS
+
+        # Setup convolution params if specified
+        if conv_config:
+            self.kernel_size = conv_config['kernel_size']
+            self.n_kernels = conv_config["n_kernels"]
+            self.dilation_rates = conv_config["dilation_rates"]
+            self.strides = conv_config["strides"]
+        else:
+            self.kernel_size = [5, 5, 5]
+            self.dilution = 1
+            self.n_kernels = DEFAULT_N_KERNELS
+            self.stride = 1
 
     def _verify_layers(self, layers):
         """
