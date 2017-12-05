@@ -209,8 +209,10 @@ def _set_training_operator(cost_operator, global_step, tf_flags):
         gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
         optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
     elif tf_flags.optimisation_method == 'GDO':
+        trainable_var_list = None  # By default will train all available variables
+
         optimizer = tf.train.GradientDescentOptimizer(tf_flags.learning_rate)
-        grads_and_vars = optimizer.compute_gradients(cost_operator)
+        grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
         clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
         optimize = optimizer.apply_gradients(clipped_grads_and_vars)
     else:
