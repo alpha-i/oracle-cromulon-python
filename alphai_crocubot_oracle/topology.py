@@ -10,7 +10,7 @@ ACTIVATION_FN_SELU = "selu"
 ACTIVATION_FN_RELU = "relu"
 LAYER_FULL = 'full'
 LAYER_CONV_3D = 'conv3d'
-LAYER_POOL = 'pool2d'
+LAYER_POOL = 'pool3d'
 LAYER_RES = 'res'
 
 ALLOWED_ACTIVATION_FN = [ACTIVATION_FN_RELU, ACTIVATION_FN_SELU, ACTIVATION_FN_LINEAR]
@@ -64,6 +64,18 @@ class Topology(object):
             assert len(layer_widths) == len(layer_heights), "Length of widths array does not match height array"
             assert len(activation_functions) == len(layer_heights), "Length of act fns does not match height array"
 
+        # Setup convolution params if specified
+        if conv_config:
+            self.kernel_size = conv_config['kernel_size']
+            self.n_kernels = conv_config["n_kernels"]
+            self.dilation_rates = conv_config["dilation_rates"]
+            self.strides = conv_config["strides"]
+        else:
+            self.kernel_size = [5, 5, 5]
+            self.n_kernels = DEFAULT_N_KERNELS
+            self.dilation_rates = 1
+            self.strides = 1
+
         layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
         # FIXME Short term hack to ensure consistency - the following four lines should probably be assertions
         layers[0]["depth"] = n_series
@@ -83,17 +95,7 @@ class Topology(object):
         self.n_classification_bins = n_classification_bins
         self.n_parameters = self._calculate_number_of_parameters(layers)
 
-        # Setup convolution params if specified
-        if conv_config:
-            self.kernel_size = conv_config['kernel_size']
-            self.n_kernels = conv_config["n_kernels"]
-            self.dilation_rates = conv_config["dilation_rates"]
-            self.strides = conv_config["strides"]
-        else:
-            self.kernel_size = [5, 5, 5]
-            self.dilution = 1
-            self.n_kernels = DEFAULT_N_KERNELS
-            self.stride = 1
+
 
     def _verify_layers(self, layers):
         """
@@ -218,6 +220,7 @@ class Topology(object):
             layer["depth"] = layer_depths[i]
             layer["height"] = layer_heights[i]
             layer["width"] = layer_widths[i]
+            layer["reshape"] = False
 
             if layer_types is None:
                 layer["type"] = DEFAULT_LAYER_TYPE
@@ -229,18 +232,28 @@ class Topology(object):
                 previous_layer_type = prev_layer["type"]
 
                 if previous_layer_type == 'pool2d':  # Pooling will rescale size of last layer
-                    layer["height"] = int(prev_layer['height'] / 2)
-                    layer["width"] = int(prev_layer['width'] / 2)
+                    layer["depth"] = max(1, int(prev_layer['depth'] / 2))
+                    layer["height"] = max(1, int(prev_layer['height'] / 2))
+                    layer["width"] = max(1, int(prev_layer['width'] / 2))
+                elif previous_layer_type == 'pool3d':
+                    layer["depth"] = prev_layer['depth']
+                    layer["height"] = max(1, int(prev_layer['height'] / 4))
+                    layer["width"] = prev_layer['width']
                 elif previous_layer_type in {'conv2d', 'conv1d', 'conv3d'}:
                     # This will depend on choice of padding. Default for now is same, so easier.
                     layer["depth"] = int(prev_layer["depth"])
                     layer["height"] = int(prev_layer["height"])
-                    layer["width"] = int(prev_layer["width"]) * DEFAULT_N_KERNELS
+                    layer["width"] = int(prev_layer["width"])
                 elif previous_layer_type == LAYER_RES or layer["type"] == LAYER_RES:
                     input_layer = layers[0]
                     layer["depth"] = int(input_layer["depth"])
                     layer["height"] = int(input_layer["height"])
                     layer["width"] = int(input_layer["width"])
+
+                if previous_layer_type in {'conv2d', 'conv1d', 'conv3d', 'pool2d', 'pool3d'}\
+                        and layer["type"] == 'full':
+                    layer['reshape'] = True
+                    layer["width"] *= self.n_kernels
 
             layers.append(layer)
 

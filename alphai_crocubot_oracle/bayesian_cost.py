@@ -69,21 +69,23 @@ class BayesianCost(object):
         log_qw = 0.
 
         for layer in range(self.topology.n_layers):
-            mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
-            rho_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO)
-            mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
-            rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
+            layer_type = self._model._topology.layers[layer]["type"]
+            if layer_type == 'full':
+                mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
+                rho_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO)
+                mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
+                rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
-            # Only want to consider independent weights, not the full set, so do_tile_weights=False
-            weights = self._model.compute_weights(layer, iteration=iteration)
-            biases = self._model.compute_biases(layer, iteration=iteration)
+                # Only want to consider independent weights, not the full set, so do_tile_weights=False
+                weights = self._model.compute_weights(layer, iteration=iteration)
+                biases = self._model.compute_biases(layer, iteration=iteration)
 
-            log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
-            log_pw += self.calculate_log_bias_prior(biases, layer)
-            log_pw += self.calculate_log_hyperprior(layer)
+                log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
+                log_pw += self.calculate_log_bias_prior(biases, layer)
+                log_pw += self.calculate_log_hyperprior(layer)
 
-            log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
-            log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
+                log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
+                log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
 
         return log_pw, log_qw
 

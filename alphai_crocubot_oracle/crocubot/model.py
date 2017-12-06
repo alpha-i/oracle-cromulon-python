@@ -21,6 +21,7 @@ CONVOLUTIONAL_LAYER_3D = 'conv3d'
 FULLY_CONNECTED_LAYER = 'full'
 RESIDUAL_LAYER = 'res'
 POOL_LAYER_2D = 'pool2d'
+POOL_LAYER_3D = 'pool3d'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
 DATA_FORMAT = 'channels_last'
 
@@ -78,42 +79,44 @@ class CrocuBotModel:
         initial_alpha = self._flags.INITIAL_ALPHA
 
         for layer_number in range(self._topology.n_layers):
-            w_shape = self._topology.get_weight_shape(layer_number)
-            b_shape = self._topology.get_bias_shape(layer_number)
+            layer_type = self._topology.layers[layer_number]["type"]
+            if layer_type == 'full':  # No point building weights for conv or pool layers
+                w_shape = self._topology.get_weight_shape(layer_number)
+                b_shape = self._topology.get_bias_shape(layer_number)
 
-            self._create_variable_for_layer(
-                layer_number,
-                self.VAR_WEIGHT_MU,
-                tm.centred_gaussian(w_shape, weight_displacement)
-            )
+                self._create_variable_for_layer(
+                    layer_number,
+                    self.VAR_WEIGHT_MU,
+                    tm.centred_gaussian(w_shape, weight_displacement)
+                )
 
-            self._create_variable_for_layer(
-                layer_number,
-                self.VAR_WEIGHT_RHO,
-                initial_rho_weights + tf.zeros(w_shape, tm.DEFAULT_TF_TYPE)
-            )
+                self._create_variable_for_layer(
+                    layer_number,
+                    self.VAR_WEIGHT_RHO,
+                    initial_rho_weights + tf.zeros(w_shape, tm.DEFAULT_TF_TYPE)
+                )
 
-            self._create_variable_for_layer(
-                layer_number,
-                self.VAR_BIAS_MU,
-                tm.centred_gaussian(b_shape, bias_displacement)
-            )
+                self._create_variable_for_layer(
+                    layer_number,
+                    self.VAR_BIAS_MU,
+                    tm.centred_gaussian(b_shape, bias_displacement)
+                )
 
-            self._create_variable_for_layer(
-                layer_number,
-                self.VAR_BIAS_RHO,
-                initial_rho_bias + tf.zeros(b_shape, tm.DEFAULT_TF_TYPE)
-            )
+                self._create_variable_for_layer(
+                    layer_number,
+                    self.VAR_BIAS_RHO,
+                    initial_rho_bias + tf.zeros(b_shape, tm.DEFAULT_TF_TYPE)
+                )
 
-            self._create_variable_for_layer(
-                layer_number,
-                self.VAR_LOG_ALPHA,
-                np.log(initial_alpha).astype(self._flags.d_type),
-                False
-            )  # Hyperprior on the distribution of the weights
+                self._create_variable_for_layer(
+                    layer_number,
+                    self.VAR_LOG_ALPHA,
+                    np.log(initial_alpha).astype(self._flags.d_type),
+                    False
+                )  # Hyperprior on the distribution of the weights
 
-            self._create_noise(layer_number, self.VAR_WEIGHT_NOISE, w_shape)
-            self._create_noise(layer_number, self.VAR_BIAS_NOISE, b_shape)
+                self._create_noise(layer_number, self.VAR_WEIGHT_NOISE, w_shape)
+                self._create_noise(layer_number, self.VAR_BIAS_NOISE, b_shape)
 
     def _create_variable_for_layer(self, layer_number, variable_name, initializer, is_trainable=True):
 
@@ -246,7 +249,9 @@ class Estimator:
         :return:
         """
 
-        input_signal = tf.identity(signal, name='input')
+        input_signal = 0  # tf.identity(signal, name='input')
+        if self._model.topology.get_layer_type(0) in {'conv2d', 'conv3d'}:
+            signal = tf.expand_dims(signal, axis=-1)
 
         for layer_number in range(self._model.topology.n_layers):
             signal = self.single_layer_pass(signal, layer_number, iteration, input_signal)
@@ -266,6 +271,9 @@ class Estimator:
         layer_type = self._model.topology.get_layer_type(layer_number)
         activation_function = self._model.topology.get_activation_function(layer_number)
 
+        if self._model.topology.layers[layer_number]['reshape']:
+            signal = self.flatten_last_dimension(signal)
+
         if layer_type == CONVOLUTIONAL_LAYER_1D:
             signal = self.convolutional_layer_1d(signal)
         elif layer_type == CONVOLUTIONAL_LAYER_3D:
@@ -274,6 +282,8 @@ class Estimator:
             signal = self.fully_connected_layer(signal, layer_number, iteration)
         elif layer_type == POOL_LAYER_2D:
             signal = self.pool_layer_2d(signal)
+        elif layer_type == POOL_LAYER_3D:
+            signal = self.pool_layer_3d(signal)
         elif layer_type == RESIDUAL_LAYER:
             signal = self.residual_layer(signal, input_signal)
         else:
@@ -330,7 +340,6 @@ class Estimator:
         :return:  5D tensor of dimensions [batch, series, time, features * filters]
         """
 
-        signal = tf.expand_dims(signal, axis=-1)
         n_kernels = self._model._topology.n_kernels
         dilation_rate = self._model._topology.dilation_rates
         strides = self._model._topology.strides
@@ -363,16 +372,25 @@ class Estimator:
                 name=op_name,
                 reuse=False)
 
-        return self.flatten_last_dimension(signal)
+        return signal
 
     def pool_layer_2d(self, signal):
-        """
+        """Since we dont wish to pool the time series (singleton dimension) we can use 2D pool with channels_first specification.
 
         :param signal:
         :return:
         """
 
         return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format='channels_first',)
+
+    def pool_layer_3d(self, signal):
+        """ Usually follows conv_3d layer to reduce the dimensionality. Currently only targets the timestep dimension
+
+        :param signal:
+        :return:
+        """
+
+        return tf.layers.max_pooling3d(inputs=signal, pool_size=[1, 4, 1], strides=[1, 4, 1], data_format='channels_last',)
 
     def flatten_last_dimension(self, signal):
         """ Takes a tensor and squishes its last dimension into the penultimate dimension.

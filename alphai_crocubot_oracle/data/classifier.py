@@ -8,7 +8,13 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class BinDistribution:
 
-    def __init__(self, data, n_bins, use_centred_bins=True):
+    def __init__(self, data, n_bins, use_centred_bins=False):
+        """
+
+        :param data:
+        :param n_bins:
+        :param use_centred_bins: whether the middle bin/edge is forced to be centred on zero
+        """
 
         data = data.flatten()
         n_datapoints = len(data)
