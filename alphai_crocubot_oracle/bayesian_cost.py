@@ -38,7 +38,7 @@ class BayesianCost(object):
         return (log_qw - log_pw) * self._epoch_fraction - log_likelihood
 
     def get_hellinger_cost(self, features, truth, n_passes, estimator):
-        """ Perform similar sum to bayesian cost, but different weighting over different passes"""
+        """ Perform similar sum to bayesian cost, but different weighting over different passes. """
 
         costs = []
         for i in range(n_passes):

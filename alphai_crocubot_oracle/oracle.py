@@ -231,7 +231,6 @@ class CrocubotOracle:
             logging.warning('Invoking temporary covariance hack')
             cov_diag = np.diag(covariance) + 1e-4
             covariance = np.diag(cov_diag)
-
         else:
             covariance = forecast_covariance
             logging.info("Samples from forecast_covariance: {}".format(np.diag(covariance)[0:5]))

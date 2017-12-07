@@ -29,6 +29,7 @@ def train(topology,
     """
 
     _log_topology_parameters_size(topology)
+    do_retraining = tensorflow_path.can_restore_model()
 
     # Start from a clean graph
     tf.reset_default_graph()
@@ -45,7 +46,7 @@ def train(topology,
 
     cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags)
     tf.summary.scalar("cost", cost_operator)
-    optimize = _set_training_operator(cost_operator, global_step, tf_flags)
+    optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining)
 
     all_summaries = tf.summary.merge_all()
 
@@ -59,7 +60,7 @@ def train(topology,
         is_model_ready = False
         number_of_epochs = tf_flags.n_epochs
 
-        if tensorflow_path.can_restore_model():
+        if do_retraining:
             if tf_flags.n_retrain_epochs < 1:
                 return epoch_loss_list  # Don't waste time loading model
             try:
@@ -143,9 +144,7 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_
         if PRINT_KERNEL and use_convolution:
             gr = tf.get_default_graph()
             conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-            conv1_bias_val = gr.get_tensor_by_name('conv3d0/bias:0').eval()
-            logging.info("Kernel values: {}".format(conv1_kernel_val.flatten()))
-            logging.info("Kernel bias: {}".format(conv1_bias_val))
+            logging.info("Sample from convolution kernel: {}".format(conv1_kernel_val.flatten()[0:3]))
 
 
 def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
@@ -201,7 +200,7 @@ def _log_topology_parameters_size(topology):
 
 
 # TODO Create a Provider for training_operator
-def _set_training_operator(cost_operator, global_step, tf_flags):
+def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining):
     """ Define the algorithm for updating the trainable variables. """
 
     if tf_flags.optimisation_method == 'Adam':
@@ -210,7 +209,11 @@ def _set_training_operator(cost_operator, global_step, tf_flags):
         gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
         optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
     elif tf_flags.optimisation_method == 'GDO':
-        trainable_var_list = None  # By default will train all available variables
+        if tf_flags.partial_retrain and do_retraining:
+            trainable_var_list = tf.trainable_variables()[0:3]  # mu
+            logging.info("Retraining variables from final layer: {}".format(trainable_var_list)[0])
+        else:
+            trainable_var_list = None  # By default will train all available variables
 
         optimizer = tf.train.GradientDescentOptimizer(tf_flags.learning_rate)
         grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)

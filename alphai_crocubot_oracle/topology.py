@@ -10,11 +10,12 @@ ACTIVATION_FN_SELU = "selu"
 ACTIVATION_FN_RELU = "relu"
 LAYER_FULL = 'full'
 LAYER_CONV_3D = 'conv3d'
-LAYER_POOL = 'pool3d'
+LAYER_POOL_2D = 'pool2d'
+LAYER_POOL_3D = 'pool3d'
 LAYER_RES = 'res'
 
 ALLOWED_ACTIVATION_FN = [ACTIVATION_FN_RELU, ACTIVATION_FN_SELU, ACTIVATION_FN_LINEAR]
-ALLOWED_LAYER_TYPES = [LAYER_FULL, LAYER_CONV_3D, LAYER_POOL, LAYER_RES]
+ALLOWED_LAYER_TYPES = [LAYER_FULL, LAYER_CONV_3D, LAYER_POOL_3D, LAYER_POOL_2D, LAYER_RES]
 
 DEFAULT_N_SERIES = 28
 DEFAULT_TIMESTEPS = 28
@@ -66,11 +67,13 @@ class Topology(object):
 
         # Setup convolution params if specified
         if conv_config:
+            print("Convolution config", conv_config)
             self.kernel_size = conv_config['kernel_size']
             self.n_kernels = conv_config["n_kernels"]
             self.dilation_rates = conv_config["dilation_rates"]
             self.strides = conv_config["strides"]
         else:
+            print("******** No convolution config found ********")
             self.kernel_size = [5, 5, 5]
             self.n_kernels = DEFAULT_N_KERNELS
             self.dilation_rates = 1

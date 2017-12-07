@@ -24,6 +24,8 @@ POOL_LAYER_2D = 'pool2d'
 POOL_LAYER_3D = 'pool3d'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
 DATA_FORMAT = 'channels_last'
+TIME_DIMENSION = 3  # Tensor dimensions defined as: [batch, series, time, features, filters]
+FORECAST_OVERLAP = 26  # How many timesteps in features correspond to forecast interval. Assumes 15min interval and forecast of 1 trading day
 
 
 class CrocuBotModel:
@@ -36,6 +38,7 @@ class CrocuBotModel:
     VAR_BIAS_NOISE = 'bias_noise'
 
     VAR_LOG_ALPHA = 'log_alpha'
+    VAR_PENALTY = 'penalty_vector'
 
     def __init__(self, topology, flags):
 
@@ -83,6 +86,8 @@ class CrocuBotModel:
             if layer_type == 'full':  # No point building weights for conv or pool layers
                 w_shape = self._topology.get_weight_shape(layer_number)
                 b_shape = self._topology.get_bias_shape(layer_number)
+                penalty_shape = [1, 1, w_shape[1], 1, 1]
+                penalty_vector = self.calculate_penalty_vector(FORECAST_OVERLAP, w_shape[1])
 
                 self._create_variable_for_layer(
                     layer_number,
@@ -110,6 +115,13 @@ class CrocuBotModel:
 
                 self._create_variable_for_layer(
                     layer_number,
+                    self.VAR_PENALTY,
+                    tf.zeros(penalty_shape, tm.DEFAULT_TF_TYPE) + penalty_vector,
+                    False
+                )
+
+                self._create_variable_for_layer(
+                    layer_number,
                     self.VAR_LOG_ALPHA,
                     np.log(initial_alpha).astype(self._flags.d_type),
                     False
@@ -117,6 +129,15 @@ class CrocuBotModel:
 
                 self._create_noise(layer_number, self.VAR_WEIGHT_NOISE, w_shape)
                 self._create_noise(layer_number, self.VAR_BIAS_NOISE, b_shape)
+
+    def calculate_penalty_vector(self, overlap,  total_length):
+        """ Penalise nodes in the distant past using Delta t / t"""
+
+        penalty_list = [1.0] * total_length
+        for i in range(total_length):
+            if i > overlap:
+                penalty_list[i] = overlap / i
+        return reversed(penalty_list)  # Assuming most recent time is the final element
 
     def _create_variable_for_layer(self, layer_number, variable_name, initializer, is_trainable=True):
 
@@ -249,9 +270,10 @@ class Estimator:
         :return:
         """
 
-        input_signal = 0  # tf.identity(signal, name='input')
         if self._model.topology.get_layer_type(0) in {'conv2d', 'conv3d'}:
             signal = tf.expand_dims(signal, axis=-1)
+
+        input_signal = tf.identity(signal, name='input')
 
         for layer_number in range(self._model.topology.n_layers):
             signal = self.single_layer_pass(signal, layer_number, iteration, input_signal)
@@ -302,6 +324,11 @@ class Estimator:
 
         weights = self._model.compute_weights(layer_number, iteration)
         biases = self._model.compute_biases(layer_number, iteration)
+
+        if self._flags.apply_temporal_suppression:
+            penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
+            signal = tf.multiply(signal, penalty)
+
         return tf.tensordot(signal, weights, axes=3) + biases
 
     def residual_layer(self, signal, input_signal):
@@ -336,8 +363,8 @@ class Estimator:
         `(batch, depth, height, width, channels)` while DATA_FORMAT = `channels_first`
         corresponds to inputs with shape `(batch, channels, depth, height, width)`.
 
-        :param signal: 5D tensor of dimensions [batch, series, time, features]
-        :return:  5D tensor of dimensions [batch, series, time, features * filters]
+        :param signal: A rank 5 tensor of dimensions [batch, series, time, features, filters]
+        :return:  A rank 5 tensor of dimensions [batch, series, time, features, filters]
         """
 
         n_kernels = self._model._topology.n_kernels
@@ -375,13 +402,13 @@ class Estimator:
         return signal
 
     def pool_layer_2d(self, signal):
-        """Since we dont wish to pool the time series (singleton dimension) we can use 2D pool with channels_first specification.
+        """ Pools evenly across dimensions
 
         :param signal:
         :return:
         """
 
-        return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format='channels_first',)
+        return tf.layers.max_pooling3d(inputs=signal, pool_size=[2, 1, 2], strides=2, data_format='channels_first',)
 
     def pool_layer_3d(self, signal):
         """ Usually follows conv_3d layer to reduce the dimensionality. Currently only targets the timestep dimension

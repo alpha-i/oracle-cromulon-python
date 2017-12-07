@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
 
-def shallow_dropout_net(inputs, is_training, scope='dropout_net', n_classification_bins=10):
+def dropout_net(inputs, is_training, scope='dropout_net', n_classification_bins=10):
     with tf.variable_scope(scope, 'dropout_net'):
 
         # First Group: Convolution + Pooling 28x28x1 => 28x28x20 => 14x14x20
@@ -31,7 +31,7 @@ def shallow_dropout_net(inputs, is_training, scope='dropout_net', n_classificati
         return net
 
 
-def dropout_net(inputs, is_training, scope='dropout_net', n_classification_bins=10):
+def no_dropout_net(inputs, is_training, scope='dropout_net', n_classification_bins=10):
     with tf.variable_scope(scope, 'dropout_net'):
 
         # First Group: Convolution + Pooling 28x28x1 => 28x28x40 => 14x14x40

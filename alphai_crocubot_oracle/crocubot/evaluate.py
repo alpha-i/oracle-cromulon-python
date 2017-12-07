@@ -52,7 +52,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
         # Finally we can retrieve tensors, operations, collections, etc.
         try:
             kernel = graph.get_tensor_by_name('conv3d0/kernel:0').eval()
-            logging.info("Evaluating conv3d with kernel: {}".format(kernel.flatten()))
+            logging.info("Evaluating with kernel samples: {}".format(kernel.flatten()[0:3]))
         except:
             pass
 

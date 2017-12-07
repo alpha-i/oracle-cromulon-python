@@ -18,7 +18,13 @@ def build_tensorflow_flags(config):
     if 'use_convolution' not in config:
         config['use_convolution'] = 'False'
 
+    if 'partial_retrain' not in config:
+        config['partial_retrain'] = 'False'
+
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
+
+    tf.app.flags.DEFINE_boolean('partial_retrain', config['partial_retrain'],
+                                """Whether to retrain all layers or just the fully connected ones. """)
 
     tf.app.flags.DEFINE_boolean('use_convolution', config['use_convolution'],
                                 """Whether to set the first layer to a convolutional layer""")

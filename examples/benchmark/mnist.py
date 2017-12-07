@@ -64,7 +64,7 @@ def run_timed_benchmark_mnist(series_name, tf_flags, do_training):
     print_time_info(train_time, eval_time)
 
 
-@printtime(message="Evaluation of Mnist Serie")
+@printtime(message="Evaluation of Mnist Series")
 def evaluate_network(topology, series_name, batch_size, save_file, tf_flags):
 
     data_provider = TrainDataProviderForDataSource(series_name, D_TYPE, tf_flags.n_prediction_sample, batch_size, False)
@@ -111,4 +111,3 @@ def evaluate_mnist(binned_outputs, n_samples, test_labels):
     metrics["min_p_fail"] = np.min(np.stack(p_fail))
 
     return metrics
-
