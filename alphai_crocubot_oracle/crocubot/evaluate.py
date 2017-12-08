@@ -14,6 +14,8 @@ from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.crocubot.train import log_network_confidence
 
 PRINT_KERNEL = True
+BOOL_FALSE = False
+USE_EFFICIENT_PASSES = True
 
 
 def eval_neural_net(data, topology, tf_flags, last_train_file):
@@ -29,7 +31,8 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
 
     logging.info("Evaluating with shape {}".format(data.shape))
 
-    model = CrocuBotModel(topology, tf_flags)
+    is_training = tf.placeholder(tf.bool, name='is_training')
+    model = CrocuBotModel(topology, tf_flags, is_training)
     try:
         model.build_layers_variables()
     except:
@@ -38,7 +41,10 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
     saver = tf.train.Saver()
     estimator = Estimator(model, tf_flags)
     x = tf.placeholder(tf_flags.d_type, shape=data.shape, name="x")
-    y = estimator.collate_multiple_passes(x, tf_flags.n_eval_passes)
+    if USE_EFFICIENT_PASSES:
+        y = estimator.efficient_multiple_passes(x, tf_flags.n_eval_passes)
+    else:
+        y = estimator.collate_multiple_passes(x, tf_flags.n_eval_passes)
 
     with tf.Session() as sess:
         logging.info("Attempting to recover trained network: {}".format(last_train_file))
@@ -56,7 +62,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
         except:
             pass
 
-        log_p = sess.run(y, feed_dict={x: data})
+        log_p = sess.run(y, feed_dict={x: data, is_training: BOOL_FALSE})
         log_network_confidence(log_p)
 
     posterior = np.exp(log_p)

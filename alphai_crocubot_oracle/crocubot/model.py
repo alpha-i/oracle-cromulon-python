@@ -40,11 +40,18 @@ class CrocuBotModel:
     VAR_LOG_ALPHA = 'log_alpha'
     VAR_PENALTY = 'penalty_vector'
 
-    def __init__(self, topology, flags):
+    def __init__(self, topology, flags, is_training):
+        """
+
+        :param Topology topology:
+        :param flags flags:
+        :param tf.bool is_training: Whether the model will be training or evaluating
+        """
 
         self._topology = topology
         self._graph = tf.get_default_graph()
         self._flags = flags
+        self._is_training = is_training
 
     @property
     def graph(self):
@@ -86,8 +93,7 @@ class CrocuBotModel:
             if layer_type == 'full':  # No point building weights for conv or pool layers
                 w_shape = self._topology.get_weight_shape(layer_number)
                 b_shape = self._topology.get_bias_shape(layer_number)
-                penalty_shape = [1, 1, w_shape[1], 1, 1]
-                penalty_vector = self.calculate_penalty_vector(FORECAST_OVERLAP, w_shape[1])
+                penalty_tensor = self.calculate_penalty_vector(FORECAST_OVERLAP, w_shape[1])
 
                 self._create_variable_for_layer(
                     layer_number,
@@ -116,7 +122,7 @@ class CrocuBotModel:
                 self._create_variable_for_layer(
                     layer_number,
                     self.VAR_PENALTY,
-                    tf.zeros(penalty_shape, tm.DEFAULT_TF_TYPE) + penalty_vector,
+                    penalty_tensor,
                     False
                 )
 
@@ -133,11 +139,16 @@ class CrocuBotModel:
     def calculate_penalty_vector(self, overlap,  total_length):
         """ Penalise nodes in the distant past using Delta t / t"""
 
-        penalty_list = [1.0] * total_length
+        penalty_vector = [1.0] * total_length
         for i in range(total_length):
             if i > overlap:
-                penalty_list[i] = overlap / i
-        return reversed(penalty_list)  # Assuming most recent time is the final element
+                index = total_length - i - 1  # Since t=0 appears at end of vector
+                penalty_vector[index] = overlap / i
+
+        penalty_tensor = tf.zeros(total_length, tm.DEFAULT_TF_TYPE) + penalty_vector
+        penalty_shape = [1, 1, total_length, 1, 1]
+
+        return tf.reshape(penalty_tensor, shape=penalty_shape)
 
     def _create_variable_for_layer(self, layer_number, variable_name, initializer, is_trainable=True):
 
@@ -165,7 +176,14 @@ class CrocuBotModel:
 
     def get_weight_noise(self, layer_number, iteration):
         noise = self.get_variable(layer_number, self.VAR_WEIGHT_NOISE)
-        return tf.random_shuffle(noise, seed=iteration)
+        # noise = tf.cond(self._is_training, lambda: tf.random_shuffle(noise, seed=iteration),
+        #                 lambda: tf.random_shuffle(noise))
+        try:
+            noise = tf.random_shuffle(noise, seed=iteration)
+        except:
+            noise = tf.random_shuffle(noise)
+
+        return noise
 
     def get_bias_noise(self, layer_number, iteration):
         noise = self.get_variable(layer_number, self.VAR_BIAS_NOISE)
@@ -248,7 +266,7 @@ class Estimator:
             return tf.less(index, number_of_passes)
 
         def body(index, summation):
-            raw_output = self.forward_pass(input_signal, index)
+            raw_output = self.forward_pass(input_signal, iteration=0)
             log_p = tf.nn.log_softmax(raw_output, dim=-1)
 
             stacked_p = tf.stack([log_p, summation], axis=0)
@@ -257,7 +275,7 @@ class Estimator:
             return tf.add(index, 1), log_p_total
 
         # We do not care about the index value here, return only the signal
-        output = tf.while_loop(condition, body, index_summation)[1]
+        output = tf.while_loop(condition, body, index_summation, parallel_iterations=1)[1]
         return tf.expand_dims(output, axis=0)
 
     def forward_pass(self, signal, iteration=0):
@@ -294,12 +312,18 @@ class Estimator:
         activation_function = self._model.topology.get_activation_function(layer_number)
 
         if self._model.topology.layers[layer_number]['reshape']:
+            if self._flags.apply_temporal_suppression:  # Prepare transition from conv/pool layers to fully connected
+                penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
+                signal = tf.multiply(signal, penalty)
+                signal = self.batch_normalisation(signal, 'penalty')
+
             signal = self.flatten_last_dimension(signal)
 
         if layer_type == CONVOLUTIONAL_LAYER_1D:
             signal = self.convolutional_layer_1d(signal)
         elif layer_type == CONVOLUTIONAL_LAYER_3D:
             signal = self.convolutional_layer_3d(signal, layer_number)
+            signal = self.batch_normalisation(signal, layer_number)
         elif layer_type == FULLY_CONNECTED_LAYER:
             signal = self.fully_connected_layer(signal, layer_number, iteration)
         elif layer_type == POOL_LAYER_2D:
@@ -324,10 +348,6 @@ class Estimator:
 
         weights = self._model.compute_weights(layer_number, iteration)
         biases = self._model.compute_biases(layer_number, iteration)
-
-        if self._flags.apply_temporal_suppression:
-            penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
-            signal = tf.multiply(signal, penalty)
 
         return tf.tensordot(signal, weights, axes=3) + biases
 
@@ -354,6 +374,24 @@ class Estimator:
             data_format=DATA_FORMAT,
             activation=None,
             reuse=reuse_kernel)
+
+        return signal
+
+    def batch_normalisation(self, signal, layer_number):
+        """ Normalises the signal to unit variance and zero mean.
+
+        :param signal:
+        :return:
+        """
+
+#         signal = tf.cond(self._model._is_training,
+#                         lambda: tf.contrib.layers.batch_norm(signal, is_training=True),
+#                        lambda: tf.contrib.layers.batch_norm(signal, is_training=False))
+        NORM_NAME = "batch_norm_" + str(layer_number)
+        try:
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=True, name=NORM_NAME)
+        except:
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=False, name=NORM_NAME)
 
         return signal
 
@@ -417,7 +455,7 @@ class Estimator:
         :return:
         """
 
-        return tf.layers.max_pooling3d(inputs=signal, pool_size=[1, 4, 1], strides=[1, 4, 1], data_format='channels_last',)
+        return tf.layers.max_pooling3d(inputs=signal, pool_size=[1, 4, 1], strides=[1, 4, 1], data_format=DATA_FORMAT)
 
     def flatten_last_dimension(self, signal):
         """ Takes a tensor and squishes its last dimension into the penultimate dimension.

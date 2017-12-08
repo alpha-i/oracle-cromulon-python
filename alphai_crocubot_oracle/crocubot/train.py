@@ -12,6 +12,7 @@ from alphai_crocubot_oracle.crocubot import PRINT_LOSS_INTERVAL, PRINT_SUMMARY_I
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 
 PRINT_KERNEL = True
+BOOL_TRUE = True
 
 
 def train(topology,
@@ -33,7 +34,9 @@ def train(topology,
 
     # Start from a clean graph
     tf.reset_default_graph()
-    model = CrocuBotModel(topology, tf_flags)
+    is_training = tf.placeholder(tf.bool, name='is_training')
+
+    model = CrocuBotModel(topology, tf_flags, is_training)
     model.build_layers_variables()
 
     # Placeholders for the inputs and outputs of neural networks
@@ -46,7 +49,7 @@ def train(topology,
 
     cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags)
     tf.summary.scalar("cost", cost_operator)
-    optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining)
+    optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology)
 
     all_summaries = tf.summary.merge_all()
 
@@ -101,7 +104,8 @@ def train(topology,
                     ))
 
                 _, batch_loss, batch_likeli, summary_results = \
-                    sess.run([optimize, cost_operator, log_likeli, all_summaries], feed_dict={x: batch_features, y: batch_labels})
+                    sess.run([optimize, cost_operator, log_likeli, all_summaries],
+                             feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})
                 epoch_loss += batch_loss
                 epoch_likeli += batch_likeli
 
@@ -119,7 +123,8 @@ def train(topology,
 
             _log_epoch_loss_if_needed(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch, tf_flags.use_convolution)
 
-        sample_log_predictions = sess.run(log_predict, feed_dict={x: batch_features, y: batch_labels})
+        sample_log_predictions = sess.run(log_predict,
+                                          feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})
         log_network_confidence(sample_log_predictions)
         out_path = saver.save(sess, tensorflow_path.session_save_path)
         logging.info("Model saved in file:{}".format(out_path))
@@ -144,7 +149,9 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_
         if PRINT_KERNEL and use_convolution:
             gr = tf.get_default_graph()
             conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-            logging.info("Sample from convolution kernel: {}".format(conv1_kernel_val.flatten()[0:3]))
+            kernel_shape = conv1_kernel_val.shape
+            kernel_sample = conv1_kernel_val.flatten()[0:3]
+            logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
 def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
@@ -200,7 +207,7 @@ def _log_topology_parameters_size(topology):
 
 
 # TODO Create a Provider for training_operator
-def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining):
+def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology):
     """ Define the algorithm for updating the trainable variables. """
 
     if tf_flags.optimisation_method == 'Adam':
@@ -210,15 +217,19 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining):
         optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
     elif tf_flags.optimisation_method == 'GDO':
         if tf_flags.partial_retrain and do_retraining:
-            trainable_var_list = tf.trainable_variables()[0:3]  # mu
-            logging.info("Retraining variables from final layer: {}".format(trainable_var_list)[0])
+            final_layer_scope = str(topology.n_layers - 1)
+            trainable_var_list = tf.trainable_variables(scope=final_layer_scope)  # mu and sigma of weights and biases
+            logging.info("Retraining variables from final layer: {}".format(trainable_var_list[0]))
         else:
             trainable_var_list = None  # By default will train all available variables
 
-        optimizer = tf.train.GradientDescentOptimizer(tf_flags.learning_rate)
-        grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
-        clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
-        optimize = optimizer.apply_gradients(clipped_grads_and_vars)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)   # For batch normalisation
+        with tf.control_dependencies(update_ops):
+            optimizer = tf.train.GradientDescentOptimizer(tf_flags.learning_rate)
+            grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
+            clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
+            optimize = optimizer.apply_gradients(clipped_grads_and_vars)
+
     else:
         raise NotImplementedError("Unknown optimisation method: ", tf_flags.optimisation_method)
 

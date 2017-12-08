@@ -11,7 +11,7 @@ def run_mnist_test(train_path, tensorboard_log_path, method='GDO', use_full_trai
 
     config = load_default_config()
     if quick_test:
-        config["n_epochs"] = 10
+        config["n_epochs"] = 10  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 1e-3   # Use high learning rate for testing purposes
     else:
         config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10
@@ -31,7 +31,7 @@ def run_mnist_test(train_path, tensorboard_log_path, method='GDO', use_full_trai
     config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
     config['n_train_passes'] = 1
-    config['n_eval_passes'] = 10
+    config['n_eval_passes'] = 50
     config['use_convolution'] = do_convolution
 
     fl.build_tensorflow_flags(config)
@@ -56,6 +56,6 @@ if __name__ == '__main__':
     train_path = '/tmp/'
     tensorboard_log_path = '/tmp/'
 
-    do_quick_test = False
+    do_quick_test = True
 
     run_mnist_test(train_path, tensorboard_log_path,  use_full_train_set=True, quick_test=do_quick_test)

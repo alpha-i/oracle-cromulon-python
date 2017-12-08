@@ -21,7 +21,13 @@ def build_tensorflow_flags(config):
     if 'partial_retrain' not in config:
         config['partial_retrain'] = 'False'
 
+    if 'apply_temporal_suppression' not in config:
+        config['apply_temporal_suppression'] = 'True'
+
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
+
+    tf.app.flags.DEFINE_boolean('apply_temporal_suppression', config['apply_temporal_suppression'],
+                                """Whether to penalise data which is further in the past. """)
 
     tf.app.flags.DEFINE_boolean('partial_retrain', config['partial_retrain'],
                                 """Whether to retrain all layers or just the fully connected ones. """)
