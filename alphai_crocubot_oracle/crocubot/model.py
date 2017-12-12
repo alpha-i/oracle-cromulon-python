@@ -16,6 +16,8 @@ import tensorflow as tf
 
 import alphai_crocubot_oracle.tensormaths as tm
 
+DO_BATCH_NORM = True
+
 CONVOLUTIONAL_LAYER_1D = 'conv1d'
 CONVOLUTIONAL_LAYER_3D = 'conv3d'
 FULLY_CONNECTED_LAYER = 'full'
@@ -187,7 +189,13 @@ class CrocuBotModel:
 
     def get_bias_noise(self, layer_number, iteration):
         noise = self.get_variable(layer_number, self.VAR_BIAS_NOISE)
-        return tf.random_shuffle(noise, seed=iteration)
+
+        try:
+            noise = tf.random_shuffle(noise, seed=iteration)
+        except:
+            noise = tf.random_shuffle(noise)
+
+        return noise
 
     def compute_weights(self, layer_number, iteration=0):
 
@@ -250,33 +258,64 @@ class Estimator:
 
         return stacked_output
 
-    def efficient_multiple_passes(self, input_signal, number_of_passes=50):
+    def efficient_multiple_passes(self, signal):
+        """  Collate outputs from many realisations of weights from a bayesian network.
+        First layers don't need to be looped if they are convolutional
+
+        :param input_signal:
+        :return:
+        """
+
+        signal, layer_number = self.conv_forward_pass(signal)
+
+        if layer_number < self._model.topology.n_layers:
+            prepared_signal = self.transition_from_conv_to_full(signal, layer_number)
+            signal = self.looped_passes(prepared_signal)
+
+        return signal
+
+    def looped_passes(self, input_signal):
         """
         Collate outputs from many realisations of weights from a bayesian network.
+        Uses tf.while for improved memory efficiency
 
         :param tensor x:
         :param int number_of_passes:
         :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
         """
+        # FIXME:  If used in training, multipass bayesian prior needs to be computed
+        # if self._model._is_training:
+        #     n_passes = self._flags.n_train_passes
+        # else:
+        #     n_passes = self._flags.n_eval_passes
 
-        output_signal = tf.nn.log_softmax(self.forward_pass(input_signal, int(0)), dim=-1)
-        index_summation = (int(0), output_signal)
+        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: self._flags.n_eval_passes)
+
+        # First do a single pass which we can later add to
+        output_signal = self.bayes_forward_pass(input_signal, int(0))
+        output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
+        i = tf.constant(0)
+        normalisation = tf.log(tf.cast(n_passes, tf.float32))   # (float(n_passes))
 
         def condition(index, _):
-            return tf.less(index, number_of_passes)
+            return tf.less(index, n_passes)
 
-        def body(index, summation):
-            raw_output = self.forward_pass(input_signal, iteration=0)
-            log_p = tf.nn.log_softmax(raw_output, dim=-1)
-
-            stacked_p = tf.stack([log_p, summation], axis=0)
-            log_p_total = tf.reduce_logsumexp(stacked_p, axis=0)
-
-            return tf.add(index, 1), log_p_total
+        def body(index, multipass):  # FIXME need to check the random seeds differ
+            single_output = self.bayes_forward_pass(input_signal, iteration=None)
+            return index+1, tf.concat([multipass, [single_output]], axis=0)
 
         # We do not care about the index value here, return only the signal
-        output = tf.while_loop(condition, body, index_summation, parallel_iterations=1)[1]
-        return tf.expand_dims(output, axis=0)
+        # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
+        loop_shape = [i.get_shape(), output_signal.get_shape()]
+        output_list = tf.while_loop(condition, body, [i, output_signal], parallel_iterations=1, shape_invariants=loop_shape)[1]
+
+        output = tf.stack(output_list, axis=0)
+        # Create discrete PDFs
+        output = tf.nn.log_softmax(output, dim=-1)
+        # Average probability over multiple passes
+        output = tf.reduce_logsumexp(output, axis=0)
+
+        return tf.expand_dims(output, axis=0) - normalisation
 
     def forward_pass(self, signal, iteration=0):
         """
@@ -298,6 +337,53 @@ class Estimator:
 
         return signal
 
+    def conv_forward_pass(self, signal):
+        """ Propagate only until we reach the first fully connected layer. """
+
+        layer_number = 0
+        n_layers = self._model.topology.n_layers
+        layer_type = self._model.topology.get_layer_type(layer_number)
+
+        if layer_type in {'conv2d', 'conv3d'}:
+            signal = tf.expand_dims(signal, axis=-1)
+
+        while self._model.topology.get_layer_type(layer_number) in {'conv2d', 'conv3d', 'pool2d', 'pool3d'} \
+                and layer_number < n_layers:
+            signal = self.single_layer_pass(signal, layer_number, iteration=0, input_signal=None)
+            layer_number += 1
+
+        return signal, layer_number
+
+    def bayes_forward_pass(self, signal, iteration):
+        """  Propagate only through the fully connected layers.
+
+        :param signal:
+        :param iteration:
+        :return:
+        """
+
+        for layer_number in range(self._model.topology.n_layers):
+            layer_type = self._model.topology.get_layer_type(layer_number)
+            if layer_type == FULLY_CONNECTED_LAYER:
+                signal = self.fully_connected_layer(signal, layer_number, iteration)
+
+        return signal
+
+    def transition_from_conv_to_full(self, signal, layer_number):
+        """
+
+        :param signal:
+        :return:
+        """
+
+        if self._flags.apply_temporal_suppression:  # Prepare transition from conv/pool layers to fully connected
+            penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
+            signal = tf.multiply(signal, penalty)
+            if DO_BATCH_NORM:
+                signal = self.batch_normalisation(signal, 'penalty')
+
+        return self.flatten_last_dimension(signal)
+
     def single_layer_pass(self, signal, layer_number, iteration, input_signal):
         """
 
@@ -312,18 +398,14 @@ class Estimator:
         activation_function = self._model.topology.get_activation_function(layer_number)
 
         if self._model.topology.layers[layer_number]['reshape']:
-            if self._flags.apply_temporal_suppression:  # Prepare transition from conv/pool layers to fully connected
-                penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
-                signal = tf.multiply(signal, penalty)
-                signal = self.batch_normalisation(signal, 'penalty')
-
-            signal = self.flatten_last_dimension(signal)
+            signal = self.transition_from_conv_to_full(signal, layer_number)
 
         if layer_type == CONVOLUTIONAL_LAYER_1D:
             signal = self.convolutional_layer_1d(signal)
         elif layer_type == CONVOLUTIONAL_LAYER_3D:
             signal = self.convolutional_layer_3d(signal, layer_number)
-            signal = self.batch_normalisation(signal, layer_number)
+            if DO_BATCH_NORM:
+                signal = self.batch_normalisation(signal, layer_number)
         elif layer_type == FULLY_CONNECTED_LAYER:
             signal = self.fully_connected_layer(signal, layer_number, iteration)
         elif layer_type == POOL_LAYER_2D:

@@ -14,7 +14,6 @@ from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.crocubot.train import log_network_confidence
 
 PRINT_KERNEL = True
-BOOL_FALSE = False
 USE_EFFICIENT_PASSES = True
 
 
@@ -41,8 +40,9 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
     saver = tf.train.Saver()
     estimator = Estimator(model, tf_flags)
     x = tf.placeholder(tf_flags.d_type, shape=data.shape, name="x")
+
     if USE_EFFICIENT_PASSES:
-        y = estimator.efficient_multiple_passes(x, tf_flags.n_eval_passes)
+        y = estimator.efficient_multiple_passes(x)
     else:
         y = estimator.collate_multiple_passes(x, tf_flags.n_eval_passes)
 
@@ -62,7 +62,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
         except:
             pass
 
-        log_p = sess.run(y, feed_dict={x: data, is_training: BOOL_FALSE})
+        log_p = sess.run(y, feed_dict={x: data, is_training: False})
         log_network_confidence(log_p)
 
     posterior = np.exp(log_p)
