@@ -13,7 +13,7 @@ import pandas as pd
 
 from alphai_crocubot_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
 from alphai_crocubot_oracle.data.providers import TrainDataProvider
-from alphai_crocubot_oracle.data.transformation import FinancialDataTransformation
+from alphai_feature_generation.transformation import FinancialDataTransformation
 from alphai_time_series.transform import gaussianise
 
 import alphai_crocubot_oracle.crocubot.train as crocubot
