@@ -313,9 +313,9 @@ class Estimator:
         # Create discrete PDFs
         output = tf.nn.log_softmax(output, dim=-1)
         # Average probability over multiple passes
-        output = tf.reduce_logsumexp(output, axis=0)
+        output = tf.reduce_logsumexp(output, axis=0) - normalisation
 
-        return tf.expand_dims(output, axis=0) - normalisation
+        return tf.expand_dims(output, axis=0)
 
     def forward_pass(self, signal, iteration=0):
         """

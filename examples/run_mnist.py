@@ -31,7 +31,7 @@ def run_mnist_test(train_path, tensorboard_log_path, method='GDO', use_full_trai
     config['model_save_path'] = train_path
     config['n_retrain_epochs'] = 5
     config['n_train_passes'] = 1
-    config['n_eval_passes'] = 50
+    config['n_eval_passes'] = 1
     config['use_convolution'] = do_convolution
 
     fl.build_tensorflow_flags(config)
@@ -56,6 +56,17 @@ if __name__ == '__main__':
     train_path = '/tmp/'
     tensorboard_log_path = '/tmp/'
 
-    do_quick_test = True
+    do_quick_test = False
 
     run_mnist_test(train_path, tensorboard_log_path,  use_full_train_set=True, quick_test=do_quick_test)
+
+
+    #  With batch norm now get  99.31%  with  9 layers and 6 eval per passes (25 min runtime)
+    #  Repeat for 12 eval per passes:
+    #  Repeat for 1 eval per passes:
+
+    # Repeat for noisy mnist:
+    # 1 eval per pass:
+    # 6 eval per pass:
+    # 12 eval per pass:
+

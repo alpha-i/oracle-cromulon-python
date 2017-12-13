@@ -81,6 +81,7 @@ def evaluate_mnist(binned_outputs, n_samples, test_labels):
     predicted_indices = np.argmax(binned_outputs, axis=-1).flatten()
     true_indices = np.argmax(test_labels, axis=-1).flatten()
 
+    print("Output shape:", binned_outputs.shape)
     print("Example forecasts:", binned_outputs[0:5, 0, :])
     print("Example outcomes", test_labels[0:5, 0, :])
     print("Total test samples:", n_samples)

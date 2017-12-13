@@ -203,13 +203,12 @@ def extract_point_estimates(bin_centres, pdf_array):
     normalisation_offset = np.sum(pdf_array[0, :]) - 1.0
 
     if np.abs(normalisation_offset) > 1e-3:
-        logging.warning('Probability mass function not normalised')
-        logging.info('PDF Array shape: {}'.format(pdf_array.shape))
-        logging.info('Normalisation offset: {}'.format(normalisation_offset))
-        logging.info('Full pdf array: {}'.format(pdf_array))
-        logging.info('Bin centres: {}'.format(bin_centres))
+        logging.info('****Probability mass function offset****: {}'.format(normalisation_offset))
+        # logging.info('PDF Array shape: {}'.format(pdf_array.shape))
+        # logging.info('Full pdf array: {}'.format(pdf_array))
+        # logging.info('Bin centres: {}'.format(bin_centres))
 
-        logging.warning('Attempting to continue with pathological distribution')
+        # logging.warning('Attempting to continue with pathological distribution')
         for i in range(n_points):
             pdf_array[i, :] = pdf_array[i, :] / np.sum(pdf_array[i, :])
 

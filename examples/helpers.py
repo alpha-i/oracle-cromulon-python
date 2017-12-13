@@ -43,9 +43,13 @@ def load_default_topology(series_name, tf_flags):
         n_output_series = 1
     elif series_name == 'mnist_reshaped':
         if tf_flags.use_convolution:
-            n_layers = 21
+            n_layers = 9  # 21 powerful but slow
 
-            if n_layers == 6:
+            if n_layers == 4:
+                layer_types = ['conv3d', 'pool2d', 'full',  'full']
+                layer_heights = [28,  14, 400, 10]
+                layer_widths = [28, 14, 1, 1]
+            elif n_layers == 6:
                 layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'full',  'full']
                 layer_heights = [28, 28, 28, 14, 400, 10]
                 layer_widths = [28, 28, 28, 14, 1, 1]
