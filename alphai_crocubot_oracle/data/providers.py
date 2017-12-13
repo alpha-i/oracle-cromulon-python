@@ -45,6 +45,7 @@ class TrainDataProvider(AbstractTrainDataProvider):
     def __init__(self, features, labels, batch_size):
         self._train_data = TrainData(features, labels)
         self._batch_size = batch_size
+        self._noise_data = None
 
     @property
     def n_train_samples(self):
@@ -81,6 +82,45 @@ class TrainDataProvider(AbstractTrainDataProvider):
         batch_labels = labels[lo_index:hi_index, :]
 
         return TrainData(batch_features, batch_labels)
+
+    def get_noisy_batch(self, batch_number, noise_amplitude=0):
+        """ Returns noisy batches and original labels from the full data set x and y
+
+        :param batch_number:
+        :param noise_amplitude:
+        :return:
+        """
+        batch = self.get_batch(batch_number)
+
+        if noise_amplitude > 0:
+            noise_batch = self._get_noise(batch_number)
+            noisy_batch_features = batch.features + noise_batch * noise_amplitude
+            batch = TrainData(noisy_batch_features, batch.labels)
+
+        return batch
+
+    def _get_noise(self, batch_number):
+        """ Returns fixed noise associated with batch number. Could also use rand seed but this saves recomputing.
+
+        :param batch_number:
+        :return:
+        """
+        if self._noise_data is None:
+            self.initialise_noise()
+        noise = self._noise_data
+        lo_index = batch_number * self.batch_size
+        hi_index = lo_index + self.batch_size
+
+        return noise[lo_index:hi_index, :]
+
+    def initialise_noise(self):
+        """ Create noise to match train data
+
+        :return:
+        """
+
+        noise_shape = self._train_data.shape
+        self._noise_data = np.random.normal(loc=0.0, scale=1.0, size=noise_shape)
 
 
 class TrainDataProviderForDataSource(AbstractTrainDataProvider):
