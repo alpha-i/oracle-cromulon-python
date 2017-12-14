@@ -95,7 +95,7 @@ def train(topology,
 
             for batch_number in range(n_batches):  # The randomly sampled weights are fixed within single batch
 
-                batch_data = data_provider.get_batch(batch_number)
+                batch_data = data_provider.get_noisy_batch(batch_number, tf_flags.noise_amplitude)
                 batch_features = batch_data.features
                 batch_labels = batch_data.labels
 

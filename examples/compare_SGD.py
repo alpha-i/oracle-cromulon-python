@@ -11,12 +11,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 1
-NOISE_LEVEL = 1  # Rms noise relative to rms signal
-TRAIN_PASSES = [1]  # [1, 4, 64]
-DEFAULT_EVAL_PASSES = [1]  # [1, 4, 64]
+NOISE_AMPLITUDE = 50           # Rms noise relative to rms signal
+TRAIN_PASSES = [1, 10]         # [1, 4, 64]
+DEFAULT_EVAL_PASSES = [1, 10]  # [1, 4, 64]
 TF_LOG_PATH = '/tmp/'
 TRAIN_PATH = '/mnt/pika/Networks/'
-QUICK_TEST = True
+QUICK_TEST = False
 
 
 def run_mnist_tests(optimisation_method, eval_passes=DEFAULT_EVAL_PASSES):
@@ -40,21 +40,38 @@ def run_mnist_tests(optimisation_method, eval_passes=DEFAULT_EVAL_PASSES):
 def build_config(optimisation_method):
     config={}
     config["train_path"] = TRAIN_PATH
-    config["model_path"] = TRAIN_PATH
     config["tensorboard_log_path"] = TF_LOG_PATH
     config["optimisation_method"] = optimisation_method
-    config["use_full_train_set"] = True
     config["use_convolution"] = True
     config["quick_test"] = QUICK_TEST
     config["multi_eval_passes"] = DEFAULT_EVAL_PASSES
+    config['noise_amplitude'] = NOISE_AMPLITUDE
     return config
 
-
-opt_methods = ['Adam']  # GDO Adam
+opt_methods = ['GDO', 'Adam']  # GDO Adam
 
 for method in opt_methods:
     run_mnist_tests(method)
 
+
+# NOISE 50 RESULTS: GDO/ ADAM for (1 t 1 e, 1 t 10 e, 10 t 1 e, 10 t 10 e)
+  #   Adam accuracy: [0.1135, 0.1135, 0.0974, 0.089700000000000002]
+   # GDO accuracy: [0.126, 0.1298, 0.1464, 0.15049999999999999]
+  # Repeat with 400 batch size:
+  #  Adam accuracy: [0.1135, 0.1135, 0.095799999999999996, 0.085900000000000004] Mean accuracy: 0.102175
+   # GDO accuracy: [0.12959999999999999, 0.1283, 0.21340000000000001, 0.23250000000000001] Mean accuracy: 0.17595
+
+
+# NOISE 10 RESULTS: GDO/ ADAM for train / eval of 1 and 10 each
+ #   GDO accuracy: [0.76029999999999998, 0.76090000000000002, 0.74570000000000003, 0.74260000000000004]
+   # Mean accuracy: 0.752375
+ #   Adam accuracy: [0.73939999999999995, 0.7399, 0.5978, 0.75339999999999996]
+  # Mean accuracy: 0.707625
+# 10 epoch test:
+    # Adam accuracy: [0.80969999999999998, 0.79649999999999999, 0.65920000000000001, 0.67649999999999999]
+#  Mean accuracy: 0.735475
+    # GDO GDO accuracy: [0.98250000000000004, 0.98089999999999999, 0.9829, 0.98450000000000004]
+   #    Mean accuracy: 0.9827. Best performer was 4 train ,4 eval
 
 
 # Latest 10 epoch test results: cycled via TRAIN_PASSES = [1, 4, 64] and inside each triplet was  EVAL_PASSES = [1, 4, 64]

@@ -132,6 +132,7 @@ class TrainDataProviderForDataSource(AbstractTrainDataProvider):
         self._bin_edges = bin_edges
         self._dtype = dtype
         self._for_training = for_training
+        self._noise_data = None
 
         data_source_generator = DataSourceGenerator()
         self._data_source = data_source_generator.make_data_source(series_name)
@@ -155,6 +156,53 @@ class TrainDataProviderForDataSource(AbstractTrainDataProvider):
             labels = np.swapaxes(labels, axis1=1, axis2=-1)
 
         return TrainData(features, labels)
+
+    def get_noisy_batch(self, batch_number, noise_amplitude=0):
+        """ Returns noisy batches and original labels from the full data set x and y
+
+        :param batch_number:
+        :param noise_amplitude:
+        :return:
+        """
+        batch = self.get_batch(batch_number)
+
+        if noise_amplitude > 0:
+            feature_factor = 1 / (1 + noise_amplitude)
+            noise_factor = noise_amplitude / (1 + noise_amplitude)
+
+            noise_batch = self._get_noise(batch_number)
+            noisy_batch_features = batch.features * feature_factor + noise_batch * noise_factor
+            batch = TrainData(noisy_batch_features, batch.labels)
+
+        return batch
+
+    def _get_noise(self, batch_number):
+        """ Returns fixed noise associated with batch number. Could also use rand seed but this saves recomputing.
+
+        :param batch_number:
+        :return:
+        """
+        if self._noise_data is None:
+            self.initialise_noise()
+
+        lo_index = batch_number * self.batch_size
+        hi_index = lo_index + self.batch_size
+
+        return self._noise_data[lo_index:hi_index, :]
+
+    def initialise_noise(self):
+        """ Create noise to match train data. Currently only mnist is supported
+
+        :return:
+        """
+
+        if self._for_training:
+            noise_shape = (60000, 28, 28, 1)
+        else:
+            noise_shape = (10000, 28, 28, 1)
+
+        mnist_sigma = 0.31
+        self._noise_data = np.random.normal(loc=0.0, scale=mnist_sigma, size=noise_shape)
 
     @property
     def n_train_samples(self):

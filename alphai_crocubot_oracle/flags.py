@@ -27,6 +27,10 @@ def build_tensorflow_flags(config):
     if 'do_batch_norm' not in config:
         config['do_batch_norm'] = 'True'
 
+    if 'noise_amplitude' not in config:
+        config['noise_amplitude'] = 0
+
+
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
 
     tf.app.flags.DEFINE_boolean('do_batch_norm', config['do_batch_norm'],
@@ -46,6 +50,9 @@ def build_tensorflow_flags(config):
 
     tf.app.flags.DEFINE_string('tensorboard_log_path', config['tensorboard_log_path'], """Path for storing tensorboard log.""")
     tf.app.flags.DEFINE_string('d_type', config['d_type'], """Data type for numpy.""")
+
+
+
     tf.app.flags.DEFINE_integer('TF_TYPE', config['tf_type'], """Data type for tensorflow.""")
     tf.app.flags.DEFINE_integer('random_seed', random_seed, """Seed used to identify random noise realisiation.""")
     tf.app.flags.DEFINE_integer('n_classification_bins', config['n_classification_bins'], """How many bins to use for classification.""")
@@ -60,6 +67,7 @@ def build_tensorflow_flags(config):
     tf.app.flags.DEFINE_string('cost_type', config['cost_type'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_integer('n_train_passes', config['n_train_passes'], """Number of passes to average over during training.""")
     tf.app.flags.DEFINE_integer('n_eval_passes', config['n_eval_passes'], """Number of passes to average over during evaluation.""")
+    tf.app.flags.DEFINE_float('noise_amplitude', config['noise_amplitude'], """Additive noise for features. Defaults to zero. """)
     tf.app.flags.DEFINE_boolean('resume_training', config['resume_training'],
                                 """Whether to set noise such that its mean and std are exactly the desired values""")
     # Initial conditions
