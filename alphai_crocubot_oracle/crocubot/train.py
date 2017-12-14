@@ -76,7 +76,9 @@ def train(topology,
             except Exception as e:
                 logging.warning("Restore file not recovered. reason {}. Training from scratch".format(e))
         else:
-            tf.set_random_seed(tf_flags.random_seed)
+            logging.info("Training new network with fixed random seed")
+            tf.set_random_seed(tf_flags.random_seed)  # Ensure behaviour is reproducible
+            np.random.seed(tf_flags.random_seed)
 
         if not is_model_ready:
             sess.run(tf.global_variables_initializer())
@@ -178,7 +180,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
     estimator = Estimator(crocubot_model, tf_flags)
 
     if USE_EFFICIENT_PASSES:
-        log_predictions = estimator.efficient_multiple_passes(x)
+        log_predictions = estimator.efficient_multiple_passes(x, tf_flags.n_train_passes)
     else:
         log_predictions = estimator.average_multiple_passes(x, tf_flags.n_train_passes)
 

@@ -24,7 +24,13 @@ def build_tensorflow_flags(config):
     if 'apply_temporal_suppression' not in config:
         config['apply_temporal_suppression'] = 'True'
 
+    if 'do_batch_norm' not in config:
+        config['do_batch_norm'] = 'True'
+
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
+
+    tf.app.flags.DEFINE_boolean('do_batch_norm', config['do_batch_norm'],
+                                """Whether to use batch normalisation. """)
 
     tf.app.flags.DEFINE_boolean('apply_temporal_suppression', config['apply_temporal_suppression'],
                                 """Whether to penalise data which is further in the past. """)

@@ -69,16 +69,19 @@ class BayesianCost(object):
         log_qw = 0.
 
         for layer in range(self.topology.n_layers):
-            layer_type = self._model._topology.layers[layer]["type"]
+            layer_type = self.topology.layers[layer]["type"]
             if layer_type == 'full':
                 mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
                 rho_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO)
                 mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
                 rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
-                # Only want to consider independent weights, not the full set, so do_tile_weights=False
-                weights = self._model.compute_weights(layer, iteration=iteration)
-                biases = self._model.compute_biases(layer, iteration=iteration)
+                if self._model._flags.n_train_passes == 1:  # Exploit common random numbers
+                    weights = self._model.compute_weights(layer, iteration=iteration)
+                    biases = self._model.compute_biases(layer, iteration=iteration)
+                else:  # Use mean of distribution
+                    weights = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
+                    biases = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
 
                 log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
                 log_pw += self.calculate_log_bias_prior(biases, layer)

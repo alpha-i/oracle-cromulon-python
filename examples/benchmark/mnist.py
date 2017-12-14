@@ -16,7 +16,7 @@ from examples.benchmark.helpers import print_time_info, print_accuracy, _calcula
 from examples.helpers import D_TYPE, load_default_topology
 
 
-def run_timed_benchmark_mnist(series_name, tf_flags, do_training):
+def run_timed_benchmark_mnist(series_name, tf_flags, do_training, multi_eval_passes=None):
 
     topology = load_default_topology(series_name, tf_flags)
 
@@ -54,24 +54,39 @@ def run_timed_benchmark_mnist(series_name, tf_flags, do_training):
     train_time, _ = execute_and_get_duration(_do_training)
     print("Training complete.")
 
+    if multi_eval_passes:
+        # Check effect of eval_passes
+        accuracy_list = []
+        for eval_pass in multi_eval_passes:
+            eval_time, temp_accuracy = eval_and_print(topology, series_name, tf_flags, save_file, eval_pass)
+            accuracy_list.extend([temp_accuracy])
+    else:
+        eval_time, temp_accuracy = eval_and_print(topology, series_name, tf_flags, save_file)
+        accuracy_list = [temp_accuracy]
+
+    print_time_info(train_time, eval_time)
+
+    return eval_time, accuracy_list
+
+
+def eval_and_print(topology, series_name, tf_flags, save_file, eval_pass):
+
     eval_time, metrics = execute_and_get_duration(evaluate_network, topology, series_name,
-                                                  tf_flags.batch_size, save_file, tf_flags)
+                                                  tf_flags.batch_size, save_file, tf_flags, eval_pass)
 
     accuracy = _calculate_accuracy(metrics["results"])
     print('Metrics:')
     print_accuracy(metrics, accuracy)
-
-    print_time_info(train_time, eval_time)
-
+    return eval_time, accuracy
 
 @printtime(message="Evaluation of Mnist Series")
-def evaluate_network(topology, series_name, batch_size, save_file, tf_flags):
+def evaluate_network(topology, series_name, batch_size, save_file, tf_flags, eval_pass):
 
     data_provider = TrainDataProviderForDataSource(series_name, D_TYPE, tf_flags.n_prediction_sample, batch_size, False)
 
     test_features, test_labels = data_provider.get_batch(1)
 
-    binned_outputs = crocubot_eval.eval_neural_net(test_features, topology, tf_flags, save_file)
+    binned_outputs = crocubot_eval.eval_neural_net(test_features, topology, tf_flags, save_file, eval_pass)
 
     return evaluate_mnist(binned_outputs, binned_outputs.shape[1], test_labels)
 

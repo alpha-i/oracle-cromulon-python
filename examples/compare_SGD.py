@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 
-import examples.benchmark_prototype as bench
+from examples.run_mnist import run_mnist_test
 
 logger = logging.getLogger('tipper')
 logger.addHandler(logging.StreamHandler())
@@ -11,33 +11,86 @@ logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 1
+NOISE_LEVEL = 1  # Rms noise relative to rms signal
+TRAIN_PASSES = [1]  # [1, 4, 64]
+DEFAULT_EVAL_PASSES = [1]  # [1, 4, 64]
+TF_LOG_PATH = '/tmp/'
+TRAIN_PATH = '/mnt/pika/Networks/'
+QUICK_TEST = True
 
 
-def run_mnist_tests(optimisation_method):
+def run_mnist_tests(optimisation_method, eval_passes=DEFAULT_EVAL_PASSES):
 
-    accuracy_array = np.zeros(N_CYCLES)
+    accuracy_list = []
     likeli_array = np.zeros(N_CYCLES)
+    config = build_config(optimisation_method)
 
-    tensor_path = '/tmp/'
-    train_path = '/tmp/'
-    do_2D = True
+    for train_pass in TRAIN_PASSES:
+        config['n_train_passes'] = train_pass
+        eval_time, accuracy = run_mnist_test(config)
+        accuracy_list.extend(accuracy)
 
-    for i in range(N_CYCLES):
-        accuracy_array[i], metrics = bench.run_mnist_test(train_path, tensor_path, optimisation_method,
-                                                          reshape_to_2d=do_2D)
-        likeli_array[i] = metrics['log_likelihood_per_sample']
-
-    print(optimisation_method, 'accuracy:', accuracy_array)
-    print(optimisation_method, 'likelihoods:', likeli_array)
+    print(optimisation_method, 'accuracy:', accuracy_list)
+    # print(optimisation_method, 'likelihoods:', likeli_array)
+    accuracy_array = np.asarray(accuracy_list)
     print('Mean accuracy:', np.mean(accuracy_array))
-    print('Log likelihood:', np.mean(likeli_array))
+    # print('Log likelihood:', np.mean(likeli_array))
 
-opt_methods = ['GDO']  # GDO Adam
+
+def build_config(optimisation_method):
+    config={}
+    config["train_path"] = TRAIN_PATH
+    config["model_path"] = TRAIN_PATH
+    config["tensorboard_log_path"] = TF_LOG_PATH
+    config["optimisation_method"] = optimisation_method
+    config["use_full_train_set"] = True
+    config["use_convolution"] = True
+    config["quick_test"] = QUICK_TEST
+    config["multi_eval_passes"] = DEFAULT_EVAL_PASSES
+    return config
+
+
+opt_methods = ['Adam']  # GDO Adam
 
 for method in opt_methods:
     run_mnist_tests(method)
 
 
+
+# Latest 10 epoch test results: cycled via TRAIN_PASSES = [1, 4, 64] and inside each triplet was  EVAL_PASSES = [1, 4, 64]
+    # Adam
+    # accuracy: [0.98319999999999996, 0.98099999999999998, 0.98229999999999995, 0.97860000000000003, 0.97919999999999996,
+    #            0.97889999999999999, 0.98099999999999998, 0.98219999999999996, 0.98199999999999998]
+
+# GDO accuracy: [0.97950000000000004, 0.97860000000000003, 0.97919999999999996, 0.9839, 0.98450000000000004, 0.98450000000000004, 0.98460000000000003, 0.98299999999999998, 0.98399999999999999]
+
+# Now try adjusting prior for multipass:
+# GDO accuracy: [0.98240000000000005, 0.98209999999999997, 0.98209999999999997, 0.97950000000000004, 0.98250000000000004,   0.98080000000000001, 0.97989999999999999, 0.98060000000000003, 0.98050000000000004]
+# Mean accuracy: 0.981155555556
+    # best performance: 1, 1
+
+# Check reproducibililty:
+# GDO accuracy: [0.97940000000000005, 0.97840000000000005, 0.97940000000000005, 0.97909999999999997, 0.98029999999999995, 0.97919999999999996, 0.98140000000000005, 0.97999999999999998, 0.98119999999999996]
+# Mean accuracy: 0.979822222222
+    # best performance: 64 train, 1 eval
+# Likelihood comparison: -4.71,
+
+#  Adam accuracy: [0.98380000000000001, 0.9829, 0.98370000000000002, 0.97929999999999995, 0.98080000000000001, 0.98060000000000003, 0.9819, 0.98129999999999995, 0.98260000000000003]
+#  Mean accuracy: 0.981877777778,
+    # best performance: 1 train, 1 eval, twice got 0.984, beating GDO. Min probability assigned to unsuccessful forecast: 5.10601864789e-07
+
+# more passes: 0.9819, min prob 2.36592532019e-05
+# bb alpha cost, 32 passes:  (train time: 484 )   accuracy: 0.9806
+
+# Latest 100 epoch test results: cycled via TRAIN_PASSES = [1, 4, 64] and inside each triplet was  EVAL_PASSES = [1, 4, 64]
+# KNOWN BUG 14/07/17: randomisation of different passes isn'ae working
+#  GDO accuracy: [0.99219999999999997, 0.99219999999999997, 0.99219999999999997, 0.99270000000000003, 0.99270000000000003, 0.99270000000000003, 0.99219999999999997, 0.99219999999999997, 0.99219999999999997]
+#  Mean accuracy: 0.992366666667
+# Adam accuracy: [0.9929, 0.9929, 0.9929, 0.99299999999999999, 0.99299999999999999, 0.99299999999999999, 0.99309999999999998, 0.99309999999999998, 0.99309999999999998]
+#  Mean accuracy: 0.993
+
+
+#     OLDER TEST RESULTS (no batch normalisation etc)
 # Results: 20 epoch
 # Adam: [ 0.9216  0.9214  0.9189  0.9232  0.9224] -> mean 0.9215
 # GDO:  [ 0.9244  0.9243  0.9263  0.9243  0.9249] -> mean 0.9248

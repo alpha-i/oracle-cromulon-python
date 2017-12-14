@@ -16,8 +16,6 @@ import tensorflow as tf
 
 import alphai_crocubot_oracle.tensormaths as tm
 
-DO_BATCH_NORM = True
-
 CONVOLUTIONAL_LAYER_1D = 'conv1d'
 CONVOLUTIONAL_LAYER_3D = 'conv3d'
 FULLY_CONNECTED_LAYER = 'full'
@@ -177,25 +175,25 @@ class CrocuBotModel:
         return v
 
     def get_weight_noise(self, layer_number, iteration):
-        noise = self.get_variable(layer_number, self.VAR_WEIGHT_NOISE)
-        # noise = tf.cond(self._is_training, lambda: tf.random_shuffle(noise, seed=iteration),
-        #                 lambda: tf.random_shuffle(noise))
-        try:
-            noise = tf.random_shuffle(noise, seed=iteration)
-        except:
-            noise = tf.random_shuffle(noise)
-
-        return noise
+        return self._get_layer_noise(layer_number, iteration, self.VAR_WEIGHT_NOISE)
 
     def get_bias_noise(self, layer_number, iteration):
-        noise = self.get_variable(layer_number, self.VAR_BIAS_NOISE)
+        return self._get_layer_noise(layer_number, iteration, self.VAR_BIAS_NOISE)
 
-        try:
-            noise = tf.random_shuffle(noise, seed=iteration)
-        except:
-            noise = tf.random_shuffle(noise)
+    # def _get_layer_noise(self, layer_number, iteration, var_name, shuffle_order):
+    #     # Noise is tricky as we want it to change at each iteration
+    #     # shuffle_order = [2, 1, 0, 3, 4, 5]
+    #     noise = self.get_variable(layer_number, var_name)
+    #     noise = tf.transpose(noise, shuffle_order)
+    #     noise = tf.random_shuffle(noise, seed=iteration)
+    #     return tf.transpose(noise, shuffle_order)
 
-        return noise
+    # alternative implementation
+    def _get_layer_noise(self, layer_number, i, var_name):
+
+        noise = self.get_variable(layer_number, var_name)
+        x_len = noise.get_shape().as_list()[1]
+        return tf.concat([noise[:, x_len - i:, :], noise[:, :x_len - i, :]], axis=1)
 
     def compute_weights(self, layer_number, iteration=0):
 
@@ -258,7 +256,7 @@ class Estimator:
 
         return stacked_output
 
-    def efficient_multiple_passes(self, signal):
+    def efficient_multiple_passes(self, signal, eval_passes):
         """  Collate outputs from many realisations of weights from a bayesian network.
         First layers don't need to be looped if they are convolutional
 
@@ -270,17 +268,17 @@ class Estimator:
 
         if layer_number < self._model.topology.n_layers:
             prepared_signal = self.transition_from_conv_to_full(signal, layer_number)
-            signal = self.looped_passes(prepared_signal)
+            signal = self.looped_passes(prepared_signal, eval_passes)
 
         return signal
 
-    def looped_passes(self, input_signal):
+    def looped_passes(self, input_signal, eval_passes):
         """
         Collate outputs from many realisations of weights from a bayesian network.
         Uses tf.while for improved memory efficiency
 
         :param tensor x:
-        :param int number_of_passes:
+        :param int eval_passes:
         :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
         """
         # FIXME:  If used in training, multipass bayesian prior needs to be computed
@@ -289,33 +287,35 @@ class Estimator:
         # else:
         #     n_passes = self._flags.n_eval_passes
 
-        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: self._flags.n_eval_passes)
+        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: eval_passes)
+        normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
         # First do a single pass which we can later add to
         output_signal = self.bayes_forward_pass(input_signal, int(0))
         output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
-        i = tf.constant(0)
-        normalisation = tf.log(tf.cast(n_passes, tf.float32))   # (float(n_passes))
 
-        def condition(index, _):
-            return tf.less(index, n_passes)
+        if eval_passes > 1:
+            start_index = tf.constant(1)
 
-        def body(index, multipass):  # FIXME need to check the random seeds differ
-            single_output = self.bayes_forward_pass(input_signal, iteration=None)
-            return index+1, tf.concat([multipass, [single_output]], axis=0)
+            def condition(index, _):
+                return tf.less(index, n_passes)
 
-        # We do not care about the index value here, return only the signal
-        # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
-        loop_shape = [i.get_shape(), output_signal.get_shape()]
-        output_list = tf.while_loop(condition, body, [i, output_signal], parallel_iterations=1, shape_invariants=loop_shape)[1]
+            def body(index, multipass):  # FIXME need to check the random seeds differ
+                single_output = self.bayes_forward_pass(input_signal, iteration=index) # iteration=None if using rand shukffe
+                return index+1, tf.concat([multipass, [single_output]], axis=0)
 
-        output = tf.stack(output_list, axis=0)
+            # We do not care about the index value here, return only the signal
+            # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
+            loop_shape = [start_index.get_shape(), output_signal.get_shape()]
+            output_list = tf.while_loop(condition, body, [start_index, output_signal], parallel_iterations=10, shape_invariants=loop_shape)[1]
+            output_signal = tf.stack(output_list, axis=0)
+
         # Create discrete PDFs
-        output = tf.nn.log_softmax(output, dim=-1)
+        output_signal = tf.nn.log_softmax(output_signal, dim=-1)
         # Average probability over multiple passes
-        output = tf.reduce_logsumexp(output, axis=0) - normalisation
+        output_signal = tf.reduce_logsumexp(output_signal, axis=0) - normalisation
 
-        return tf.expand_dims(output, axis=0)
+        return tf.expand_dims(output_signal, axis=0)
 
     def forward_pass(self, signal, iteration=0):
         """
@@ -347,9 +347,11 @@ class Estimator:
         if layer_type in {'conv2d', 'conv3d'}:
             signal = tf.expand_dims(signal, axis=-1)
 
-        while self._model.topology.get_layer_type(layer_number) in {'conv2d', 'conv3d', 'pool2d', 'pool3d'} \
+        input_signal = tf.identity(signal, name='input')
+
+        while self._model.topology.get_layer_type(layer_number) in {'conv2d', 'conv3d', 'pool2d', 'pool3d', 'res'} \
                 and layer_number < n_layers:
-            signal = self.single_layer_pass(signal, layer_number, iteration=0, input_signal=None)
+            signal = self.single_layer_pass(signal, layer_number, iteration=0, input_signal=input_signal)
             layer_number += 1
 
         return signal, layer_number
@@ -379,7 +381,7 @@ class Estimator:
         if self._flags.apply_temporal_suppression:  # Prepare transition from conv/pool layers to fully connected
             penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
             signal = tf.multiply(signal, penalty)
-            if DO_BATCH_NORM:
+            if self._flags.do_batch_norm:
                 signal = self.batch_normalisation(signal, 'penalty')
 
         return self.flatten_last_dimension(signal)
@@ -404,7 +406,7 @@ class Estimator:
             signal = self.convolutional_layer_1d(signal)
         elif layer_type == CONVOLUTIONAL_LAYER_3D:
             signal = self.convolutional_layer_3d(signal, layer_number)
-            if DO_BATCH_NORM:
+            if self._flags.do_batch_norm:
                 signal = self.batch_normalisation(signal, layer_number)
         elif layer_type == FULLY_CONNECTED_LAYER:
             signal = self.fully_connected_layer(signal, layer_number, iteration)
@@ -466,14 +468,11 @@ class Estimator:
         :return:
         """
 
-#         signal = tf.cond(self._model._is_training,
-#                         lambda: tf.contrib.layers.batch_norm(signal, is_training=True),
-#                        lambda: tf.contrib.layers.batch_norm(signal, is_training=False))
-        NORM_NAME = "batch_norm_" + str(layer_number)
+        norm_name = "batch_norm_" + str(layer_number)
         try:
-            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=True, name=NORM_NAME)
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=True, name=norm_name)
         except:
-            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=False, name=NORM_NAME)
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=False, name=norm_name)
 
         return signal
 

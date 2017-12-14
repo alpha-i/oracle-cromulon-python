@@ -17,7 +17,7 @@ PRINT_KERNEL = True
 USE_EFFICIENT_PASSES = True
 
 
-def eval_neural_net(data, topology, tf_flags, last_train_file):
+def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=2):
     """ Multiple passes allow us to estimate the posterior distribution.
 
     :param data:  Mini-batch to be fed into the network
@@ -27,8 +27,6 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
 
     :return: 3D array with dimensions [n_passes, n_samples, n_labels, n_bins]
     """
-
-    logging.info("Evaluating with shape {}".format(data.shape))
 
     is_training = tf.placeholder(tf.bool, name='is_training')
     model = CrocuBotModel(topology, tf_flags, is_training)
@@ -41,10 +39,12 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
     estimator = Estimator(model, tf_flags)
     x = tf.placeholder(tf_flags.d_type, shape=data.shape, name="x")
 
+    logging.info("Evaluating {} passes with shape {}".format(eval_passes, data.shape))
+
     if USE_EFFICIENT_PASSES:
-        y = estimator.efficient_multiple_passes(x)
+        y = estimator.efficient_multiple_passes(x, eval_passes)
     else:
-        y = estimator.collate_multiple_passes(x, tf_flags.n_eval_passes)
+        y = estimator.collate_multiple_passes(x, eval_passes)
 
     with tf.Session() as sess:
         logging.info("Attempting to recover trained network: {}".format(last_train_file))
@@ -64,6 +64,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
 
         log_p = sess.run(y, feed_dict={x: data, is_training: False})
         log_network_confidence(log_p)
+
 
     posterior = np.exp(log_p)
 
