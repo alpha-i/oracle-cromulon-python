@@ -1,9 +1,10 @@
-import tensorflow as tf
+
 import logging
 
-from alphai_crocubot_oracle import flags as fl
+
 from examples.benchmark.mnist import run_timed_benchmark_mnist
 from examples.helpers import load_default_config, FLAGS
+from examples.benchmark_flags import set_benchmark_flags
 
 MNIST_RESHAPED = "mnist_reshaped"
 
@@ -17,12 +18,12 @@ def run_mnist_test(update_config):
         config["n_epochs"] = 10  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 1e-3   # Use high learning rate for testing purposes
     else:
-        config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10
-        config["learning_rate"] = 2e-4   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
+        config["n_epochs"] = 500  # Scored 98.99% after 100 epochs; 98.5 after 10
+        config["learning_rate"] = 1e-3   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
         # 21 layer res network. 10 epoch: 98.86; 100 epoch: 99.21%
 
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha'
-    config['batch_size'] = 400
+    config['batch_size'] = 200
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
@@ -33,19 +34,10 @@ def run_mnist_test(update_config):
     config['n_eval_passes'] = 1
     config['apply_temporal_suppression'] = False
     config.update(update_config)
-
-    fl.build_tensorflow_flags(config)
-    print("CONFIG:", config)
-
-    # this flag is only used in benchmark.
-    tf.app.flags.DEFINE_integer('n_training_samples_benchmark', 60000, """Number of samples for benchmarking.""")
-    tf.app.flags.DEFINE_integer('n_prediction_sample', 10000, """Number of samples for benchmarking.""")
-
-    FLAGS._parse_flags()
-    print("Epochs to evaluate:", FLAGS.n_epochs)
+    set_benchmark_flags(config)
 
     multi_eval_passes = config.get('multi_eval_passes', None)
-    eval_time, accuracy = run_timed_benchmark_mnist(MNIST_RESHAPED, FLAGS, True, multi_eval_passes)
+    eval_time, accuracy = run_timed_benchmark_mnist(MNIST_RESHAPED, FLAGS, True, config, multi_eval_passes)
 
     return eval_time, accuracy
 

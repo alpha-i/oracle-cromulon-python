@@ -14,9 +14,10 @@ from alphai_crocubot_oracle.helpers import printtime, execute_and_get_duration
 import examples.iotools as io
 from examples.benchmark.helpers import print_time_info, print_accuracy, _calculate_accuracy
 from examples.helpers import D_TYPE, load_default_topology
+from examples.benchmark_flags import set_benchmark_flags
 
 
-def run_timed_benchmark_mnist(series_name, tf_flags, do_training, multi_eval_passes=None):
+def run_timed_benchmark_mnist(series_name, tf_flags, do_training, config, multi_eval_passes=None):
 
     topology = load_default_topology(series_name, tf_flags)
 
@@ -58,6 +59,9 @@ def run_timed_benchmark_mnist(series_name, tf_flags, do_training, multi_eval_pas
         # Check effect of eval_passes
         accuracy_list = []
         for eval_pass in multi_eval_passes:
+            # First need to reset flags
+            config["n_eval_passes"] = eval_pass
+            set_benchmark_flags(config)
             eval_time, temp_accuracy = eval_and_print(topology, series_name, tf_flags, save_file, eval_pass)
             accuracy_list.extend([temp_accuracy])
     else:
