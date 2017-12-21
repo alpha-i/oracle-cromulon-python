@@ -19,7 +19,8 @@ from examples.benchmark_flags import set_benchmark_flags
 
 def run_timed_benchmark_mnist(series_name, tf_flags, do_training, config, multi_eval_passes=None):
 
-    topology = load_default_topology(series_name, tf_flags)
+    n_layers = config.get("n_layers", 4)
+    topology = load_default_topology(series_name, tf_flags, n_layers)
 
     execution_time = datetime.datetime.now()
     save_file = io.build_check_point_filename(series_name, topology, tf_flags)

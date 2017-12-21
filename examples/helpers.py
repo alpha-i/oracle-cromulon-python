@@ -6,7 +6,7 @@ FLAGS = tf.app.flags.FLAGS
 D_TYPE = 'float32'
 
 
-def load_default_topology(series_name, tf_flags):
+def load_default_topology(series_name, tf_flags, n_layers):
     """The input and output layers must adhere to the dimensions of the features and labels.
     """
 
@@ -43,7 +43,6 @@ def load_default_topology(series_name, tf_flags):
         n_output_series = 1
     elif series_name == 'mnist_reshaped':
         if tf_flags.use_convolution:
-            n_layers = 4   # 21 powerful but slow
 
             if n_layers == 4:
                 layer_types = ['conv3d', 'pool2d', 'full',  'full']

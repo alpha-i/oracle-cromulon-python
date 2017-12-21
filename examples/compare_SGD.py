@@ -10,32 +10,50 @@ logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
-N_CYCLES = 1
-NOISE_AMPLITUDE = 60   # Rms noise relative to rms signal
-TRAIN_PASSES = [50]      # [1, 4, 64]
-DEFAULT_EVAL_PASSES = [50]  # [1, 4, 64]
-N_NETWORKS = 5
+N_CYCLES = 10   # 10
+NOISE_AMPLITUDE = 100  # 100  # Rms noise relative to rms signal
+TRAIN_PASSES = [1, 4, 16, 64]    # [1, 4, 16, 64]
+DEFAULT_EVAL_PASSES = [1, 4, 16, 64]  # [1, 4, 16, 64]
+N_LAYERS = [4, 9, 21]  # [4, 9, 21]
+OPT_METHODS = ['GDO', 'Adam']  # GDO Adam
+N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
 TRAIN_PATH = '/mnt/pika/Networks/'
+SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
+ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
 QUICK_TEST = False
 
 
-def run_mnist_tests(optimisation_method):
+def run_mnist_tests():
 
-    accuracy_list = []
-    likeli_array = np.zeros(N_CYCLES)
-    config = build_config(optimisation_method)
+    for method in OPT_METHODS:
+        accuracy_list = []
+        config = build_config(method)
+        for n_layer in N_LAYERS:
+            config['n_layers'] = n_layer
+            for train_pass in TRAIN_PASSES:
+                config['n_train_passes'] = train_pass
+                temp_acc_list = []
+                for i in range(N_CYCLES):
+                    eval_time, accuracy = run_mnist_test(config)
+                    temp_acc_list.extend(accuracy)
 
-    for train_pass in TRAIN_PASSES:
-        config['n_train_passes'] = train_pass
-        eval_time, accuracy = run_mnist_test(config)
-        accuracy_list.extend(accuracy)
+                average_accuracy = np.mean(np.asarray(temp_acc_list))
+                accuracy_list.append(average_accuracy)
 
-    print(optimisation_method, 'accuracy:', accuracy_list)
-    # print(optimisation_method, 'likelihoods:', likeli_array)
-    accuracy_array = np.asarray(accuracy_list)
-    print('Mean accuracy:', np.mean(accuracy_array))
-    # print('Log likelihood:', np.mean(likeli_array))
+        accuracy_array = np.asarray(accuracy_list)
+        print(method, 'accuracy:', accuracy_list)
+        print('Mean accuracy:', np.mean(accuracy_array))
+        # print('Log likelihood:', np.mean(likeli_array))
+
+        if method == 'Adam':
+            filename = ADAM_FILE
+        else:
+            filename = SAVE_FILE
+
+        with open(filename, 'w') as f:
+            print(method, 'accuracy:', accuracy_list, file=f)
+            print('Mean accuracy:', np.mean(accuracy_array), file=f)
 
 
 def build_config(optimisation_method):
@@ -50,14 +68,12 @@ def build_config(optimisation_method):
     config['n_networks'] = N_NETWORKS
     return config
 
-opt_methods = ['GDO']  # GDO Adam
 
-for method in opt_methods:
-    run_mnist_tests(method)
+run_mnist_tests()
 
-# NOISE 60 RESULTS 9 layer; 500 epoch
-    # MNIST accuracy of  15.08 % @ 1, 1
-    # MNIST accuracy of  15.08 % @ 1, 1
+# NOISE 60 RESULTS; 9 layer; 500 epoch
+    #
+    # MNIST accuracy of  37.94 % @ 1, 1.
 
 # NOISE 40 RESULTS 4 layer; 100 epoch; t = [1, 4, 10] ; e = [1, 4, 10]:
 #     Adam accuracy: [0.69140000000000001, 0.20880000000000001, 0.24709999999999999, 0.47260000000000002, 0.46860000000000002,
