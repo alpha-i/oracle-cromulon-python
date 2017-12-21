@@ -26,6 +26,8 @@ DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topolo
 DATA_FORMAT = 'channels_last'
 TIME_DIMENSION = 3  # Tensor dimensions defined as: [batch, series, time, features, filters]
 FORECAST_OVERLAP = 26  # How many timesteps in features correspond to forecast interval. Assumes 15min interval and forecast of 1 trading day
+N_PARALLEL_PASSES = 10  # How many passes over the bayes layers can be performed in parallel. Default is 10.
+USE_SHUFFLE = True
 
 
 class CrocuBotModel:
@@ -90,7 +92,7 @@ class CrocuBotModel:
 
         for layer_number in range(self._topology.n_layers):
             layer_type = self._topology.layers[layer_number]["type"]
-            if layer_type == 'full':  # No point building weights for conv or pool layers
+            if layer_type == FULLY_CONNECTED_LAYER:  # No point building weights for conv or pool layers
                 w_shape = self._topology.get_weight_shape(layer_number)
                 b_shape = self._topology.get_bias_shape(layer_number)
                 penalty_tensor = self.calculate_penalty_vector(FORECAST_OVERLAP, w_shape[1])
@@ -180,20 +182,24 @@ class CrocuBotModel:
     def get_bias_noise(self, layer_number, iteration):
         return self._get_layer_noise(layer_number, iteration, self.VAR_BIAS_NOISE)
 
-    # def _get_layer_noise(self, layer_number, iteration, var_name, shuffle_order):
-    #     # Noise is tricky as we want it to change at each iteration
-    #     # shuffle_order = [2, 1, 0, 3, 4, 5]
-    #     noise = self.get_variable(layer_number, var_name)
-    #     noise = tf.transpose(noise, shuffle_order)
-    #     noise = tf.random_shuffle(noise, seed=iteration)
-    #     return tf.transpose(noise, shuffle_order)
-
-    # alternative implementation
     def _get_layer_noise(self, layer_number, i, var_name):
+        # random_normal(shape, seed) # ideally need to ensure seed based on layer and iteration. tricky!
 
         noise = self.get_variable(layer_number, var_name)
-        x_len = noise.get_shape().as_list()[1]
-        return tf.concat([noise[:, x_len - i:, :], noise[:, :x_len - i, :]], axis=1)
+
+        if USE_SHUFFLE:
+            # shuffle_order = [2, 1, 0, 3, 4, 5]  # need to implement [2, 1, 0] for bias
+            # noise = tf.transpose(noise, shuffle_order)
+            # noise = tf.random_shuffle(noise, seed=i)
+            # noise = tf.transpose(noise, shuffle_order)
+            noise_shape = noise.get_shape()
+            noise = tf.random_normal(shape=noise_shape)
+        else:
+            roll_axis = 2
+            x_len = noise.get_shape().as_list()[roll_axis]
+            noise = tf.concat([noise[:, :,  x_len - i:], noise[:, :, :x_len - i]], axis=roll_axis)
+
+        return noise
 
     def compute_weights(self, layer_number, iteration=0):
 
@@ -208,6 +214,11 @@ class CrocuBotModel:
         mean = self.get_variable(layer_number, self.VAR_BIAS_MU)
         rho = self.get_variable(layer_number, self.VAR_BIAS_RHO)
         noise = self.get_bias_noise(layer_number, iteration)
+
+        # useful debugging statements
+        # noise = tf.Print(noise, [noise[0, 0, :]], message="Bias noise: ")
+        # noise = tf.Print(noise, [layer_number], message="layer_number: ")
+        # noise = tf.Print(noise, [iteration], message="iteration: ")
 
         return mean + tf.nn.softplus(rho) * noise
 
@@ -256,7 +267,7 @@ class Estimator:
 
         return stacked_output
 
-    def efficient_multiple_passes(self, signal, eval_passes):
+    def efficient_multiple_passes(self, signal):
         """  Collate outputs from many realisations of weights from a bayesian network.
         First layers don't need to be looped if they are convolutional
 
@@ -268,47 +279,62 @@ class Estimator:
 
         if layer_number < self._model.topology.n_layers:
             prepared_signal = self.transition_from_conv_to_full(signal, layer_number)
-            signal = self.looped_passes(prepared_signal, eval_passes)
+            signal = self.looped_passes(prepared_signal)
 
         return signal
 
-    def looped_passes(self, input_signal, eval_passes):
+    def looped_passes(self, input_signal):
         """
         Collate outputs from many realisations of weights from a bayesian network.
         Uses tf.while for improved memory efficiency
 
         :param tensor x:
-        :param int eval_passes:
         :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
         """
-        # FIXME:  If used in training, multipass bayesian prior needs to be computed
-        # if self._model._is_training:
-        #     n_passes = self._flags.n_train_passes
-        # else:
-        #     n_passes = self._flags.n_eval_passes
 
-        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: eval_passes)
+        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: self._flags.n_eval_passes)
         normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
-        # First do a single pass which we can later add to
         output_signal = self.bayes_forward_pass(input_signal, int(0))
         output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
 
-        if eval_passes > 1:
-            start_index = tf.constant(1)
+        if n_passes > 1:
 
             def condition(index, _):
                 return tf.less(index, n_passes)
 
-            def body(index, multipass):  # FIXME need to check the random seeds differ
-                single_output = self.bayes_forward_pass(input_signal, iteration=index) # iteration=None if using rand shukffe
+            def body(index, multipass):
+                single_output = self.bayes_forward_pass(input_signal, iteration=index)
                 return index+1, tf.concat([multipass, [single_output]], axis=0)
 
             # We do not care about the index value here, return only the signal
             # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
+            start_index = tf.constant(1)
             loop_shape = [start_index.get_shape(), output_signal.get_shape()]
-            output_list = tf.while_loop(condition, body, [start_index, output_signal], parallel_iterations=10, shape_invariants=loop_shape)[1]
+            output_list = tf.while_loop(condition, body, [start_index, output_signal],
+                                        parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
             output_signal = tf.stack(output_list, axis=0)
+
+
+        # else:  # FIXME   [0, 1, 1, 10]   vs.    [1, 400, 1, 1, 10]
+        #     n_bins = self._model.topology.n_classification_bins
+        #     loop_shape = tf.TensorShape([None, None, 1, 1, n_bins])
+        #     dummy_shape = (0, self._flags.batch_size, 1, 1, n_bins)
+        #     dummy_signal = tf.Variable(tf.zeros(shape=dummy_shape), trainable=False)
+        #     start_index = tf.constant(0)
+        #
+        #     def condition(index, _):
+        #         return tf.less(index, n_passes)
+        #
+        #     def body(index, multipass):  # FIXME need to check the random seeds differ
+        #         single_output = self.bayes_forward_pass(input_signal, iteration=index)  # set iteration=None if using rand shuffle
+        #         return index+1, tf.concat([multipass, [single_output]], axis=0)
+        #
+        #     # We do not care about the index value here, return only the signal
+        #     args_shape = [start_index.get_shape(), loop_shape]
+        #     output_list = tf.while_loop(condition, body, [start_index, dummy_signal],
+        #                                 parallel_iterations=1, shape_invariants=args_shape)[1]
+        #     output_signal = tf.stack(output_list, axis=0)
 
         # Create discrete PDFs
         output_signal = tf.nn.log_softmax(output_signal, dim=-1)
