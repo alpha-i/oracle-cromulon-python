@@ -79,16 +79,21 @@ class BayesianCost(object):
                 if self._model._flags.n_train_passes == 1:  # Exploit common random numbers
                     weights = self._model.compute_weights(layer, iteration=iteration)
                     biases = self._model.compute_biases(layer, iteration=iteration)
-                else:  # Use mean of distribution
-                    weights = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
-                    biases = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
 
-                log_pw += self.calculate_log_weight_prior(weights, layer)  # not needed if we're using many passes
+                    log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
+                    log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
+
+                else:  # Use mean and rho to estimate expectation of weights and biases
+                    mu_w = self._model.get_variable(layer, self._model.VAR_WEIGHT_MU)
+                    mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
+                    sigma_w = tf.nn.softplus(self._model.get_variable(layer, self._model.VAR_WEIGHT_RHO))
+                    sigma_b = tf.nn.softplus(self._model.get_variable(layer, self._model.VAR_BIAS_RHO))
+                    weights = tf.abs(mu_w) + sigma_w
+                    biases = tf.abs(mu_b) + sigma_b
+
+                log_pw += self.calculate_log_weight_prior(weights, layer)
                 log_pw += self.calculate_log_bias_prior(biases, layer)
                 log_pw += self.calculate_log_hyperprior(layer)
-
-                log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
-                log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)
 
         return log_pw, log_qw
 
