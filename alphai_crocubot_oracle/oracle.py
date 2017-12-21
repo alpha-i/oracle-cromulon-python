@@ -31,7 +31,7 @@ DEFAULT_N_CORRELATED_SERIES = 5
 DEFAULT_N_CONV_FILTERS = 5
 DEFAULT_CONV_KERNEL_SIZE = [3, 3, 1]
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_net"
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
 DEFAULT_NETWORK = 'crocubot'
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())

@@ -9,7 +9,7 @@ import alphai_crocubot_oracle.crocubot.train as crocubot_train
 
 from alphai_crocubot_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
 from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
-from alphai_crocubot_oracle.data.classifier import BinDistribution
+from alphai_feature_generation.classifier import BinDistribution
 from alphai_crocubot_oracle.data.providers import TrainDataProviderForDataSource
 from alphai_crocubot_oracle.helpers import printtime, execute_and_get_duration
 

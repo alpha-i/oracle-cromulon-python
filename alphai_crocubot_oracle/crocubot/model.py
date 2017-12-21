@@ -278,8 +278,9 @@ class Estimator:
         signal, layer_number = self.conv_forward_pass(signal)
 
         if layer_number < self._model.topology.n_layers:
-            prepared_signal = self.transition_from_conv_to_full(signal, layer_number)
-            signal = self.looped_passes(prepared_signal)
+            if layer_number > 0:
+                signal = self.transition_from_conv_to_full(signal, layer_number)
+            signal = self.looped_passes(signal)
 
         return signal
 
@@ -298,22 +299,20 @@ class Estimator:
         output_signal = self.bayes_forward_pass(input_signal, int(0))
         output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
 
-        if n_passes > 1:
+        def condition(index, _):
+            return tf.less(index, n_passes)
 
-            def condition(index, _):
-                return tf.less(index, n_passes)
+        def body(index, multipass):
+            single_output = self.bayes_forward_pass(input_signal, iteration=index)
+            return index+1, tf.concat([multipass, [single_output]], axis=0)
 
-            def body(index, multipass):
-                single_output = self.bayes_forward_pass(input_signal, iteration=index)
-                return index+1, tf.concat([multipass, [single_output]], axis=0)
-
-            # We do not care about the index value here, return only the signal
-            # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
-            start_index = tf.constant(1)
-            loop_shape = [start_index.get_shape(), output_signal.get_shape()]
-            output_list = tf.while_loop(condition, body, [start_index, output_signal],
-                                        parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
-            output_signal = tf.stack(output_list, axis=0)
+        # We do not care about the index value here, return only the signal
+        # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
+        start_index = tf.constant(1)
+        loop_shape = [start_index.get_shape(), output_signal.get_shape()]
+        output_list = tf.while_loop(condition, body, [start_index, output_signal],
+                                    parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
+        output_signal = tf.stack(output_list, axis=0)
 
 
         # else:  # FIXME   [0, 1, 1, 10]   vs.    [1, 400, 1, 1, 10]
