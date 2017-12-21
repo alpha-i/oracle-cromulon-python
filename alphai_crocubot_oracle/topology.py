@@ -98,8 +98,6 @@ class Topology(object):
         self.n_classification_bins = n_classification_bins
         self.n_parameters = self._calculate_number_of_parameters(layers)
 
-
-
     def _verify_layers(self, layers):
         """
         A function that checks each layer to ensure that it is valid i.e., expected activation function, trainable

@@ -123,8 +123,8 @@ def train(topology,
                 raise ValueError("Found nan value for epoch loss.")
 
             epoch_loss_list.append(epoch_loss)
-
-            _log_epoch_loss_if_needed(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch, tf_flags.use_convolution)
+            _log_epoch_loss_if_needed(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
+                                      tf_flags.use_convolution)
 
         sample_log_predictions = sess.run(log_predict,
                                           feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})

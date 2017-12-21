@@ -25,7 +25,7 @@ POOL_LAYER_3D = 'pool3d'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
 DATA_FORMAT = 'channels_last'
 TIME_DIMENSION = 3  # Tensor dimensions defined as: [batch, series, time, features, filters]
-FORECAST_OVERLAP = 26  # How many timesteps in features correspond to forecast interval. Assumes 15min interval and forecast of 1 trading day
+FORECAST_OVERLAP = 26  # How many timesteps correspond to forecast interval.15min interval and forecast of 1 trading day
 N_PARALLEL_PASSES = 10  # How many passes over the bayes layers can be performed in parallel. Default is 10.
 USE_SHUFFLE = True
 
@@ -293,7 +293,8 @@ class Estimator:
         :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
         """
 
-        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes, lambda: self._flags.n_eval_passes)
+        n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes,
+                           lambda: self._flags.n_eval_passes)
         normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
         output_signal = self.bayes_forward_pass(input_signal, int(0))
@@ -314,8 +315,7 @@ class Estimator:
                                     parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
         output_signal = tf.stack(output_list, axis=0)
 
-
-        # else:  # FIXME   [0, 1, 1, 10]   vs.    [1, 400, 1, 1, 10]
+        # else:  # FIXME improved algorithm in progress
         #     n_bins = self._model.topology.n_classification_bins
         #     loop_shape = tf.TensorShape([None, None, 1, 1, n_bins])
         #     dummy_shape = (0, self._flags.batch_size, 1, 1, n_bins)
@@ -325,8 +325,9 @@ class Estimator:
         #     def condition(index, _):
         #         return tf.less(index, n_passes)
         #
-        #     def body(index, multipass):  # FIXME need to check the random seeds differ
-        #         single_output = self.bayes_forward_pass(input_signal, iteration=index)  # set iteration=None if using rand shuffle
+        #     def body(index, multipass):
+        #         single_output = self.bayes_forward_pass(input_signal, iteration=index)
+        # # # set iteration=None if using rand shuffle
         #         return index+1, tf.concat([multipass, [single_output]], axis=0)
         #
         #     # We do not care about the index value here, return only the signal
@@ -495,9 +496,11 @@ class Estimator:
 
         norm_name = "batch_norm_" + str(layer_number)
         try:
-            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=True, name=norm_name)
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training,
+                                                   reuse=True, name=norm_name)
         except:
-            signal = tf.layers.batch_normalization(signal, training=self._model._is_training, reuse=False, name=norm_name)
+            signal = tf.layers.batch_normalization(signal, training=self._model._is_training,
+                                                   reuse=False, name=norm_name)
 
         return signal
 

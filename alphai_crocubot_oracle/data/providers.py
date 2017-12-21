@@ -1,8 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from copy import deepcopy
 import logging
-
 
 import numpy as np
 from alphai_data_sources.data_sources import DataSourceGenerator
