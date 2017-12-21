@@ -180,7 +180,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
     estimator = Estimator(crocubot_model, tf_flags)
 
     if USE_EFFICIENT_PASSES:
-        log_predictions = estimator.efficient_multiple_passes(x, tf_flags.n_train_passes)
+        log_predictions = estimator.efficient_multiple_passes(x)
     else:
         log_predictions = estimator.average_multiple_passes(x, tf_flags.n_train_passes)
 

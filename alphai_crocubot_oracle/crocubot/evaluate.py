@@ -42,7 +42,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=2):
     logging.info("Evaluating {} passes with shape {}".format(eval_passes, data.shape))
 
     if USE_EFFICIENT_PASSES:
-        y = estimator.efficient_multiple_passes(x, eval_passes)
+        y = estimator.efficient_multiple_passes(x)
     else:
         y = estimator.collate_multiple_passes(x, eval_passes)
 
@@ -62,7 +62,9 @@ def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=2):
         except:
             pass
 
+
         log_p = sess.run(y, feed_dict={x: data, is_training: False})
+
         log_network_confidence(log_p)
 
 
