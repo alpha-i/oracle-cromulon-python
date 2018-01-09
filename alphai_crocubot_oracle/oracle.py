@@ -362,7 +362,7 @@ class CrocubotOracle:
         numpy_arrays = []
         for key, value in train_x_dict.items():
             numpy_arrays.append(value)
-            logging.info("Appending feature of shape".format(value.shape))
+            logging.info("Appending feature of shape {}".format(value.shape))
 
         # Currently train_x will have dimensions [features; samples; timesteps; symbols]
         train_x = np.stack(numpy_arrays, axis=0)
