@@ -176,7 +176,8 @@ class CrocubotOracle:
 
         self.verify_pricing_data(predict_data)
         latest_train_file = self._train_file_manager.latest_train_filename(execution_time)
-        predict_x, symbols, predict_timestamp, target_timestamp = self._data_transformation.create_predict_data(predict_data)
+        predict_x, symbols, predict_timestamp, target_timestamp = \
+            self._data_transformation.create_predict_data(predict_data)
 
         logging.info('Predicting mean values.')
         start_time = timer()
