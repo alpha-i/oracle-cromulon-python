@@ -48,7 +48,7 @@ def train(topology,
     global_step = tf.Variable(0, trainable=False, name='global_step')
     n_batches = data_provider.number_of_batches
 
-    cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags)
+    cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags, global_step)
     tf.summary.scalar("cost", cost_operator)
     optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology)
 
@@ -157,7 +157,7 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_
             logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
-def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
+def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_step):
 
     """
     Set the cost operator
@@ -166,6 +166,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
     :param labels:
     :param n_batches:
     :param tf_flags:
+    :param global step: keep track of how far training has progressed
     :return:
     """
 
@@ -188,7 +189,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags):
         cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)
         log_likelihood = tf.reduce_mean(cost_operator)
     elif tf_flags.cost_type == 'bayes':
-        cost_operator = cost_object.get_bayesian_cost(log_predictions, labels)
+        cost_operator = cost_object.get_bayesian_cost(log_predictions, labels, global_step)
         likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
         log_likelihood = tf.reduce_mean(likelihood_op)
     elif tf_flags.cost_type == 'softmax':
