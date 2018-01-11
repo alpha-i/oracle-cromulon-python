@@ -514,7 +514,8 @@ class Estimator:
         :return:  A rank 5 tensor of dimensions [batch, series, time, features, filters]
         """
 
-        n_kernels = self._model._topology.n_kernels
+        current_layer = self._model._topology.layers[layer_number]
+        n_kernels = current_layer.get("n_kernels", self._model._topology.n_kernels)
         dilation_rate = self._model._topology.dilation_rates
         strides = self._model._topology.strides
 
@@ -555,7 +556,7 @@ class Estimator:
         :return:
         """
 
-        return tf.layers.max_pooling3d(inputs=signal, pool_size=[2, 1, 2], strides=2, data_format='channels_first',)
+        return tf.layers.max_pooling3d(inputs=signal, pool_size=[2, 2, 1], strides=2, data_format=DATA_FORMAT)
 
     def pool_layer_3d(self, signal):
         """ Usually follows conv_3d layer to reduce the dimensionality. Currently only targets the timestep dimension

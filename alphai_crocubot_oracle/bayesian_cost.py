@@ -9,6 +9,8 @@ It is used during the train of the model, implemented in the module alphai_crocu
 import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
 
+N_BATCHES_SUPPRESSED_PRIOR = 1000  # How many batches over which we gradually introduce the prior
+
 
 class BayesianCost(object):
 
@@ -31,11 +33,32 @@ class BayesianCost(object):
         self._spike_std_dvn = tf.cast(spike_std_dvn,  tm.DEFAULT_TF_TYPE)
         self._spike_slab_weighting = tf.cast(spike_slab_weighting,  tm.DEFAULT_TF_TYPE)
 
-    def get_bayesian_cost(self, prediction, truth):
+    def get_bayesian_cost(self, prediction, truth, global_step=None):
+        """
+
+        :param prediction:
+        :param truth:
+        :param global_step: Used to suppress the prior during the early phases of learning
+        :return:
+        """
         log_pw, log_qw = self.calculate_priors()
         log_likelihood = self.calculate_likelihood(truth, prediction)
 
-        return (log_qw - log_pw) * self._epoch_fraction - log_likelihood
+        prior_strength = self.calculate_prior_strength(global_step)
+
+        return (log_qw - log_pw) * self._epoch_fraction * prior_strength - log_likelihood
+
+    def calculate_prior_strength(self, train_steps):
+
+        if train_steps is None:
+            prior_strength = tf.cast(1.0, tf.float32)
+        else:
+            step_ratio = train_steps / N_BATCHES_SUPPRESSED_PRIOR
+            one = tf.cast(1.0, tf.float32)
+            step = tf.cast(step_ratio, tf.float32)
+            prior_strength = tf.minimum(one, step)
+
+        return prior_strength
 
     def get_hellinger_cost(self, features, truth, n_passes, estimator):
         """ Perform similar sum to bayesian cost, but different weighting over different passes. """
