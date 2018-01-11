@@ -69,7 +69,7 @@ class Topology(object):
         if conv_config:
             print("Convolution config", conv_config)
             self.kernel_size = conv_config['kernel_size']
-            self.n_kernels = conv_config["n_kernels"]
+            self.n_kernels = conv_config["n_kernels"]  # kernels used in first conv layer.
             self.dilation_rates = conv_config["dilation_rates"]
             self.strides = conv_config["strides"]
         else:
@@ -212,6 +212,7 @@ class Topology(object):
 
         layers = []
         n_layers = len(activation_functions)
+        current_n_kernels = self.n_kernels
 
         for i in range(n_layers):
             layer = {}
@@ -236,10 +237,12 @@ class Topology(object):
                     layer["depth"] = max(1, int(prev_layer['depth'] / 2))
                     layer["height"] = max(1, int(prev_layer['height'] / 2))
                     layer["width"] = max(1, int(prev_layer['width'] / 2))
+                    current_n_kernels *= 2
                 elif previous_layer_type == 'pool3d':
                     layer["depth"] = prev_layer['depth']
                     layer["height"] = max(1, int(prev_layer['height'] / 4))
                     layer["width"] = prev_layer['width']
+                    current_n_kernels *= 2
                 elif previous_layer_type in {'conv2d', 'conv1d', 'conv3d'}:
                     # This will depend on choice of padding. Default for now is same, so easier.
                     layer["depth"] = int(prev_layer["depth"])
@@ -254,7 +257,9 @@ class Topology(object):
                 if previous_layer_type in {'conv2d', 'conv1d', 'conv3d', 'pool2d', 'pool3d'}\
                         and layer["type"] == 'full':
                     layer['reshape'] = True
-                    layer["width"] *= self.n_kernels
+                    layer["width"] *= prev_layer["n_kernels"]
+
+            layer["n_kernels"] = current_n_kernels
 
             layers.append(layer)
 
