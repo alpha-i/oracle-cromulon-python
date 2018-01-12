@@ -53,7 +53,7 @@ def load_default_topology(series_name, tf_flags, n_layers):
                 layer_heights = [28, 28, 28, 14, 400, 10]
                 layer_widths = [28, 28, 28, 14, 1, 1]
             elif n_layers == 9:
-                layer_types = ['conv3d', 'conv3d', 'conv3d', 'conv3d', 'conv3d', 'conv3d', 'pool2d', 'full',
+                layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'conv3d', 'conv3d', 'pool2d', 'full',
                                'full']
                 layer_heights = [28, 28, 28, 28, 28, 28, 28, 400, 10]
                 layer_widths = [28, 28, 28, 28, 28, 28, 28, 1, 1]

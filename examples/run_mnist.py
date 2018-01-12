@@ -18,12 +18,13 @@ def run_mnist_test(update_config):
         config["n_epochs"] = 1  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 1e-3   # Use high learning rate for testing purposes
     else:
-        config["n_epochs"] = 400  # Scored 98.99% after 100 epochs; 98.5 after 10
-        config["learning_rate"] = 1e-3   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
+        config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10
+        config["learning_rate"] = 1e-4   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
         # 21 layer res network. 10 epoch: 98.86; 100 epoch: 99.21%
 
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha'
-    config['batch_size'] = 200
+    config['batch_size'] = 400
+    config['do_batch_norm'] = False
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch

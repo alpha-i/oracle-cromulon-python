@@ -10,18 +10,22 @@ logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
-N_CYCLES = 10   # 10
-NOISE_AMPLITUDE = 100  # 100  # Rms noise relative to rms signal
-TRAIN_PASSES = [1, 4, 16, 64]    # [1, 4, 16, 64]
-DEFAULT_EVAL_PASSES = [1, 4, 16, 64]  # [1, 4, 16, 64]
-N_LAYERS = [4, 9, 21]  # [4, 9, 21]
-OPT_METHODS = ['GDO', 'Adam']  # GDO Adam
+N_CYCLES = 10   # 20
+NOISE_AMPLITUDE = 400  # 100  # Rms noise relative to rms signal
+TRAIN_PASSES = [64]    # [1, 4, 16, 64] # Big influence
+DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64] # Not convinced this is truly changing in-graph
+# will just use train eval?
+N_LAYERS = [9]  # [4, 9, 21] # Big Influence
+OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
 TRAIN_PATH = '/mnt/pika/Networks/'
 SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
 ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
 QUICK_TEST = False
+
+# currently running  new batch norm implementation, see if we can recover 60% performance!!
+# Only got 16%. so removed batch norm.
 
 
 def run_mnist_tests():
@@ -57,6 +61,7 @@ def run_mnist_tests():
 
 
 def build_config(optimisation_method):
+
     config={}
     config["train_path"] = TRAIN_PATH
     config["tensorboard_log_path"] = TF_LOG_PATH
@@ -70,6 +75,9 @@ def build_config(optimisation_method):
 
 
 run_mnist_tests()
+
+
+
 
 # NOISE 60 RESULTS; 9 layer; 500 epoch
     #
@@ -112,7 +120,7 @@ run_mnist_tests()
 
 # NOISE 40 RESULTS 4 layer; 100 epoch; t = [1, 4, 10] ; e = [1, 4, 10]
 # GDO accuracy: [0.2359, 0.2359, 0.2359, 0.10290000000000001, 0.10290000000000001, 0.10290000000000001, 0.1135, 0.1135, 0.1135]
- #   Mean  accuracy: 0.150766666667
+#   Mean  accuracy: 0.150766666667
 #   Adam: [0.65839999999999999, 0.65839999999999999, 0.65839999999999999, 0.6633, 0.6633, 0.6633, 0.37830000000000003, 0.37830000000000003, 0.37830000000000003]
     # #  Mean: 0.566666666667
     # Best performance: Adam 4,4, GDO nowhere
