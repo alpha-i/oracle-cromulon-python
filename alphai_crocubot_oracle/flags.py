@@ -85,7 +85,7 @@ def update_config_defaults(config):
     """
 
     if 'optimisation_method' not in config:
-        config['optimisation_method'] = 'GDO'
+        config['optimisation_method'] = 'Adam'
 
     if 'use_convolution' not in config:
         config['use_convolution'] = 'False'
