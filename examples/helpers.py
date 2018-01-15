@@ -61,6 +61,17 @@ def load_default_topology(series_name, tf_flags, n_layers):
                 layer_types = ['conv3d', 'conv3d', 'conv3d', 'res', 'conv3d', 'conv3d', 'conv3d', 'pool2d', 'full', 'full']
                 layer_heights = [28, 28, 28, 28, 28, 28, 28, 28, 400, 10]
                 layer_widths = [28, 28, 28, 28, 28, 28, 28, 28, 1, 1]
+            elif n_layers == 11:  # Same as 9 but with extra full layers
+                layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'conv3d', 'conv3d', 'pool2d', 'full',
+                               'full', 'full', 'full']
+                layer_heights = [28, 28, 28, 28, 28, 28, 28, 400, 400, 400, 10]
+                layer_widths = [28, 28, 28, 28, 28, 28, 28, 1, 1, 1, 1]
+            elif n_layers == 12:
+                layer_types = ['conv3d', 'conv3d', 'res', 'conv3d', 'conv3d', 'conv3d', 'pool2d', 'conv3d', 'conv3d', 'pool2d', 'full',
+                               'full']
+                layer_heights = [28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 400, 10]
+                layer_widths = [28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 1, 1]
+
             elif n_layers == 20:  # Failed to learn mnist
                 layer_types = (n_layers - 3) * ['conv3d'] + ['pool2d', 'full', 'full']
                 layer_heights = (n_layers - 2) * [28] + [400] + [10]
@@ -69,6 +80,13 @@ def load_default_topology(series_name, tf_flags, n_layers):
                 layer_types = (n_layers - 3) * ['conv3d'] + ['pool2d', 'full', 'full']
                 res_layer = int(n_layers / 2)
                 layer_types[res_layer] = 'res'
+                layer_heights = (n_layers - 2) * [28] + [400] + [10]
+                layer_widths = (n_layers - 2) * [28] + [1] + [1]
+            elif n_layers == 30:
+                layer_types = (n_layers - 3) * ['conv3d'] + ['pool2d', 'full', 'full']
+                layer_types[10] = 'res'
+                layer_types[20] = 'res'
+                layer_types[24] = 'pool2d'
                 layer_heights = (n_layers - 2) * [28] + [400] + [10]
                 layer_widths = (n_layers - 2) * [28] + [1] + [1]
             else:

@@ -10,12 +10,12 @@ logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
-N_CYCLES = 10   # 20
-NOISE_AMPLITUDE = 400  # 100  # Rms noise relative to rms signal
-TRAIN_PASSES = [64]    # [1, 4, 16, 64] # Big influence
-DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64] # Not convinced this is truly changing in-graph
+N_CYCLES = 4   # 20
+NOISE_AMPLITUDE = 400  # 400  # Rms noise relative to rms signal
+TRAIN_PASSES = [8]  # 8 works well [1, 4, 16, 64] # Big influence
+DEFAULT_EVAL_PASSES = [8]  # [1, 4, 16, 64]  #
 # will just use train eval?
-N_LAYERS = [9]  # [4, 9, 21] # Big Influence
+N_LAYERS = [30]  # [4, 9, 11, 21] # Big Influence
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
@@ -23,9 +23,6 @@ TRAIN_PATH = '/mnt/pika/Networks/'
 SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
 ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
 QUICK_TEST = False
-
-# currently running  new batch norm implementation, see if we can recover 60% performance!!
-# Only got 16%. so removed batch norm.
 
 
 def run_mnist_tests():
@@ -76,8 +73,7 @@ def build_config(optimisation_method):
 
 run_mnist_tests()
 
-
-
+# Noise 400 w res layer
 
 # NOISE 60 RESULTS; 9 layer; 500 epoch
     #
