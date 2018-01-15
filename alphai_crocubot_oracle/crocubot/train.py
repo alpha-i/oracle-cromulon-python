@@ -218,8 +218,10 @@ def _log_topology_parameters_size(topology):
 def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology):
     """ Define the algorithm for updating the trainable variables. """
 
+    learning_rate = tf_flags.retrain_learning_rate if do_retraining else tf_flags.learning_rate
+
     if tf_flags.optimisation_method == 'Adam':
-        optimizer = tf.train.AdamOptimizer(tf_flags.learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate)
         gradients, variables = zip(*optimizer.compute_gradients(cost_operator))
         gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
         optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
@@ -233,7 +235,7 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)   # For batch normalisation
         with tf.control_dependencies(update_ops):
-            optimizer = tf.train.GradientDescentOptimizer(tf_flags.learning_rate)
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
             clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
             optimize = optimizer.apply_gradients(clipped_grads_and_vars)
