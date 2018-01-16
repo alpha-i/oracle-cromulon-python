@@ -10,6 +10,7 @@ import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
 
 N_BATCHES_SUPPRESSED_PRIOR = 1000  # How many batches over which we gradually introduce the prior
+ENTROPIC_COST_STRENGTH = 10.0  # How strongly the cost function is modified
 
 
 class BayesianCost(object):
@@ -74,11 +75,10 @@ class BayesianCost(object):
 
         log_prior = ((log_qw - log_pw) * self._epoch_fraction) * prior_strength
 
-        return log_prior - log_likelihood - entropic_log_p
+        return log_prior - log_likelihood - entropic_log_p * ENTROPIC_COST_STRENGTH
 
     def calculate_entropic_log_p(self, log_prediction):
-        """ Discourages the network from monotonously predicting a single outcome.
-        If all predictions are the same then variance is low, """
+        """ Discourages the network from monotonously predicting a single outcome."""
 
         log_prediction = tf.squeeze(log_prediction)
 
