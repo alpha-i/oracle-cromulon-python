@@ -58,7 +58,6 @@ def train(topology,
     epoch_loss_list = []
 
     # Launch the graph
-    logging.info("Launching Graph.")
     with tf.Session() as sess:
 
         is_model_ready = False
@@ -100,10 +99,11 @@ def train(topology,
                 batch_labels = batch_data.labels
 
                 if batch_number == 0 and epoch == 0:
-                    logging.info("Training {} batches of size {} and {}".format(
+                    logging.info("Training {} batches of size {} and {} using {} cost".format(
                         n_batches,
                         batch_features.shape,
-                        batch_labels.shape
+                        batch_labels.shape,
+                        tf_flags.cost_type
                     ))
 
                 _, batch_loss, batch_likeli, summary_results = \
@@ -146,7 +146,7 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_
     :return:
     """
     if (epoch % PRINT_LOSS_INTERVAL) == 0:
-        msg = "Epoch {} of {} ... Loss: {:.2e}. LogLikeli: {:.2e} in {:.2f} seconds."
+        msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
         logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
 
         if PRINT_KERNEL and use_convolution:
@@ -190,6 +190,10 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_st
         log_likelihood = tf.reduce_mean(cost_operator)
     elif tf_flags.cost_type == 'bayes':
         cost_operator = cost_object.get_bayesian_cost(log_predictions, labels, global_step)
+        likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
+        log_likelihood = tf.reduce_mean(likelihood_op)
+    elif tf_flags.cost_type == 'entropic':
+        cost_operator = cost_object.get_entropy_cost(log_predictions, labels, global_step)
         likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
         log_likelihood = tf.reduce_mean(likelihood_op)
     elif tf_flags.cost_type == 'softmax':
