@@ -45,29 +45,38 @@ class BayesianCost(object):
         log_likelihood = self.calculate_likelihood(truth, prediction)
 
         prior_strength = self.calculate_prior_strength(global_step)
-        entropy_cost = self.get_entropy_cost(prediction)
-
-        log_prior = (entropy_cost + (log_qw - log_pw) * self._epoch_fraction) * prior_strength
+        log_prior = (log_qw - log_pw) * self._epoch_fraction * prior_strength
 
         return log_prior - log_likelihood
 
-    def old_get_entropy_cost(self, log_prediction):
+    def get_variance_cost(self, log_prediction):
         """ Discourages the network from monotonously predicting a single outcome.
-        If all predictions are the same then variance is low, """
+        If all predictions are the same then variance is low.  This worked pretty well but was an ad hoc test,
+        but largely superceded by get_entropy_cost. """
 
         log_prediction = tf.squeeze(log_prediction)
 
         nbins =  tf.shape(log_prediction)[-1]
-        batch_size = tf.shape(log_prediction)[0]
         one_hot_predict = tf.one_hot(tf.nn.top_k(log_prediction).indices, nbins)
-        # prediction_counts = tf.reduce_sum()
-        # log_p_counts =calculate_log_p_counts(prediction_counts, nbins, batch_size)
+
         mean, variance = tf.nn.moments(one_hot_predict, axes=0)
         variance = tf.squeeze(variance)
 
         return tf.reduce_sum(tf.reciprocal(0.01 + variance))
 
-    def get_entropy_cost(self, log_prediction):
+    def get_entropy_cost(self, prediction, truth, global_step=None):
+
+        log_pw, log_qw = self.calculate_priors()
+        log_likelihood = self.calculate_likelihood(truth, prediction)
+
+        prior_strength = self.calculate_prior_strength(global_step)
+        entropic_log_p = self.calculate_entropic_log_p(prediction)
+
+        log_prior = ((log_qw - log_pw) * self._epoch_fraction) * prior_strength
+
+        return log_prior - log_likelihood - entropic_log_p
+
+    def calculate_entropic_log_p(self, log_prediction):
         """ Discourages the network from monotonously predicting a single outcome.
         If all predictions are the same then variance is low, """
 
@@ -77,26 +86,24 @@ class BayesianCost(object):
         batch_size = tf.shape(log_prediction)[0]
         one_hot_predict = tf.one_hot(tf.nn.top_k(log_prediction).indices, n_bins)
         prediction_counts = tf.reduce_sum(one_hot_predict, axis=0)
-        log_p_counts = self.calculate_log_p_counts(prediction_counts, n_bins, batch_size)
+        log_p_counts = self.calculate_log_p_multinomial(prediction_counts, n_bins, batch_size)
 
-        return tf.reduce_sum(log_p_counts)
+        return log_p_counts
 
-    def calculate_log_p_counts(self, n_counts, nbins, batch_size):
-        """
-
-        :return:
+    def calculate_log_p_multinomial(self, n_counts, nbins, batch_size):
+        """ Log p of drawing x_i balls of colour i with replacement.
+        See e.g. https://en.wikipedia.org/wiki/Multinomial_distribution#Probability_mass_function
         """
 
         n_counts = tf.cast(n_counts, tf.float32)
         nbins = tf.cast(nbins, tf.float32)
         batch_size = tf.cast(batch_size, tf.float32)
 
-        term_a = - n_counts * tf.log(nbins) + (batch_size - n_counts) * tf.log((nbins - 1) / nbins)
-        term_b = tf.lgamma(batch_size + 1) - tf.lgamma(batch_size - n_counts + 1) - tf.lgamma(n_counts + 1)
-        # term_a = tf.Print(term_a, [term_a], message="term_a: ")
-        # term_b = tf.Print(term_b, [term_b], message="term_b: ")
+        term_a = tf.lgamma(batch_size + 1)
+        term_b = tf.reduce_sum(tf.lgamma(n_counts + 1))
+        term_c = batch_size * tf.log(nbins)
 
-        return tf.reduce_sum(term_a + term_b)
+        return term_a - term_b - term_c
 
     def calculate_prior_strength(self, train_steps):
 
