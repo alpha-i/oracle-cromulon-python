@@ -100,7 +100,7 @@ class CrocuBotModel:
                 self._create_variable_for_layer(
                     layer_number,
                     self.VAR_WEIGHT_MU,
-                    tm.centred_gaussian(w_shape, weight_displacement)
+                    tm.centred_gaussian(w_shape, weight_displacement, seed=1)
                 )
 
                 self._create_variable_for_layer(
@@ -112,7 +112,7 @@ class CrocuBotModel:
                 self._create_variable_for_layer(
                     layer_number,
                     self.VAR_BIAS_MU,
-                    tm.centred_gaussian(b_shape, bias_displacement)
+                    tm.centred_gaussian(b_shape, bias_displacement, seed=1)
                 )
 
                 self._create_variable_for_layer(
@@ -135,9 +135,6 @@ class CrocuBotModel:
                     False
                 )  # Hyperprior on the distribution of the weights
 
-                self._create_noise(layer_number, self.VAR_WEIGHT_NOISE, w_shape)
-                self._create_noise(layer_number, self.VAR_BIAS_NOISE, b_shape)
-
     def calculate_penalty_vector(self, overlap,  total_length):
         """ Penalise nodes in the distant past using Delta t / t"""
 
@@ -159,15 +156,6 @@ class CrocuBotModel:
         with tf.variable_scope(scope_name):  # TODO check if this is the correct
             tf.get_variable(variable_name, initializer=initializer, trainable=is_trainable, dtype=tm.DEFAULT_TF_TYPE)
 
-    def _create_noise(self, layer_number, variable_name, shape):
-
-        if self._flags.USE_PERFECT_NOISE:
-            noise_vector = tm.perfect_centred_gaussian(shape)
-        else:
-            noise_vector = tm.centred_gaussian(shape)
-
-        self._create_variable_for_layer(layer_number, variable_name, noise_vector, False)
-
     def get_variable(self, layer_number, variable_name, reuse=True):
 
         scope_name = str(layer_number)
@@ -182,24 +170,15 @@ class CrocuBotModel:
     def get_bias_noise(self, layer_number, iteration):
         return self._get_layer_noise(layer_number, iteration, self.VAR_BIAS_NOISE)
 
-    def _get_layer_noise(self, layer_number, i, var_name):
-        # random_normal(shape, seed) # ideally need to ensure seed based on layer and iteration. tricky!
+    def _get_layer_noise(self, layer_number, iteration, var_name):
 
-        noise = self.get_variable(layer_number, var_name)
-
-        if USE_SHUFFLE:
-            # shuffle_order = [2, 1, 0, 3, 4, 5]  # need to implement [2, 1, 0] for bias
-            # noise = tf.transpose(noise, shuffle_order)
-            # noise = tf.random_shuffle(noise, seed=i)
-            # noise = tf.transpose(noise, shuffle_order)
-            noise_shape = noise.get_shape()
-            noise = tf.random_normal(shape=noise_shape)
+        if var_name == self.VAR_WEIGHT_NOISE:
+            noise_shape = self._topology.get_weight_shape(layer_number)
         else:
-            roll_axis = 2
-            x_len = noise.get_shape().as_list()[roll_axis]
-            noise = tf.concat([noise[:, :,  x_len - i:], noise[:, :, :x_len - i]], axis=roll_axis)
+            noise_shape = self._topology.get_bias_shape(layer_number)
 
-        return noise
+        iteration_seed = layer_number
+        return tf.random_normal(shape=noise_shape, seed=iteration_seed)
 
     def compute_weights(self, layer_number, iteration=0):
 
@@ -280,11 +259,11 @@ class Estimator:
         if layer_number < self._model.topology.n_layers:
             if layer_number > 0:
                 signal = self.transition_from_conv_to_full(signal, layer_number)
-            signal = self.looped_passes(signal)
+            signal = self.looped_passes(signal, layer_number)
 
         return signal
 
-    def looped_passes(self, input_signal):
+    def looped_passes(self, input_signal, start_layer):
         """
         Collate outputs from many realisations of weights from a bayesian network.
         Uses tf.while for improved memory efficiency
@@ -297,25 +276,28 @@ class Estimator:
                            lambda: self._flags.n_eval_passes)
         normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
-        output_signal = self.bayes_forward_pass(input_signal, int(0))
+        output_signal = self.partial_forward_pass(input_signal, int(0), start_layer, input_signal)
         output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
 
         def condition(index, _):
             return tf.less(index, n_passes)
 
         def body(index, multipass):
-            single_output = self.bayes_forward_pass(input_signal, iteration=index)
+            single_output = self.partial_forward_pass(input_signal, int(0), start_layer, input_signal)
             return index+1, tf.concat([multipass, [single_output]], axis=0)
 
-        # We do not care about the index value here, return only the signal
         # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
         start_index = tf.constant(1)
+
         loop_shape = [start_index.get_shape(), output_signal.get_shape()]
         output_list = tf.while_loop(condition, body, [start_index, output_signal],
                                     parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
         output_signal = tf.stack(output_list, axis=0)
 
-        # else:  # FIXME improved algorithm in progress
+        #        output_signal = tf.Print(output_signal, [tf.shape(output_signal)[3:]], message="output_signal_shape: ")
+        # output_signal_shape = [npasses, nsamples, nbins] or thereabouts
+        # else:  # FIXME improved algorithm in progress - perhaps use topology to define shape_invariants
+        #     eg typically 1 400 1 1 10 so [1, batch_size(NONE), 1, 1, NBINS
         #     n_bins = self._model.topology.n_classification_bins
         #     loop_shape = tf.TensorShape([None, None, 1, 1, n_bins])
         #     dummy_shape = (0, self._flags.batch_size, 1, 1, n_bins)
@@ -359,6 +341,9 @@ class Estimator:
         input_signal = tf.identity(signal, name='input')
 
         for layer_number in range(self._model.topology.n_layers):
+            if self._model.topology.layers[layer_number]['reshape']:
+                signal = self.transition_from_conv_to_full(signal, layer_number)
+
             signal = self.single_layer_pass(signal, layer_number, iteration, input_signal)
 
         return signal
@@ -382,7 +367,7 @@ class Estimator:
 
         return signal, layer_number
 
-    def bayes_forward_pass(self, signal, iteration):
+    def partial_forward_pass(self, signal, iteration, start_layer=0, input_signal=None):
         """  Propagate only through the fully connected layers.
 
         :param signal:
@@ -390,25 +375,22 @@ class Estimator:
         :return:
         """
 
-        for layer_number in range(self._model.topology.n_layers):
-            layer_type = self._model.topology.get_layer_type(layer_number)
-            if layer_type == FULLY_CONNECTED_LAYER:
-                signal = self.fully_connected_layer(signal, layer_number, iteration)
+        for layer_number in range(start_layer, self._model.topology.n_layers):
+            signal = self.single_layer_pass(signal, layer_number, iteration, input_signal)
 
         return signal
 
     def transition_from_conv_to_full(self, signal, layer_number):
         """
 
-        :param signal:
-        :return:
+        :param signal: 5D tensor
+        :param int layer_number: Layer in network where first fully connected layer appears
+        :return: signal: 4D tensor
         """
 
         if self._flags.apply_temporal_suppression:  # Prepare transition from conv/pool layers to fully connected
             penalty = self._model.get_variable(layer_number, self._model.VAR_PENALTY, reuse=True)
             signal = tf.multiply(signal, penalty)
-            if self._flags.do_batch_norm:
-                signal = self.batch_normalisation(signal, 'penalty')
 
         return self.flatten_last_dimension(signal)
 
@@ -423,17 +405,9 @@ class Estimator:
         """
 
         layer_type = self._model.topology.get_layer_type(layer_number)
-        activation_function = self._model.topology.get_activation_function(layer_number)
 
-        if self._model.topology.layers[layer_number]['reshape']:
-            signal = self.transition_from_conv_to_full(signal, layer_number)
-
-        if layer_type == CONVOLUTIONAL_LAYER_1D:
-            signal = self.convolutional_layer_1d(signal)
-        elif layer_type == CONVOLUTIONAL_LAYER_3D:
+        if layer_type == CONVOLUTIONAL_LAYER_3D:
             signal = self.convolutional_layer_3d(signal, layer_number)
-            if self._flags.do_batch_norm:
-                signal = self.batch_normalisation(signal, layer_number)
         elif layer_type == FULLY_CONNECTED_LAYER:
             signal = self.fully_connected_layer(signal, layer_number, iteration)
         elif layer_type == POOL_LAYER_2D:
@@ -445,7 +419,16 @@ class Estimator:
         else:
             raise ValueError('Unknown layer type')
 
-        return activation_function(signal)
+        final_layer_index = self._model.topology.n_layers - 1
+        is_not_final_layer = layer_number < final_layer_index
+
+        if is_not_final_layer:
+            activation_function = self._model.topology.get_activation_function(layer_number)
+            signal = activation_function(signal)
+            if self._flags.do_batch_norm:
+                signal = self.batch_normalisation(signal, layer_number)
+
+        return signal
 
     def fully_connected_layer(self, signal, layer_number, iteration):
         """ Propoagates signal through a fully connected set of weights
@@ -487,14 +470,14 @@ class Estimator:
 
         return signal
 
-    def batch_normalisation(self, signal, layer_number):
+    def batch_normalisation(self, signal, layer_name):
         """ Normalises the signal to unit variance and zero mean.
 
         :param signal:
         :return:
         """
 
-        norm_name = "batch_norm_" + str(layer_number)
+        norm_name = "batch_norm_" + str(layer_name)
         try:
             signal = tf.layers.batch_normalization(signal, training=self._model._is_training,
                                                    reuse=True, name=norm_name)

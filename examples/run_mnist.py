@@ -15,7 +15,7 @@ def run_mnist_test(update_config):
 
     do_quick_test = update_config.get('quick_test', True)
     if do_quick_test:
-        config["n_epochs"] = 100  # 98.91 after 10 epochs and only 6 layers
+        config["n_epochs"] = 20  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 2e-4   # Use high learning rate for testing purposes
     else:
         config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10

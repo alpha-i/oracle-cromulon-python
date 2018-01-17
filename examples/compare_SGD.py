@@ -13,10 +13,15 @@ logging.basicConfig(level=logging.DEBUG)
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 1   # 20
 NOISE_AMPLITUDE = 400  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
-TRAIN_PASSES = [1]  # 8 works well [1, 4, 16, 64] # Big influence
-DEFAULT_EVAL_PASSES = [1]  # [1, 4, 16, 64]
+TRAIN_PASSES = [64]  # 8 works well [1, 4, 16, 64] # Big influence
+DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64]
 # 48.06% fo 64 passes and 100 epoch
-# *running with 1 pass and 10 epoch
+# 12.94 running with 1 pass and 100 epoch
+# 11  with full batch norm
+# 58.34   with unimplemetned partial batch norm. Wow. wasn't even there
+#  11.35  with partial batch norm.
+#   11.35 with 11 layers
+
 
 N_LAYERS = [4]  # [4, 9, 11, 21] # Big Influence
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size

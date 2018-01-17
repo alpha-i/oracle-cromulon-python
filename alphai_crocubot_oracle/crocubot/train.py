@@ -13,7 +13,6 @@ from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 
 PRINT_KERNEL = True
 BOOL_TRUE = True
-USE_EFFICIENT_PASSES = True
 
 
 def train(topology,
@@ -64,6 +63,7 @@ def train(topology,
         number_of_epochs = tf_flags.n_epochs
 
         if do_retraining:
+
             if tf_flags.n_retrain_epochs < 1:
                 return epoch_loss_list  # Don't waste time loading model
             try:
@@ -180,10 +180,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_st
 
     estimator = Estimator(crocubot_model, tf_flags)
 
-    if USE_EFFICIENT_PASSES:
-        log_predictions = estimator.efficient_multiple_passes(x)
-    else:
-        log_predictions = estimator.average_multiple_passes(x, tf_flags.n_train_passes)
+    log_predictions = estimator.efficient_multiple_passes(x)
 
     if tf_flags.cost_type == 'bbalpha':
         cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)

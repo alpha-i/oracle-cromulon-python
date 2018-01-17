@@ -14,10 +14,9 @@ from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
 from alphai_crocubot_oracle.crocubot.train import log_network_confidence
 
 PRINT_KERNEL = True
-USE_EFFICIENT_PASSES = True
 
 
-def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=2):
+def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=64):
     """ Multiple passes allow us to estimate the posterior distribution.
 
     :param data:  Mini-batch to be fed into the network
@@ -41,10 +40,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=2):
 
     logging.info("Evaluating {} passes with shape {}".format(eval_passes, data.shape))
 
-    if USE_EFFICIENT_PASSES:
-        y = estimator.efficient_multiple_passes(x)
-    else:
-        y = estimator.collate_multiple_passes(x, eval_passes)
+    y = estimator.efficient_multiple_passes(x)
 
     with tf.Session() as sess:
         logging.info("Attempting to recover trained network: {}".format(last_train_file))
