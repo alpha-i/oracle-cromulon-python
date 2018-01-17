@@ -15,20 +15,23 @@ def run_mnist_test(update_config):
 
     do_quick_test = update_config.get('quick_test', True)
     if do_quick_test:
-        config["n_epochs"] = 10  # 98.91 after 10 epochs and only 6 layers
-        config["learning_rate"] = 1e-3   # Use high learning rate for testing purposes
+        config["n_epochs"] = 100  # 98.91 after 10 epochs and only 6 layers
+        config["learning_rate"] = 2e-4   # Use high learning rate for testing purposes
     else:
         config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10
         config["learning_rate"] = 1e-4   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
         # 21 layer res network. 10 epoch: 98.86; 100 epoch: 99.21%
         # 400 noise test: 1e-4 gets 28.23 % after 100 epochs
-        # 1e-4 gets 11.35 after 10; 10
+        # 1e-4 gets 11.35 after 10; 20 after 100
         # 1e-3 got 11; 11 again after 10; after 100: still 11. :(
         # 1e-5 got 4% acc after 100!!!
-        # 30 layer res monster: 1e-4:
+        # 30 layer res monster: 1e-4: 11.35% ouch
+        # new entropy_cost: 10.91 % :(
+        # Fixed entropy cost  45.4 % :) new record for 400 noise
+
 
         # Batch size of 200 and 1e-3 after 100:
-    config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha'
+    config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha', entropic
     config['batch_size'] = 400
     config['do_batch_norm'] = False
     config['n_series'] = 1

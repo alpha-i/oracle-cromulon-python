@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 
+np.random.seed(42)
 from examples.run_mnist import run_mnist_test
 
 logger = logging.getLogger('tipper')
@@ -10,19 +11,48 @@ logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
-N_CYCLES = 4   # 20
-NOISE_AMPLITUDE = 400  # 400  # Rms noise relative to rms signal
-TRAIN_PASSES = [8]  # 8 works well [1, 4, 16, 64] # Big influence
-DEFAULT_EVAL_PASSES = [8]  # [1, 4, 16, 64]  #
-# will just use train eval?
-N_LAYERS = [30]  # [4, 9, 11, 21] # Big Influence
+N_CYCLES = 1   # 20
+NOISE_AMPLITUDE = 400  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
+TRAIN_PASSES = [1]  # 8 works well [1, 4, 16, 64] # Big influence
+DEFAULT_EVAL_PASSES = [1]  # [1, 4, 16, 64]
+# 48.06% fo 64 passes and 100 epoch
+# *running with 1 pass and 10 epoch
+
+N_LAYERS = [4]  # [4, 9, 11, 21] # Big Influence
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
 TRAIN_PATH = '/mnt/pika/Networks/'
 SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
 ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
-QUICK_TEST = False
+QUICK_TEST = True
+
+# RESULTS FOR 800 NOISE AMP. 3 cycle, 10 epoch average.
+# suppressed priors:
+# bayesian cost:
+# entropic cost:
+
+# no supp priors:
+# bayesian cost: 12.3
+# entropic cost: 12.9 (max 18) # 12.3
+
+# WITH batch norm:
+# suppressed priors:
+# bayesian cost:
+# entropic cost:  10.9;   # 10000, so more than we will take
+
+# no supp priors:
+# bayesian cost: 10.45
+# entropic cost: 10.6
+
+# WITH no conv batch norm:
+# bayesian cost: 12.9
+# entropic cost: 17 (!) # repeat with 128: 12; 25 sec per epoch; 14sec per epoch at 64 passes.
+# but then not reproducible :/get 11 % twice over! weird!
+
+# WITH no transition batch norm:
+# bayesian cost:
+# entropic cost: 10.8
 
 
 def run_mnist_tests():
@@ -36,6 +66,7 @@ def run_mnist_tests():
                 config['n_train_passes'] = train_pass
                 temp_acc_list = []
                 for i in range(N_CYCLES):
+                    np.random.seed(42)
                     eval_time, accuracy = run_mnist_test(config)
                     temp_acc_list.extend(accuracy)
 
