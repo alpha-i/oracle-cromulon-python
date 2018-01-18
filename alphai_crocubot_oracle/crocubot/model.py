@@ -26,8 +26,13 @@ DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topolo
 DATA_FORMAT = 'channels_last'
 TIME_DIMENSION = 3  # Tensor dimensions defined as: [batch, series, time, features, filters]
 FORECAST_OVERLAP = 26  # How many timesteps correspond to forecast interval.15min interval and forecast of 1 trading day
-N_PARALLEL_PASSES = 10  # How many passes over the bayes layers can be performed in parallel. Default is 10.
-USE_SHUFFLE = True
+
+RANDOM_SEED = None  # For performance: set to None.
+
+if RANDOM_SEED:  # How many passes over the bayes layers can be performed in parallel. Default is 10.
+    N_PARALLEL_PASSES = 1  # Must go sequentially
+else:
+    N_PARALLEL_PASSES = 10
 
 
 class CrocuBotModel:
@@ -177,8 +182,14 @@ class CrocuBotModel:
         else:
             noise_shape = self._topology.get_bias_shape(layer_number)
 
-        iteration_seed = layer_number
-        return tf.random_normal(shape=noise_shape, seed=iteration_seed)
+        if RANDOM_SEED:
+            seed = layer_number * 1000 + RANDOM_SEED
+        else:
+            seed = None
+        noise = tf.random_normal(shape=noise_shape, seed=seed)
+        # noise = tf.Print(noise, [noise[0, 0, :]], message="Bias noise: ")
+        # tf.contrib.stateless.stateless_random_normal will allow seed set by a tensor
+        return noise
 
     def compute_weights(self, layer_number, iteration=0):
 
@@ -194,9 +205,7 @@ class CrocuBotModel:
         rho = self.get_variable(layer_number, self.VAR_BIAS_RHO)
         noise = self.get_bias_noise(layer_number, iteration)
 
-        # useful debugging statements
-        # noise = tf.Print(noise, [noise[0, 0, :]], message="Bias noise: ")
-        # noise = tf.Print(noise, [layer_number], message="layer_number: ")
+        # Useful debugging statements
         # noise = tf.Print(noise, [iteration], message="iteration: ")
 
         return mean + tf.nn.softplus(rho) * noise
@@ -264,62 +273,35 @@ class Estimator:
         return signal
 
     def looped_passes(self, input_signal, start_layer):
-        """
-        Collate outputs from many realisations of weights from a bayesian network.
+        """ Collate outputs from many realisations of weights from a bayesian network.
         Uses tf.while for improved memory efficiency
 
-        :param tensor x:
-        :return 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]:
+        :param tensor input_signal: Output from the conv layers
+        :param int start_layer: the start of the bayesian layers
+        :return: 4D tensor with dimensions [n_passes, batch_size, n_label_timesteps, n_categories]
         """
 
+        start_index = tf.constant(0)
         n_passes = tf.cond(self._model._is_training, lambda: self._flags.n_train_passes,
                            lambda: self._flags.n_eval_passes)
         normalisation = tf.log(tf.cast(n_passes, tf.float32))
-
-        output_signal = self.partial_forward_pass(input_signal, int(0), start_layer, input_signal)
-        output_signal = tf.expand_dims(output_signal, axis=0)  # First axis will hold number of passes
 
         def condition(index, _):
             return tf.less(index, n_passes)
 
         def body(index, multipass):
-            single_output = self.partial_forward_pass(input_signal, int(0), start_layer, input_signal)
+            single_output = self.partial_forward_pass(input_signal, int(0), start_layer)
             return index+1, tf.concat([multipass, [single_output]], axis=0)
 
         # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
-        start_index = tf.constant(1)
+        dummy_output = self.calculate_dummy_output(input_signal)
+        loop_shape = [start_index.get_shape(), dummy_output.get_shape()]
 
-        loop_shape = [start_index.get_shape(), output_signal.get_shape()]
-        output_list = tf.while_loop(condition, body, [start_index, output_signal],
+        output_list = tf.while_loop(condition, body, [start_index, dummy_output],
                                     parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
-        output_signal = tf.stack(output_list, axis=0)
+        output_signal = tf.stack(output_list[1:], axis=0)  # Ignore dummy first entry
+        output_signal = tf.nn.log_softmax(output_signal, dim=-1)  # Create discrete PDFs
 
-        #        output_signal = tf.Print(output_signal, [tf.shape(output_signal)[3:]], message="output_signal_shape: ")
-        # output_signal_shape = [npasses, nsamples, nbins] or thereabouts
-        # else:  # FIXME improved algorithm in progress - perhaps use topology to define shape_invariants
-        #     eg typically 1 400 1 1 10 so [1, batch_size(NONE), 1, 1, NBINS
-        #     n_bins = self._model.topology.n_classification_bins
-        #     loop_shape = tf.TensorShape([None, None, 1, 1, n_bins])
-        #     dummy_shape = (0, self._flags.batch_size, 1, 1, n_bins)
-        #     dummy_signal = tf.Variable(tf.zeros(shape=dummy_shape), trainable=False)
-        #     start_index = tf.constant(0)
-        #
-        #     def condition(index, _):
-        #         return tf.less(index, n_passes)
-        #
-        #     def body(index, multipass):
-        #         single_output = self.bayes_forward_pass(input_signal, iteration=index)
-        # # # set iteration=None if using rand shuffle
-        #         return index+1, tf.concat([multipass, [single_output]], axis=0)
-        #
-        #     # We do not care about the index value here, return only the signal
-        #     args_shape = [start_index.get_shape(), loop_shape]
-        #     output_list = tf.while_loop(condition, body, [start_index, dummy_signal],
-        #                                 parallel_iterations=1, shape_invariants=args_shape)[1]
-        #     output_signal = tf.stack(output_list, axis=0)
-
-        # Create discrete PDFs
-        output_signal = tf.nn.log_softmax(output_signal, dim=-1)
         # Average probability over multiple passes
         output_signal = tf.reduce_logsumexp(output_signal, axis=0) - normalisation
 
@@ -563,6 +545,22 @@ class Estimator:
         new_shape = tf.concat([partial_new_shape, end_tiled], 0)
 
         return tf.reshape(signal, new_shape)
+
+    def calculate_dummy_output(self, input_signal):
+        """ Need a tensor which mimics the shape of the output of the network
+
+        :param input_signal:
+        :return:
+        """
+
+        partial_new_shape = tf.shape(input_signal)[0:1]
+        one = tf.expand_dims(tf.constant(int(1)), axis=0)
+        nbins = tf.expand_dims(tf.constant(self._model.topology.n_classification_bins), axis=0)
+
+        # Will need to update this if using multiple forecasts
+        dummy_shape = tf.concat([one, partial_new_shape, one, one, nbins], 0)
+
+        return tf.zeros(dummy_shape)
 
     def calculate_3d_kernel_size(self):
         """ Computes the desired kernel size based on the shape of the signal
