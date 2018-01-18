@@ -256,4 +256,21 @@ def log_network_confidence(log_predictions):
     confidence_values = np.max(predictions, axis=-1).flatten()
     typical_confidence = np.median(confidence_values)
 
-    logging.info('Typical network confidence for a single pass: {}'.format(typical_confidence))
+    logging.info('Running network diagnostics. Typical y confidence: {}'.format(typical_confidence))
+
+    binned_predictions = np.argmax(predictions, axis=-1).flatten()
+    n_predictions = len(binned_predictions)
+
+    bincounts = np.bincount(binned_predictions)
+    nbins = len(bincounts)
+    mode = np.argmax(bincounts)
+    max_predicted = bincounts[mode]
+
+    logging.info('{} of {} predictions fell in bin {} of {}'.format(max_predicted, n_predictions, mode, nbins))
+
+    mean_counts = n_predictions / nbins
+    sigma = np.sqrt(mean_counts)
+    max_expected_counts = mean_counts + 5 * sigma
+
+    if max_predicted > max_expected_counts:
+        logging.warning("Training may have failed: predictions are highly homogeneous.")
