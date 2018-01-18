@@ -48,7 +48,9 @@ class BayesianCost(object):
         prior_strength = self.calculate_prior_strength(global_step)
         log_prior = (log_qw - log_pw) * self._epoch_fraction * prior_strength
 
-        return log_prior - log_likelihood
+        cost = log_prior - log_likelihood
+
+        return cost, log_likelihood
 
     def get_variance_cost(self, log_prediction):
         """ Discourages the network from monotonously predicting a single outcome.
@@ -75,7 +77,9 @@ class BayesianCost(object):
 
         log_prior = ((log_qw - log_pw) * self._epoch_fraction) * prior_strength
 
-        return log_prior - log_likelihood - entropic_log_p * ENTROPIC_COST_STRENGTH
+        cost = log_prior - log_likelihood - entropic_log_p * ENTROPIC_COST_STRENGTH
+
+        return cost, log_likelihood
 
     def calculate_entropic_log_p(self, log_prediction):
         """ Discourages the network from monotonously predicting a single outcome."""

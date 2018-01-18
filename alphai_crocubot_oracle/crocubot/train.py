@@ -186,12 +186,10 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_st
         cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)
         log_likelihood = tf.reduce_mean(cost_operator)
     elif tf_flags.cost_type == 'bayes':
-        cost_operator = cost_object.get_bayesian_cost(log_predictions, labels, global_step)
-        likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
+        cost_operator, likelihood_op = cost_object.get_bayesian_cost(log_predictions, labels, global_step)
         log_likelihood = tf.reduce_mean(likelihood_op)
     elif tf_flags.cost_type == 'entropic':
-        cost_operator = cost_object.get_entropy_cost(log_predictions, labels, global_step)
-        likelihood_op = cost_object.calculate_likelihood(labels, log_predictions)
+        cost_operator, likelihood_op = cost_object.get_entropy_cost(log_predictions, labels, global_step)
         log_likelihood = tf.reduce_mean(likelihood_op)
     elif tf_flags.cost_type == 'softmax':
         cost_operator = tf.nn.softmax_cross_entropy_with_logits(logits=log_predictions, labels=labels)
