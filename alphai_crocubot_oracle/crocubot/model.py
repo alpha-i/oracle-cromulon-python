@@ -291,9 +291,9 @@ class Estimator:
 
         def body(index, multipass):
             single_output = self.partial_forward_pass(input_signal, int(0), start_layer)
-            return index+1, tf.concat([multipass, [single_output]], axis=0)
+            multipass = tf.concat([multipass, [single_output]], axis=0)
+            return index+1, multipass
 
-        # Could try allowing higher number of parallel_iterations, though may demand a lot of memory
         dummy_output = self.calculate_dummy_output(input_signal)
         loop_shape = [start_index.get_shape(), dummy_output.get_shape()]
 

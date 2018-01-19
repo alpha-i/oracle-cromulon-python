@@ -9,8 +9,10 @@ It is used during the train of the model, implemented in the module alphai_crocu
 import tensorflow as tf
 import alphai_crocubot_oracle.tensormaths as tm
 
+from tensorflow.python.ops import math_ops
+
 N_BATCHES_SUPPRESSED_PRIOR = 1000  # How many batches over which we gradually introduce the prior
-ENTROPIC_COST_STRENGTH = 10.0  # How strongly the cost function is modified
+ENTROPIC_COST_STRENGTH = 1e-3  # How strongly the cost function is modified
 
 
 class BayesianCost(object):
@@ -73,26 +75,25 @@ class BayesianCost(object):
         log_likelihood = self.calculate_likelihood(truth, prediction)
 
         prior_strength = self.calculate_prior_strength(global_step)
-        entropic_log_p = self.calculate_entropic_log_p(prediction)
+        entropic_cost = self.calculate_entropic_cost(prediction)
 
         log_prior = ((log_qw - log_pw) * self._epoch_fraction) * prior_strength
 
-        cost = log_prior - log_likelihood - entropic_log_p * ENTROPIC_COST_STRENGTH
+        cost = log_prior - log_likelihood + entropic_cost * ENTROPIC_COST_STRENGTH
 
         return cost, log_likelihood
 
-    def calculate_entropic_log_p(self, log_prediction):
+    def calculate_entropic_cost(self, log_prediction):
         """ Discourages the network from monotonously predicting a single outcome."""
 
         log_prediction = tf.squeeze(log_prediction)
+        mean, var_samples = tf.nn.moments(tf.exp(log_prediction), axes=0)
+        clip_min_variance = 1e-5  # Prevents 1 / 0 errors
+        var_samples = math_ops.maximum(var_samples, clip_min_variance)
 
-        n_bins = tf.shape(log_prediction)[-1]
-        batch_size = tf.shape(log_prediction)[0]
-        one_hot_predict = tf.one_hot(tf.nn.top_k(log_prediction).indices, n_bins)
-        prediction_counts = tf.reduce_sum(one_hot_predict, axis=0)
-        log_p_counts = self.calculate_log_p_multinomial(prediction_counts, n_bins, batch_size)
+        penalty = tf.reciprocal(var_samples)  # Small variance across samples should be discouraged
 
-        return log_p_counts
+        return tf.reduce_sum(penalty)
 
     def calculate_log_p_multinomial(self, n_counts, nbins, batch_size):
         """ Log p of drawing x_i balls of colour i with replacement.

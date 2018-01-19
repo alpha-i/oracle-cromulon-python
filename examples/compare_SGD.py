@@ -3,7 +3,6 @@ import tensorflow as tf
 import numpy as np
 import logging
 
-np.random.seed(42)
 from examples.run_mnist import run_mnist_test
 
 logger = logging.getLogger('tipper')
@@ -11,32 +10,44 @@ logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
-N_CYCLES = 1   # 20
-NOISE_AMPLITUDE = 400  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
+N_CYCLES = 5   # 20
+NOISE_AMPLITUDE = 800  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
 TRAIN_PASSES = [64]  # 8 works well [1, 4, 16, 64] # Big influence
 DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64]
-# 48.06% fo 64 passes and 100 epoch
-# 12.94 running with 1 pass and 100 epoch
-# 11  with full batch norm
-# 58.34   with unimplemetned partial batch norm. Wow. wasn't even there
-#  11.35  with partial batch norm.
-#   11.35 with 11 layers
+DEFAULT_RANDOM_SEED = 42
 
-
-N_LAYERS = [4]  # [4, 9, 11, 21] # Big Influence
+N_LAYERS = [9]  # [4, 9, 11, 21] # Big Influence. 9, 11 fail at 800 noise, 128 passes
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
 TRAIN_PATH = '/mnt/pika/Networks/'
 SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
 ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
-QUICK_TEST = True
+QUICK_TEST = False
+
+# RESULTS FOR 800 NOISE AMP  20 epoch average.
+# Updaed prior from 0.8 to 1 and spike-slab from 0.5 to 0.7
+
+# RESULTS FOR 800 NOISE AMP  20 epoch average.
+# suppressed priors:
+# bayesian cost:  Predicted: 6772 of 10000 in bin 1 of 10  ( 17.93 % accuracy)
+# bayesian cost:  Predicted: 7266 of 10000                 (14.24 %)
+#   Predicted: 4914 of 10000 predictions fell in bin 1 of 10    (14.36)
+#  :   Predicted :5876 of 10000 predictions fell in bin 1 of 10  (17.88)
+#   Predicted : 4357 of 10000 predictions fell in bin 1 of 10  ( 22.47 %)
+#    Predicted : 6941 of 10000 predictions fell in bin 1 of 10   17.96 %
+#   Predicted : 5549 of 10000 predictions fell in bin 1 of 10  (17 %)
+#   Predicted : 3880 of 10000 predictions fell in bin 1 of 10. (18.62 % )
+# Predicted : 4626 of 10000 predictions fell in bin 1 of 10. (20.77 % )
+#  Predicted : 4000 of 10000 predictions fell in bin 1 of 10. (14.08 % )
+# 1e4 entropic cost: 44 of 400; 11%! terrible..
+# 1 entropic cost: 5445 of 10000 predictions fell in bin 0, 7.68 %
+# 1e-3 entropic cost:
+# 1e-6 entropic cost: 6319 of 10000 predictions fell in bin 1 of 10  15.09 %
+
+
 
 # RESULTS FOR 800 NOISE AMP. 3 cycle, 10 epoch average.
-# suppressed priors:
-# bayesian cost:
-# entropic cost:
-
 # no supp priors:
 # bayesian cost: 12.3
 # entropic cost: 12.9 (max 18) # 12.3
@@ -70,10 +81,13 @@ def run_mnist_tests():
             for train_pass in TRAIN_PASSES:
                 config['n_train_passes'] = train_pass
                 temp_acc_list = []
+                seed = DEFAULT_RANDOM_SEED
                 for i in range(N_CYCLES):
-                    np.random.seed(42)
+                    np.random.seed(seed)
+                    config['random_seed'] = seed
                     eval_time, accuracy = run_mnist_test(config)
                     temp_acc_list.extend(accuracy)
+                    seed += 1
 
                 average_accuracy = np.mean(np.asarray(temp_acc_list))
                 accuracy_list.append(average_accuracy)

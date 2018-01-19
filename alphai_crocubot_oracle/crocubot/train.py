@@ -123,19 +123,22 @@ def train(topology,
                 raise ValueError("Found nan value for epoch loss.")
 
             epoch_loss_list.append(epoch_loss)
-            _log_epoch_loss_if_needed(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
-                                      tf_flags.use_convolution)
 
-        sample_log_predictions = sess.run(log_predict,
-                                          feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})
-        log_network_confidence(sample_log_predictions)
+            do_logging = (epoch % PRINT_LOSS_INTERVAL) == 0 or epoch == number_of_epochs - 1
+            if do_logging:
+                sample_log_predictions = sess.run(log_predict,
+                                                  feed_dict={x: batch_features, y: batch_labels, is_training: False})
+                _log_epoch_loss(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
+                                      tf_flags.use_convolution)
+                log_network_confidence(sample_log_predictions)
+
         out_path = saver.save(sess, tensorflow_path.session_save_path)
         logging.info("Model saved in file:{}".format(out_path))
 
     return epoch_loss_list
 
 
-def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use_convolution):
+def _log_epoch_loss(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use_convolution):
     """
     Logs the Loss according to PRINT_LOSS_INTERVAL
     :param int epoch:
@@ -145,16 +148,16 @@ def _log_epoch_loss_if_needed(epoch, epoch_loss, log_likelihood, n_epochs, time_
     :param bool use_convolution
     :return:
     """
-    if (epoch % PRINT_LOSS_INTERVAL) == 0:
-        msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
-        logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
 
-        if PRINT_KERNEL and use_convolution:
-            gr = tf.get_default_graph()
-            conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-            kernel_shape = conv1_kernel_val.shape
-            kernel_sample = conv1_kernel_val.flatten()[0:3]
-            logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
+    msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
+    logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
+
+    if PRINT_KERNEL and use_convolution:
+        gr = tf.get_default_graph()
+        conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
+        kernel_shape = conv1_kernel_val.shape
+        kernel_sample = conv1_kernel_val.flatten()[0:3]
+        logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
 def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_step):
@@ -253,24 +256,19 @@ def log_network_confidence(log_predictions):
     """
 
     predictions = np.exp(log_predictions)
+    nbins = predictions.shape[-1]
     confidence_values = np.max(predictions, axis=-1).flatten()
     typical_confidence = np.median(confidence_values)
-
-    logging.info('Running network diagnostics. Typical y confidence: {}'.format(typical_confidence))
-
     binned_predictions = np.argmax(predictions, axis=-1).flatten()
     n_predictions = len(binned_predictions)
 
     bincounts = np.bincount(binned_predictions)
-    nbins = len(bincounts)
+
     mode = np.argmax(bincounts)
     max_predicted = bincounts[mode]
-
-    logging.info('{} of {} predictions fell in bin {} of {}'.format(max_predicted, n_predictions, mode, nbins))
+    logging.info('Typical y confidence: {}; {}/{}'.format(typical_confidence, max_predicted, n_predictions))
 
     mean_counts = n_predictions / nbins
     sigma = np.sqrt(mean_counts)
     max_expected_counts = mean_counts + 5 * sigma
 
-    if max_predicted > max_expected_counts:
-        logging.warning("Training may have failed: predictions are highly homogeneous.")

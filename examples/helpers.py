@@ -52,6 +52,11 @@ def load_default_topology(series_name, tf_flags, n_layers):
                 layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'full',  'full']
                 layer_heights = [28, 28, 28, 14, 400, 10]
                 layer_widths = [28, 28, 28, 14, 1, 1]
+            elif n_layers == 8:
+                layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'conv3d', 'conv3d', 'full',
+                               'full']
+                layer_heights = [28, 28, 28, 28, 28, 28, 400, 10]
+                layer_widths = [28, 28, 28, 28,  28, 28, 1, 1]
             elif n_layers == 9:
                 layer_types = ['conv3d', 'conv3d', 'conv3d', 'pool2d', 'conv3d', 'conv3d', 'pool2d', 'full',
                                'full']
@@ -181,9 +186,9 @@ def load_default_config():
 
         # Priors
         'double_gaussian_weights_prior': True,
-        'wide_prior_std': 0.8,
+        'wide_prior_std': 1.0,
         'narrow_prior_std': 0.001,
-        'spike_slab_weighting': 0.5
+        'spike_slab_weighting': 0.6
     }
 
     return configuration
