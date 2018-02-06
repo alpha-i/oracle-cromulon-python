@@ -7,7 +7,7 @@ import alphai_cromulon_oracle.cromulon.evaluate as crocubot_eval
 import alphai_cromulon_oracle.cromulon.train as crocubot_train
 
 from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
-from alphai_cromulon_oracle.cromulon.model import CrocuBotModel
+from alphai_cromulon_oracle.cromulon.model import Cromulon
 from alphai_cromulon_oracle.data.providers import TrainDataProviderForDataSource
 from alphai_cromulon_oracle.helpers import printtime, execute_and_get_duration
 
@@ -50,8 +50,7 @@ def run_timed_benchmark_mnist(series_name, tf_flags, do_training, config, multi_
                                  )
         else:
             tf.reset_default_graph()
-            model = CrocuBotModel(topology, tf_flags)
-            model.build_layers_variables()
+            cromulon = Cromulon(topology, tf_flags)
 
     train_time, _ = execute_and_get_duration(_do_training)
     print("Training complete.")

@@ -37,7 +37,7 @@ DEFAULT_NETWORK = 'crocubot'
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class CrocubotOracle:
+class CromulonOracle:
     def __init__(self, configuration):
         """
         :param configuration: Dictionary containing all the parameters. Full specifications can be found at:

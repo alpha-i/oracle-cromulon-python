@@ -15,8 +15,8 @@ import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
 
-LAYER_CONVOLUTIONAL = 'conv_'
-LAYER_POOL = 'pool_'
+LAYER_CONVOLUTIONAL = 'conv'
+LAYER_POOL = 'pool'
 LAYER_FULLY_CONNECTED = 'full'
 LAYER_RESIDUAL = 'res'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
@@ -41,6 +41,7 @@ class Cromulon:
         self._flags = flags
         self._is_training = is_training
         self.bayes = BayesLayers(topology, flags)
+        self.intialise_variables()
 
     def show_me_what_you_got(self, x):
         """  Predict the future outcome of the temporal signal x.
@@ -50,7 +51,7 @@ class Cromulon:
         """
 
         # Process input in accordance with https://www.gwern.net/docs/rl/2017-silver.pdf
-        x = self.convolutional_layer(x, layer_name='input')
+        x = self.convolutional_layer(x, layer_label='input', layer_number=0)
 
         if self._flags.do_batch_norm:
             layer_name = 'input_batch_norm_'
@@ -59,7 +60,7 @@ class Cromulon:
         x = tf.nn.relu(x)
 
         # Bulk of the network consists of residual blocks
-        for block_number in range(self._topology.n_res_blocks):
+        for block_number in range(self._flags.n_res_blocks):
             x = self._build_residual_block(x, block_number)
 
         # Add final Bayesian layer(s)
@@ -76,9 +77,9 @@ class Cromulon:
         :return:
         """
 
-        residual_name = 'res_' + block_number
+        residual_name = 'res_' + str(block_number)
         identity = tf.identity(x, name=residual_name)
-        x = self.convolutional_layer(x, block_number)
+        x = self.convolutional_layer(x, 'a', block_number)
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'a'
@@ -86,7 +87,7 @@ class Cromulon:
 
         x = tf.nn.relu(x)
 
-        x = self.convolutional_layer(x, block_number)
+        x = self.convolutional_layer(x, 'b', block_number)
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'b'
@@ -180,7 +181,7 @@ class Cromulon:
 
         return signal
 
-    def convolutional_layer(self, signal, layer_number):
+    def convolutional_layer(self, signal, layer_label, layer_number):
         """  Sets a convolutional layer with a two-dimensional kernel.
         The ordering of the dimensions in the inputs: DATA_FORMAT = `channels_last` corresponds to inputs with shape
         `(batch, depth, height, width, channels)` while DATA_FORMAT = `channels_first`
@@ -196,7 +197,7 @@ class Cromulon:
         strides = self._topology.strides
 
         kernel_size = self.calculate_kernel_size()
-        op_name = LAYER_CONVOLUTIONAL + str(layer_number)
+        op_name = LAYER_CONVOLUTIONAL + layer_label + str(layer_number)
 
         # x = Conv2D(filters=mc.cnn_filter_num, kernel_size=mc.cnn_filter_size, padding="same",
         #            data_format="channels_first", kernel_regularizer=l2(mc.l2_reg))(x)

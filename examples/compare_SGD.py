@@ -11,12 +11,13 @@ logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 5   # 20
-NOISE_AMPLITUDE = 800  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
+NOISE_AMPLITUDE = 0 # 800  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
 TRAIN_PASSES = [64]  # 8 works well [1, 4, 16, 64] # Big influence
 DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64]
 DEFAULT_RANDOM_SEED = 42
 
-N_LAYERS = [9]  # [4, 9, 11, 21] # Big Influence. 9, 11 fail at 800 noise, 128 passes
+N_RES_BLOCKS = [9]  # [4, 9, 11, 21] # Big Influence. 9, 11 fail at 800 noise, 128 passes
+N_BAYES_LAYERS = 1
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
 TF_LOG_PATH = '/tmp/'
@@ -26,7 +27,7 @@ ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
 QUICK_TEST = False
 
 # RESULTS FOR 800 NOISE AMP  20 epoch average.
-# Updaed prior from 0.8 to 1 and spike-slab from 0.5 to 0.7
+# Updated prior from 0.8 to 1 and spike-slab from 0.5 to 0.7
 
 # RESULTS FOR 800 NOISE AMP  20 epoch average.
 # suppressed priors:
@@ -70,14 +71,13 @@ QUICK_TEST = False
 # bayesian cost:
 # entropic cost: 10.8
 
-
 def run_mnist_tests():
 
     for method in OPT_METHODS:
         accuracy_list = []
         config = build_config(method)
-        for n_layer in N_LAYERS:
-            config['n_layers'] = n_layer
+        for n_blocks in N_RES_BLOCKS:
+            config['n_res_blocks'] = n_blocks
             for train_pass in TRAIN_PASSES:
                 config['n_train_passes'] = train_pass
                 temp_acc_list = []

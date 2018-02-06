@@ -14,7 +14,6 @@ def load_default_topology(series_name, tf_flags, n_layers):
     layer_heights = None
     layer_widths = None
     activation_functions = None
-    n_features = 1
 
     if series_name == 'low_noise':
         n_input_series = 1
@@ -45,7 +44,7 @@ def load_default_topology(series_name, tf_flags, n_layers):
         if tf_flags.use_convolution:
 
             if n_layers == 4:
-                layer_types = ['conv3d', 'pool2d', 'full',  'full']
+                layer_types = ['full', 'full', 'full',  'full']
                 layer_heights = [28,  14, 400, 10]
                 layer_widths = [28, 14, 1, 1]
             elif n_layers == 6:
@@ -111,15 +110,14 @@ def load_default_topology(series_name, tf_flags, n_layers):
             layer_heights = [28, 28, 28, 400, 10]
             layer_widths = [28, 28, 28, 1, 1]
             activation_functions = ['linear', 'relu', 'relu', 'relu', 'linear']
-        n_features = 1
-        n_input_series = 28
+        n_features = 28
         n_timesteps = 28
         n_classification_bins = 10
         n_output_series = 1
     else:
         raise NotImplementedError
 
-    topology = topo.Topology(n_series=n_input_series, n_timesteps=n_timesteps,
+    topology = topo.Topology(n_timesteps=n_timesteps,
                              n_forecasts=n_output_series,
                              n_classification_bins=n_classification_bins, layer_types=layer_types,
                              layer_heights=layer_heights, layer_widths=layer_widths,

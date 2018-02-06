@@ -15,6 +15,15 @@ from alphai_cromulon_oracle.cromulon.train import log_network_confidence
 
 PRINT_KERNEL = True
 
+# def multi_eval(n_forecasts, data, topology, tf_flags, last_train_file):
+#     """ Performs a Monte Carlo forecast. """
+#
+#     # First forecast is generic
+#     output = eval_neural_net(data, topology, tf_flags, last_train_file)
+#
+#     for forecast in range(n_forecasts):
+#         for sample in tf_flags.n_mc_samples:
+#             temp_data = sample_forecasts(data)
 
 def eval_neural_net(data, topology, tf_flags, last_train_file):
     """ Multiple passes allow us to estimate the posterior distribution.

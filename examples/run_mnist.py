@@ -12,8 +12,8 @@ MNIST_RESHAPED = "mnist_reshaped"
 def run_mnist_test(update_config):
 
     config = load_default_config()
-
     do_quick_test = update_config.get('quick_test', True)
+
     if do_quick_test:
         config["n_epochs"] = 20  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 2e-4   # Use high learning rate for testing purposes
@@ -28,8 +28,6 @@ def run_mnist_test(update_config):
         # 30 layer res monster: 1e-4: 11.35% ouch
         # new entropy_cost: 10.91 % :(
         # Fixed entropy cost  45.4 % :) new record for 400 noise
-
-
         # Batch size of 200 and 1e-3 after 100:
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha', entropic # entropic is slower
     config['batch_size'] = 400
@@ -43,6 +41,7 @@ def run_mnist_test(update_config):
     config['n_retrain_epochs'] = 0
     config['n_eval_passes'] = 1
     config['apply_temporal_suppression'] = False
+    config['do_kernel_regularisation'] = True
     config.update(update_config)
     set_benchmark_flags(config)
 

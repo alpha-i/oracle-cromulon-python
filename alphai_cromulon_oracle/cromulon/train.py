@@ -39,7 +39,7 @@ def train(topology,
     cromulon = Cromulon(topology, tf_flags, is_training)
 
     # Placeholders for the inputs and outputs of neural networks
-    x_shape = (None, topology.n_series, topology.n_timesteps, topology.n_features)
+    x_shape = (None, 1, topology.n_timesteps, topology.n_features)
     x = tf.placeholder(tf_flags.d_type, shape=x_shape, name="x")
     y = tf.placeholder(tf_flags.d_type, name="y")
 
@@ -172,7 +172,7 @@ def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
     :return:
     """
 
-    cost_object = cost.BayesianCost(cromulon._bayes,
+    cost_object = cost.BayesianCost(cromulon.bayes,
                                     tf_flags.double_gaussian_weights_prior,
                                     tf_flags.wide_prior_std,
                                     tf_flags.narrow_prior_std,
