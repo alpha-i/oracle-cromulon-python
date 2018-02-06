@@ -1,7 +1,7 @@
 import tensorflow as tf
 import logging
 
-from alphai_crocubot_oracle import flags as fl
+from alphai_cromulon_oracle import flags as fl
 from examples.benchmark.time_series import run_timed_benchmark_time_series
 from examples.helpers import load_default_config, FLAGS
 

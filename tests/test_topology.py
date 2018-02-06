@@ -1,6 +1,6 @@
 import unittest
 
-from alphai_crocubot_oracle.topology import (
+from alphai_cromulon_oracle.topology import (
     Topology,
     DEFAULT_HEIGHT,
     DEFAULT_WIDTH,

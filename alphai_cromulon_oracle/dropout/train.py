@@ -3,7 +3,7 @@ import logging
 import tensorflow as tf
 import numpy as np
 
-from alphai_crocubot_oracle.dropout.model import dropout_net
+from alphai_cromulon_oracle.dropout.model import dropout_net
 PRINT_INTERVAL = 5000
 MOMENTUM = 0.5
 

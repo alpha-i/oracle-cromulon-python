@@ -5,7 +5,7 @@ import glob
 import time
 import logging
 
-from alphai_crocubot_oracle import DATETIME_FORMAT_COMPACT
+from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 

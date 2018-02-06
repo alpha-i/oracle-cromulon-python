@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from alphai_crocubot_oracle import topology as topo
+from alphai_cromulon_oracle import topology as topo
 
 FLAGS = tf.app.flags.FLAGS
 D_TYPE = 'float32'

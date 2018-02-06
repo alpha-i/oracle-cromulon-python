@@ -7,13 +7,13 @@ import logging
 import numpy as np
 import tensorflow as tf
 
-from alphai_crocubot_oracle.data.classifier import BinDistribution
-import alphai_crocubot_oracle.crocubot.evaluate as eval
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
-import alphai_crocubot_oracle.flags as fl
-import alphai_crocubot_oracle.iotools as io
-import alphai_crocubot_oracle.topology as topo
-from alphai_crocubot_oracle.crocubot import train as crocubot_train
+from alphai_cromulon_oracle.data.classifier import BinDistribution
+import alphai_cromulon_oracle.cromulon.evaluate as eval
+from alphai_cromulon_oracle.cromulon.model import CrocuBotModel
+import alphai_cromulon_oracle.flags as fl
+import alphai_cromulon_oracle.iotools as io
+import alphai_cromulon_oracle.topology as topo
+from alphai_cromulon_oracle.cromulon import train as crocubot_train
 
 from alphai_data_sources.data_sources import DataSourceGenerator
 from alphai_data_sources.generator import BatchOptions, BatchGenerator

@@ -1,9 +1,9 @@
 import tensorflow as tf
 import numpy as np
 
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
+from alphai_cromulon_oracle.cromulon.model import CrocuBotModel, Estimator
 
-from alphai_crocubot_oracle.topology import (
+from alphai_cromulon_oracle.topology import (
     Topology,
     DEFAULT_HIDDEN_LAYERS,
     DEFAULT_DEPTH,

@@ -4,14 +4,14 @@ import numpy as np
 import tensorflow as tf
 from alphai_time_series.performance_trials.performance import Metrics
 
-import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
-import alphai_crocubot_oracle.crocubot.train as crocubot_train
+import alphai_cromulon_oracle.cromulon.evaluate as crocubot_eval
+import alphai_cromulon_oracle.cromulon.train as crocubot_train
 
-from alphai_crocubot_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
+from alphai_cromulon_oracle.cromulon.model import CrocuBotModel
 from alphai_feature_generation.classifier import BinDistribution
-from alphai_crocubot_oracle.data.providers import TrainDataProviderForDataSource
-from alphai_crocubot_oracle.helpers import printtime, execute_and_get_duration
+from alphai_cromulon_oracle.data.providers import TrainDataProviderForDataSource
+from alphai_cromulon_oracle.helpers import printtime, execute_and_get_duration
 
 import examples.iotools as io
 from examples.benchmark.helpers import print_time_info

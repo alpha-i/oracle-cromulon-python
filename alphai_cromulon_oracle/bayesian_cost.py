@@ -7,7 +7,7 @@ It is used during the train of the model, implemented in the module alphai_crocu
 """
 
 import tensorflow as tf
-import alphai_crocubot_oracle.tensormaths as tm
+import alphai_cromulon_oracle.tensormaths as tm
 
 from tensorflow.python.ops import math_ops
 
@@ -17,19 +17,19 @@ ENTROPIC_COST_STRENGTH = 1e-3  # How strongly the cost function is modified
 
 class BayesianCost(object):
 
-    def __init__(self, model, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
+    def __init__(self, bayes_layers, use_double_gaussian_weights_prior=True, slab_std_dvn=1.2, spike_std_dvn=0.05,
                  spike_slab_weighting=0.5, n_batches=100):
         """
         A class for computing Bayesian cost as described in https://arxiv.org/pdf/1505.05424.pdf .
-        :param alphai_crocubot_oracle.crocubot.model.CrocuBotModel model: A crocubot object that defines the network.
+        :param bayes_layers BayesianLayers: An object that defines the fully connected part of the network.
         :param use_double_gaussian_weights_prior: Enable the double-Gaussian prior?
         :param slab_std_dvn: The standard deviation of the slab (wide) Gaussian. Default value = 1.2.
         :param spike_std_dvn: The standard deviation of the spike (narrow) Gaussian. Default value = 0.5
         :param spike_slab_weighting: The ratio of the spike(0) to slab(1) standard deviations. Default value = 0.5.
         """
         self._verify_args(spike_std_dvn, slab_std_dvn, spike_slab_weighting)
-        self._model = model
-        self.topology = model.topology
+        self._model = bayes_layers
+        self.topology = bayes_layers.topology
         self._use_double_gaussian_weights_prior = use_double_gaussian_weights_prior
         self._epoch_fraction = 1 / n_batches
         self._slab_std_dvn = tf.cast(slab_std_dvn, tm.DEFAULT_TF_TYPE)
@@ -50,7 +50,9 @@ class BayesianCost(object):
         prior_strength = self.calculate_prior_strength(global_step)
         log_prior = (log_qw - log_pw) * self._epoch_fraction * prior_strength
 
-        cost = log_prior - log_likelihood
+        l2_loss = tf.losses.get_regularization_loss()  # From convolutional kernels
+
+        cost = log_prior - log_likelihood + l2_loss
 
         return cost, log_likelihood
 

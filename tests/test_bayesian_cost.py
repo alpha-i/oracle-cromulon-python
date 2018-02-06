@@ -2,9 +2,9 @@ import tensorflow as tf
 import numpy as np
 from scipy.stats import norm
 
-from alphai_crocubot_oracle.bayesian_cost import BayesianCost
-from alphai_crocubot_oracle.topology import Topology
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel
+from alphai_cromulon_oracle.bayesian_cost import BayesianCost
+from alphai_cromulon_oracle.topology import Topology
+from alphai_cromulon_oracle.cromulon.model import CrocuBotModel
 from tests.helpers import get_default_flags
 
 

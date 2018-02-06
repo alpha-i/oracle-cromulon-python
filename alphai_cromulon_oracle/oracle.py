@@ -11,20 +11,20 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from alphai_crocubot_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
-from alphai_crocubot_oracle.data.providers import TrainDataProvider
+from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
+from alphai_cromulon_oracle.data.providers import TrainDataProvider
 from alphai_feature_generation.transformation import FinancialDataTransformation
 from alphai_time_series.transform import gaussianise
 
-import alphai_crocubot_oracle.crocubot.train as crocubot
-import alphai_crocubot_oracle.crocubot.evaluate as crocubot_eval
-import alphai_crocubot_oracle.dropout.train as dropout
-import alphai_crocubot_oracle.dropout.evaluate as dropout_eval
-from alphai_crocubot_oracle.flags import build_tensorflow_flags
-import alphai_crocubot_oracle.topology as tp
-from alphai_crocubot_oracle import DATETIME_FORMAT_COMPACT
-from alphai_crocubot_oracle.covariance import estimate_covariance
-from alphai_crocubot_oracle.helpers import TrainFileManager, logtime
+import alphai_cromulon_oracle.cromulon.train as crocubot
+import alphai_cromulon_oracle.cromulon.evaluate as crocubot_eval
+import alphai_cromulon_oracle.dropout.train as dropout
+import alphai_cromulon_oracle.dropout.evaluate as dropout_eval
+from alphai_cromulon_oracle.flags import build_tensorflow_flags
+import alphai_cromulon_oracle.topology as tp
+from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
+from alphai_cromulon_oracle.covariance import estimate_covariance
+from alphai_cromulon_oracle.helpers import TrainFileManager, logtime
 
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5

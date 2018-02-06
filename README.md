@@ -1,17 +1,15 @@
-# oracle crocubot [![CircleCI](https://circleci.com/gh/alpha-i/oracle-crocubot-python.svg?style=svg&circle-token=f6a7198d3b32ae0fb56dfec1daee167a930445eb)](https://circleci.com/gh/alpha-i/oracle-crocubot-python)
+# oracle cromulon
 
+A neural network for predicting the future
 
-A library for predicting returns using Bayes by Backprop
-
-
-![Crocubot](docs/crocubot.jpg "Crocubot")
+![Cromulon](docs/cromulon.jpg "Cromulon")
 
 ## Setup Development Environment
 
 ### Create conda environment
 ```bash
-$ conda create -n crocubot-env python=3.5
-$ source activate crocubot-env
+$ conda create -n cromulon-env python=3.5
+$ source activate cromulon-env
 ```
 
 ### Install dependencies

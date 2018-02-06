@@ -6,8 +6,8 @@ import pandas_market_calendars as mcal
 
 from alphai_feature_generation.cleaning import (
     convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv)
-from alphai_crocubot_oracle.flags import build_tensorflow_flags
-from alphai_crocubot_oracle.oracle import CrocubotOracle
+from alphai_cromulon_oracle.flags import build_tensorflow_flags
+from alphai_cromulon_oracle.oracle import CrocubotOracle
 from tests.hdf5_reader import read_feature_data_dict_from_hdf5
 
 DATA_FILENAME = 'sample_hdf5.h5'

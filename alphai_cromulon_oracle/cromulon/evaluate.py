@@ -10,13 +10,13 @@ import tensorflow as tf
 # from alphai_time_series.calculator import make_diagonal_covariance_matrices
 
 from alphai_feature_generation.classifier import declassify_labels
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
-from alphai_crocubot_oracle.crocubot.train import log_network_confidence
+from alphai_cromulon_oracle.cromulon.model import Cromulon
+from alphai_cromulon_oracle.cromulon.train import log_network_confidence
 
 PRINT_KERNEL = True
 
 
-def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=64):
+def eval_neural_net(data, topology, tf_flags, last_train_file):
     """ Multiple passes allow us to estimate the posterior distribution.
 
     :param data:  Mini-batch to be fed into the network
@@ -28,19 +28,13 @@ def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=64):
     """
 
     is_training = tf.placeholder(tf.bool, name='is_training')
-    model = CrocuBotModel(topology, tf_flags, is_training)
-    try:
-        model.build_layers_variables()
-    except:
-        logging.info('Variables already initialised')
+    cromulon = Cromulon(topology, tf_flags, is_training)
 
     saver = tf.train.Saver()
-    estimator = Estimator(model, tf_flags)
     x = tf.placeholder(tf_flags.d_type, shape=data.shape, name="x")
+    logging.info("Evaluating {} passes with shape {}".format(tf_flags.n_eval_passes, data.shape))
 
-    logging.info("Evaluating {} passes with shape {}".format(eval_passes, data.shape))
-
-    y = estimator.efficient_multiple_passes(x)
+    y = cromulon.show_me_what_you_got(x)
 
     with tf.Session() as sess:
         logging.info("Attempting to recover trained network: {}".format(last_train_file))
@@ -52,11 +46,12 @@ def eval_neural_net(data, topology, tf_flags, last_train_file, eval_passes=64):
 
         graph = tf.get_default_graph()
         # Finally we can retrieve tensors, operations, collections, etc.
-        try:
-            kernel = graph.get_tensor_by_name('conv3d0/kernel:0').eval()
-            logging.info("Evaluating with kernel samples: {}".format(kernel.flatten()[0:3]))
-        except:
-            pass
+        if PRINT_KERNEL:
+            try:
+                kernel = graph.get_tensor_by_name('conv2d0/kernel:0').eval()
+                logging.info("Evaluating with kernel samples: {}".format(kernel.flatten()[0:3]))
+            except:
+                pass
 
         log_p = sess.run(y, feed_dict={x: data, is_training: False})
         log_network_confidence(log_p)

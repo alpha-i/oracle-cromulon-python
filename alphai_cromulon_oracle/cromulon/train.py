@@ -7,9 +7,9 @@ from timeit import default_timer as timer
 import tensorflow as tf
 import numpy as np
 
-import alphai_crocubot_oracle.bayesian_cost as cost
-from alphai_crocubot_oracle.crocubot import PRINT_LOSS_INTERVAL, PRINT_SUMMARY_INTERVAL, MAX_GRADIENT
-from alphai_crocubot_oracle.crocubot.model import CrocuBotModel, Estimator
+import alphai_cromulon_oracle.bayesian_cost as cost
+from alphai_cromulon_oracle.cromulon import PRINT_LOSS_INTERVAL, PRINT_SUMMARY_INTERVAL, MAX_GRADIENT
+from alphai_cromulon_oracle.cromulon.model import Cromulon
 
 PRINT_KERNEL = True
 BOOL_TRUE = True
@@ -36,8 +36,7 @@ def train(topology,
     tf.reset_default_graph()
     is_training = tf.placeholder(tf.bool, name='is_training')
 
-    model = CrocuBotModel(topology, tf_flags, is_training)
-    model.build_layers_variables()
+    cromulon = Cromulon(topology, tf_flags, is_training)
 
     # Placeholders for the inputs and outputs of neural networks
     x_shape = (None, topology.n_series, topology.n_timesteps, topology.n_features)
@@ -47,7 +46,7 @@ def train(topology,
     global_step = tf.Variable(0, trainable=False, name='global_step')
     n_batches = data_provider.number_of_batches
 
-    cost_operator, log_predict, log_likeli = _set_cost_operator(model, x, y, n_batches, tf_flags, global_step)
+    cost_operator, log_predict, log_likeli = _set_cost_operator(cromulon, x, y, n_batches, tf_flags, global_step)
     tf.summary.scalar("cost", cost_operator)
     optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology)
 
@@ -160,7 +159,7 @@ def _log_epoch_loss(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use
         logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
-def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_step):
+def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
 
     """
     Set the cost operator
@@ -173,7 +172,7 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_st
     :return:
     """
 
-    cost_object = cost.BayesianCost(crocubot_model,
+    cost_object = cost.BayesianCost(cromulon._bayes,
                                     tf_flags.double_gaussian_weights_prior,
                                     tf_flags.wide_prior_std,
                                     tf_flags.narrow_prior_std,
@@ -181,12 +180,10 @@ def _set_cost_operator(crocubot_model, x, labels, n_batches, tf_flags, global_st
                                     n_batches
                                     )
 
-    estimator = Estimator(crocubot_model, tf_flags)
-
-    log_predictions = estimator.efficient_multiple_passes(x)
+    log_predictions = cromulon.show_me_what_you_got(x)
 
     if tf_flags.cost_type == 'bbalpha':
-        cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, estimator)
+        cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, cromulon)
         log_likelihood = tf.reduce_mean(cost_operator)
     elif tf_flags.cost_type == 'bayes':
         cost_operator, likelihood_op = cost_object.get_bayesian_cost(log_predictions, labels, global_step)

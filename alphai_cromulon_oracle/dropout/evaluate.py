@@ -3,7 +3,7 @@ import logging
 import tensorflow as tf
 from timeit import default_timer as timer
 
-from alphai_crocubot_oracle.dropout.model import dropout_net
+from alphai_cromulon_oracle.dropout.model import dropout_net
 
 PRINT_SAMPLE_WEIGHTS = True
 SAMPLE_WEIGHTS = 'DropoutNetTrain/layer1-conv/weights:0'

@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import alphai_crocubot_oracle.tensormaths as tm
+import alphai_cromulon_oracle.tensormaths as tm
 np.random.seed(42)
 
 

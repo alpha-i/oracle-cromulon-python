@@ -1,6 +1,6 @@
 import os
 
-from alphai_crocubot_oracle import DATETIME_FORMAT_COMPACT
+from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 
 
 class TensorflowPath:
