@@ -24,9 +24,6 @@ def build_tensorflow_flags(config):
     tf.app.flags.DEFINE_boolean('do_batch_norm', config['do_batch_norm'],
                                 """Whether to use batch normalisation. """)
 
-    tf.app.flags.DEFINE_boolean('apply_temporal_suppression', config['apply_temporal_suppression'],
-                                """Whether to penalise data which is further in the past. """)
-
     tf.app.flags.DEFINE_boolean('partial_retrain', config['partial_retrain'],
                                 """Whether to retrain all layers or just the fully connected ones. """)
 

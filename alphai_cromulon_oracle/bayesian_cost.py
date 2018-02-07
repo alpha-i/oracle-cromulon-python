@@ -11,7 +11,7 @@ import alphai_cromulon_oracle.tensormaths as tm
 
 from tensorflow.python.ops import math_ops
 
-N_BATCHES_SUPPRESSED_PRIOR = 1000  # How many batches over which we gradually introduce the prior
+N_BATCHES_SUPPRESSED_PRIOR = 1  # How many batches over which we gradually introduce the prior
 ENTROPIC_COST_STRENGTH = 1e-3  # How strongly the cost function is modified
 
 

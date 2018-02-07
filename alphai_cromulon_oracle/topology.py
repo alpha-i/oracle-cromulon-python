@@ -74,14 +74,18 @@ class Topology(object):
             self.dilation_rates = 1
             self.strides = 1
 
-        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
+        # First two Cromulon layers, and final layers, must be consistent with data
+        layer_depths[0] = 1
+        layer_heights[0] = n_timesteps
+        layer_widths[0] = n_features
+        layer_depths[1] = self.n_kernels
+        layer_heights[1] = n_timesteps
+        layer_widths[1] = n_features
+        layer_depths[-1] = 1
+        layer_heights[-1] = n_forecasts
+        layer_widths[-1] = n_classification_bins
 
-        layers[0]["depth"] = 1
-        layers[0]["height"] = n_timesteps
-        layers[0]["width"] = n_features
-        layers[-1]["depth"] = 1
-        layers[-1]["height"] = n_forecasts
-        layers[-1]["width"] = n_classification_bins
+        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
 
         self._verify_layers(layers)
         self.layers = layers

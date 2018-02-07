@@ -104,6 +104,7 @@ def train(topology,
                         batch_labels.shape,
                         tf_flags.cost_type
                     ))
+                    logging.info("{} blocks with {} batch norm".format(tf_flags.n_res_blocks, tf_flags.do_batch_norm))
 
                 _, batch_loss, batch_likeli, summary_results = \
                     sess.run([optimize, cost_operator, log_likeli, all_summaries],
@@ -125,11 +126,12 @@ def train(topology,
 
             do_logging = (epoch % PRINT_LOSS_INTERVAL) == 0 or epoch == number_of_epochs - 1
             if do_logging:
+                g_step = sess.run(global_step)
                 sample_log_predictions = sess.run(log_predict,
                                                   feed_dict={x: batch_features, y: batch_labels, is_training: False})
                 _log_epoch_loss(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
                                       tf_flags.use_convolution)
-                log_network_confidence(sample_log_predictions)
+                log_network_confidence(sample_log_predictions, g_step)
 
         out_path = saver.save(sess, tensorflow_path.session_save_path)
         logging.info("Model saved in file:{}".format(out_path))
@@ -218,6 +220,7 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
     """ Define the algorithm for updating the trainable variables. """
 
     learning_rate = tf_flags.retrain_learning_rate if do_retraining else tf_flags.learning_rate
+    # learning_rate = get_learning_rate(global_step, False)
 
     if tf_flags.optimisation_method == 'Adam':
         optimizer = tf.train.AdamOptimizer(learning_rate)
@@ -245,7 +248,36 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
     return optimize
 
 
-def log_network_confidence(log_predictions):
+def get_learning_rate(global_step, use_alphago_learning_schedule):
+    """ Decide the learning rate at a given stage in training.
+
+    :param int global_step: Total number of steps the network has been trained
+    :param bool use_alphago_learning_schedule: Whether to use the schedule presented in Silver et al 2017
+    :return: The learning rate
+    """
+
+    if use_alphago_learning_schedule:
+        progress = global_step / 1000
+    else:
+        progress = global_step / 10
+
+    if progress < 200:
+        learning_rate = 0.1
+    elif progress < 400:
+        learning_rate = 1e-2
+    elif progress < 600:
+        learning_rate = 1e-3
+    elif progress < 700:
+        learning_rate = 1e-4
+    elif progress < 800:
+        learning_rate = 1e-5
+    else:
+        learning_rate = 1e-5
+
+    return learning_rate
+
+
+def log_network_confidence(log_predictions, g_step):
     """  From a sample of predictions, returns the typical confidence applied to a forecast.
 
     :param nparray log_predictions: multidimensional array of log probabilities [samples, n_forecasts, n_bins]
@@ -253,19 +285,16 @@ def log_network_confidence(log_predictions):
     """
 
     predictions = np.exp(log_predictions)
-    nbins = predictions.shape[-1]
+
     confidence_values = np.max(predictions, axis=-1).flatten()
     typical_confidence = np.median(confidence_values)
     binned_predictions = np.argmax(predictions, axis=-1).flatten()
     n_predictions = len(binned_predictions)
 
-    bincounts = np.bincount(binned_predictions)
+    bin_counts = np.bincount(binned_predictions)
+    mode = np.argmax(bin_counts)
+    max_predicted = bin_counts[mode]
 
-    mode = np.argmax(bincounts)
-    max_predicted = bincounts[mode]
-    logging.info('Typical y confidence: {}; {}/{}'.format(typical_confidence, max_predicted, n_predictions))
+    logging.info('Typical confidence after {} steps: {}; {}/{}'.format(g_step, typical_confidence, max_predicted, n_predictions))
 
-    mean_counts = n_predictions / nbins
-    sigma = np.sqrt(mean_counts)
-    max_expected_counts = mean_counts + 5 * sigma
 

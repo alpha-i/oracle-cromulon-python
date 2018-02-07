@@ -195,9 +195,9 @@ class TrainDataProviderForDataSource(AbstractTrainDataProvider):
         """
 
         if self._for_training:
-            noise_shape = (60000, 28, 28, 1)
+            noise_shape = (60000, 1, 28, 28)
         else:
-            noise_shape = (10000, 28, 28, 1)
+            noise_shape = (10000, 1, 28, 28)
 
         mnist_sigma = 0.31
         self._noise_data = np.random.normal(loc=0.0, scale=mnist_sigma, size=noise_shape)

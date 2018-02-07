@@ -31,7 +31,6 @@ def run_mnist_test(update_config):
         # Batch size of 200 and 1e-3 after 100:
     config["cost_type"] = 'bayes'  # 'bayes'; 'softmax'; 'bbalpha', entropic # entropic is slower
     config['batch_size'] = 400
-    config['do_batch_norm'] = False
     config['n_series'] = 1
     config['n_features_per_series'] = 784
     config['resume_training'] = False  # Make sure we start from scratch
@@ -40,8 +39,8 @@ def run_mnist_test(update_config):
     config['model_save_path'] = '/tmp/'
     config['n_retrain_epochs'] = 0
     config['n_eval_passes'] = 1
-    config['apply_temporal_suppression'] = False
     config['do_kernel_regularisation'] = True
+    config['do_batch_norm'] = True
     config.update(update_config)
     set_benchmark_flags(config)
 
