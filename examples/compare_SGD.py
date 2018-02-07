@@ -17,7 +17,7 @@ DEFAULT_EVAL_PASSES = [8]
 DEFAULT_RANDOM_SEED = 42
 
 # One res block holds 2 convolutional layers and a skipped connection
-N_RES_BLOCKS = [2]  # AlphaGo Zero uses 40 blocks
+N_RES_BLOCKS = [6]  # AlphaGo Zero uses 40 blocks
 N_BAYES_LAYERS = 1
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
@@ -82,4 +82,7 @@ run_mnist_tests()
 # Cromulon results:
 ## NOISE-FREE
 # 98.93 4 blocks; 1 pass; 100 epoch; 32 kernels
-# 99.22 6 blocks; 8 pass; 100 epoch; 32 kernels
+# 99.22 6 blocks; 8 pass; 100 epoch; 32 kernels. Eval time:
+
+# Now with linear output:
+# ?????      6 blocks; 8 pass; 100 epoch; 32 kernels. Eval time: 19 sec per epoch

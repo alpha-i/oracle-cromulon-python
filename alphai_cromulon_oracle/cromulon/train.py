@@ -105,7 +105,7 @@ def train(topology,
                         batch_labels.shape,
                         tf_flags.cost_type
                     ))
-                    logging.info("{} blocks with {} batch norm".format(tf_flags.n_res_blocks, tf_flags.do_batch_norm))
+                    logging.info("{} blocks; {} kernels; {} batch norm".format(tf_flags.n_res_blocks, topology.n_kernels, tf_flags.do_batch_norm))
 
                 _, batch_loss, batch_likeli, summary_results = \
                     sess.run([optimize, cost_operator, log_likeli, all_summaries],
