@@ -11,13 +11,13 @@ logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 1   # 20
-NOISE_AMPLITUDE = 400
+NOISE_AMPLITUDE = 0
 TRAIN_PASSES = [8]
 DEFAULT_EVAL_PASSES = [8]
 DEFAULT_RANDOM_SEED = 42
 
 # One res block holds 2 convolutional layers and a skipped connection
-N_RES_BLOCKS = [15]  # AlphaGo Zero uses 40 blocks
+N_RES_BLOCKS = [2]  # AlphaGo Zero uses 40 blocks
 N_BAYES_LAYERS = 1
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1

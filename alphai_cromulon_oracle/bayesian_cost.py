@@ -36,7 +36,7 @@ class BayesianCost(object):
         self._spike_std_dvn = tf.cast(spike_std_dvn,  tm.DEFAULT_TF_TYPE)
         self._spike_slab_weighting = tf.cast(spike_slab_weighting,  tm.DEFAULT_TF_TYPE)
 
-    def get_bayesian_cost(self, prediction, truth, global_step=None):
+    def get_bayesian_cost(self, log_prediction, truth, global_step=None):
         """
 
         :param prediction:
@@ -45,7 +45,7 @@ class BayesianCost(object):
         :return:
         """
         log_pw, log_qw = self.calculate_priors()
-        log_likelihood = self.calculate_likelihood(truth, prediction)
+        log_likelihood = self.calculate_likelihood(truth, log_prediction)
 
         prior_strength = self.calculate_prior_strength(global_step)
         log_prior = (log_qw - log_pw) * self._epoch_fraction * prior_strength
@@ -55,21 +55,6 @@ class BayesianCost(object):
         cost = log_prior - log_likelihood + l2_loss
 
         return cost, log_likelihood
-
-    def get_variance_cost(self, log_prediction):
-        """ Discourages the network from monotonously predicting a single outcome.
-        If all predictions are the same then variance is low.  This worked pretty well but was an ad hoc test,
-        but largely superceded by get_entropy_cost. """
-
-        log_prediction = tf.squeeze(log_prediction)
-
-        nbins =  tf.shape(log_prediction)[-1]
-        one_hot_predict = tf.one_hot(tf.nn.top_k(log_prediction).indices, nbins)
-
-        mean, variance = tf.nn.moments(one_hot_predict, axes=0)
-        variance = tf.squeeze(variance)
-
-        return tf.reduce_sum(tf.reciprocal(0.01 + variance))
 
     def get_entropy_cost(self, prediction, truth, global_step=None):
 

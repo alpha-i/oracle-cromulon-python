@@ -44,10 +44,10 @@ class Cromulon:
         self.intialise_variables()
 
     def show_me_what_you_got(self, x):
-        """  Predict the future outcome of the temporal signal x.
+        """ Predict the future outcome of the temporal signal x.
 
         :param x: A 3D tensor of dimensions [samples, time, features]
-        :return: A 2D tensor representing the probabiity distribution of dimensions [samples, classification_bin]
+        :return: A 2D tensor representing the probabiity distribution of dimensions [samples, classification_bins]
         """
 
         # Process input in accordance with https://www.gwern.net/docs/rl/2017-silver.pdf
@@ -109,7 +109,6 @@ class Cromulon:
         start_index = tf.constant(0)
         n_passes = tf.cond(self._is_training, lambda: self._flags.n_train_passes,
                            lambda: self._flags.n_eval_passes)
-        normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
         def condition(index, _):
             return tf.less(index, n_passes)
@@ -126,10 +125,10 @@ class Cromulon:
         output_list = tf.while_loop(condition, body, [start_index, dummy_output],
                                     parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
         output_signal = tf.stack(output_list[1:], axis=0)  # Ignore dummy first entry
-        output_signal = tf.nn.log_softmax(output_signal, dim=-1)  # Create discrete PDFs
+        output_signal = tf.nn.softmax(output_signal, dim=-1)  # Create discrete PDFs
 
         # Average probability over multiple passes
-        output_signal = tf.reduce_logsumexp(output_signal, axis=0) - normalisation
+        output_signal = tf.reduce_mean(output_signal, axis=0)
 
         return tf.expand_dims(output_signal, axis=0)
 

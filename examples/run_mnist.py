@@ -18,7 +18,7 @@ def run_mnist_test(update_config):
         config["n_epochs"] = 20  # 98.91 after 10 epochs and only 6 layers
         config["learning_rate"] = 2e-4   # Use high learning rate for testing purposes
     else:
-        config["n_epochs"] = 100  # Scored 98.99% after 100 epochs; 98.5 after 10
+        config["n_epochs"] = 5  # Scored 98.99% after 100 epochs; 98.5 after 10
         config["learning_rate"] = 2e-4   # 1e-3 gest 98.95  in 10 epochs; 99.08 after 100; n_layers=10
         # 21 layer res network. 10 epoch: 98.86; 100 epoch: 99.21%
         # 400 noise test: 1e-4 gets 28.23 % after 100 epochs
@@ -33,11 +33,12 @@ def run_mnist_test(update_config):
     config['batch_size'] = 400
     config['n_series'] = 1
     config['n_features_per_series'] = 784
+
     config['resume_training'] = False  # Make sure we start from scratch
     config['tensorboard_log_path'] = '/tmp/'
     config['train_path'] = '/tmp/'
     config['model_save_path'] = '/tmp/'
-    config['n_retrain_epochs'] = 0
+    config['n_retrain_epochs'] = 1
     config['n_eval_passes'] = 1
     config['do_kernel_regularisation'] = True
     config['do_batch_norm'] = True

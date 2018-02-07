@@ -13,6 +13,7 @@ from alphai_cromulon_oracle.cromulon.model import Cromulon
 
 PRINT_KERNEL = True
 BOOL_TRUE = True
+EPSILON = 1e-10  # Small offset to prevent log(0)
 
 
 def train(topology,
@@ -46,7 +47,7 @@ def train(topology,
     global_step = tf.Variable(0, trainable=False, name='global_step')
     n_batches = data_provider.number_of_batches
 
-    cost_operator, log_predict, log_likeli = _set_cost_operator(cromulon, x, y, n_batches, tf_flags, global_step)
+    cost_operator, predictions, log_likeli = _set_cost_operator(cromulon, x, y, n_batches, tf_flags, global_step)
     tf.summary.scalar("cost", cost_operator)
     optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology)
 
@@ -127,7 +128,7 @@ def train(topology,
             do_logging = (epoch % PRINT_LOSS_INTERVAL) == 0 or epoch == number_of_epochs - 1
             if do_logging:
                 g_step = sess.run(global_step)
-                sample_log_predictions = sess.run(log_predict,
+                sample_log_predictions = sess.run(predictions,
                                                   feed_dict={x: batch_features, y: batch_labels, is_training: False})
                 _log_epoch_loss(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
                                       tf_flags.use_convolution)
@@ -153,13 +154,6 @@ def _log_epoch_loss(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use
     msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
     logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
 
-    # if PRINT_KERNEL and use_convolution:
-    #     gr = tf.get_default_graph()
-    #     conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-    #     kernel_shape = conv1_kernel_val.shape
-    #     kernel_sample = conv1_kernel_val.flatten()[0:3]
-    #     logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
-
 
 def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
 
@@ -182,7 +176,8 @@ def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
                                     n_batches
                                     )
 
-    log_predictions = cromulon.show_me_what_you_got(x)
+    predictions = cromulon.show_me_what_you_got(x)
+    log_predictions = tf.log(predictions + EPSILON)
 
     if tf_flags.cost_type == 'bbalpha':
         cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, cromulon)
@@ -201,7 +196,7 @@ def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
 
     total_cost = tf.reduce_mean(cost_operator)
 
-    return total_cost, log_predictions, log_likelihood
+    return total_cost, predictions, log_likelihood
 
 
 def _log_topology_parameters_size(topology):
@@ -277,14 +272,12 @@ def get_learning_rate(global_step, use_alphago_learning_schedule):
     return learning_rate
 
 
-def log_network_confidence(log_predictions, g_step):
+def log_network_confidence(predictions, g_step):
     """  From a sample of predictions, returns the typical confidence applied to a forecast.
 
     :param nparray log_predictions: multidimensional array of log probabilities [samples, n_forecasts, n_bins]
     :return: null
     """
-
-    predictions = np.exp(log_predictions)
 
     confidence_values = np.max(predictions, axis=-1).flatten()
     typical_confidence = np.median(confidence_values)
@@ -295,6 +288,8 @@ def log_network_confidence(log_predictions, g_step):
     mode = np.argmax(bin_counts)
     max_predicted = bin_counts[mode]
 
-    logging.info('Typical confidence after {} steps: {}; {}/{}'.format(g_step, typical_confidence, max_predicted, n_predictions))
-
-
+    if g_step:
+        logging.info('Confidence @ {} steps: {:.2f}; {}/{}'.format(g_step, typical_confidence, max_predicted, n_predictions))
+    else:
+        logging.info(
+            'Forecast confidence: {:.2f}; {}/{}'.format(typical_confidence, max_predicted, n_predictions))

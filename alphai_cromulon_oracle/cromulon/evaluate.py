@@ -63,10 +63,9 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
             except:
                 pass
 
-        log_p = sess.run(y, feed_dict={x: data, is_training: False})
-        log_network_confidence(log_p)
+        posterior = sess.run(y, feed_dict={x: data, is_training: False})
 
-    posterior = np.exp(log_p)
+        log_network_confidence(posterior, None)
 
     return np.squeeze(posterior, axis=2)
 
