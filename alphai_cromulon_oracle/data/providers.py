@@ -146,8 +146,8 @@ class TrainDataProviderForDataSource(AbstractTrainDataProvider):
         features = np.swapaxes(features, axis1=1, axis2=2)
         labels = np.swapaxes(labels, axis1=1, axis2=2)
 
-        # Kernel dimension, now that crocubot is 4D
-        features = np.expand_dims(features, axis=-1)
+        # Single channel
+        features = np.expand_dims(features, axis=1)
 
         if self._bin_edges is None:
             labels = np.expand_dims(labels, axis=-1)

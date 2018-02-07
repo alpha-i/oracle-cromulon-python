@@ -1,5 +1,5 @@
 # Defines the layout of the cromulon network:
-# Layers is a list of layers: [0] Conv layer [1] Residual blocks [2.....N] Bayesian Layers
+# Holds a list of layers: [0] Conv layer [1] Residual blocks [2.....N] Bayesian Layers
 
 import tensorflow as tf
 
@@ -13,7 +13,7 @@ ACTIVATION_FN_RELU = "relu"
 ALLOWED_ACTIVATION_FN = [ACTIVATION_FN_RELU, ACTIVATION_FN_SELU, ACTIVATION_FN_LINEAR]
 ALLOWED_LAYER_TYPES = [LAYER_CONVOLUTIONAL, LAYER_POOL, LAYER_FULLY_CONNECTED, LAYER_RESIDUAL]
 
-DEFAULT_N_KERNELS = 64
+DEFAULT_N_KERNELS = 32
 DEFAULT_TIMESTEPS = 28
 DEFAULT_N_FEATURES = 28
 DEFAULT_BINS = 10
@@ -21,6 +21,7 @@ DEFAULT_N_FORECASTS = 1
 DEFAULT_HIDDEN_LAYERS = 2
 DEFAULT_HEIGHT = 400
 DEFAULT_WIDTH = 1
+DEFAULT_DEPTH = 1
 DEFAULT_KERNEL_SIZE = [3, 3]
 DEFAULT_N_OUTPUT_SERIES = 1
 DEFAULT_ACT_FUNCTION = ACTIVATION_FN_RELU
@@ -35,7 +36,7 @@ class Topology(object):
 
     def __init__(self, n_timesteps=DEFAULT_TIMESTEPS, n_features=DEFAULT_N_FEATURES,
                  n_forecasts=DEFAULT_N_FORECASTS, n_classification_bins=DEFAULT_BINS, layer_heights=None,
-                 layer_widths=None, activation_functions=None, layer_types=None,
+                 layer_widths=None, layer_depths=None, activation_functions=None, layer_types=None,
                  conv_config=None):
         """
         Following info is required to construct a topology object
@@ -48,10 +49,14 @@ class Topology(object):
         """
 
         if layer_heights is None:
-            assert layer_widths is None and activation_functions is None
-            layer_heights, layer_widths, activation_functions = \
+            assert layer_widths is None and activation_functions is None and layer_depths is None
+            layer_depths, layer_heights, layer_widths, activation_functions = \
                 self.get_default_layers(DEFAULT_HIDDEN_LAYERS)
         else:
+            if layer_depths is None:
+                layer_depths = [DEFAULT_DEPTH] * len(layer_heights)
+            else:
+                assert len(layer_depths) == len(layer_heights), "Length of depths array does not match height array"
             assert len(layer_widths) == len(layer_heights), "Length of widths array does not match height array"
             assert len(activation_functions) == len(layer_heights), "Length of act fns does not match height array"
 
@@ -69,16 +74,19 @@ class Topology(object):
             self.dilation_rates = 1
             self.strides = 1
 
-        layers = self._build_layers(layer_heights, layer_widths, activation_functions, layer_types)
+        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
 
+        layers[0]["depth"] = 1
         layers[0]["height"] = n_timesteps
         layers[0]["width"] = n_features
+        layers[-1]["depth"] = 1
         layers[-1]["height"] = n_forecasts
         layers[-1]["width"] = n_classification_bins
 
         self._verify_layers(layers)
         self.layers = layers
         self.n_layers = len(layers) - 1  # n layers of neurons are connected by n-1 sets of weights
+        self.n_bayes_layers = self.n_layers - 2
         self.n_timesteps = n_timesteps
         self.n_features = n_features
         self.n_forecasts = n_forecasts
@@ -134,16 +142,18 @@ class Topology(object):
 
     def get_weight_shape(self, layer_number):
 
-        if layer_number >= self.n_layers:
-            raise ValueError('layer_number should be strictly less the number of layers')
+        if not layer_number < self.n_layers:
+            raise ValueError('layer_number should be strictly less than the number of layers')
 
+        input_depth = self.layers[layer_number]["depth"]
         input_height = self.layers[layer_number]["height"]
         input_width = self.layers[layer_number]["width"]
 
+        output_depth = self.layers[layer_number + 1]["depth"]
         output_height = self.layers[layer_number + 1]["height"]
         output_width = self.layers[layer_number + 1]["width"]
 
-        weight_shape = [input_height, input_width, output_height, output_width]
+        weight_shape = [input_depth, input_height, input_width, output_depth, output_height, output_width]
 
         return weight_shape
 
@@ -153,13 +163,14 @@ class Topology(object):
         :param layer_number:
         :return:
         """
-        if layer_number >= self.n_layers:
+        if not layer_number < self.n_layers:
             raise ValueError('layer_number should be strictly less the number of layers')
 
+        depth = self.layers[layer_number + 1]["depth"]
         height = self.layers[layer_number + 1]["height"]
         width = self.layers[layer_number + 1]["width"]
 
-        bias_shape = [height, width]
+        bias_shape = [depth, height, width]
 
         return bias_shape
 
@@ -182,7 +193,7 @@ class Topology(object):
         else:
             raise NotImplementedError
 
-    def _build_layers(self, layer_heights, layer_widths, activation_functions, layer_types=None):
+    def _build_layers(self, layer_depths, layer_heights, layer_widths, activation_functions, layer_types=None):
         """
         :param activation_functions:
         :param n_series:
@@ -203,12 +214,18 @@ class Topology(object):
             layer["activation_func"] = activation_functions[i]
             layer["trainable"] = True  # Just hardcode for now, will be configurable in future
             layer["cell_height"] = 1  # Just hardcode for now, will be configurable in future
+            layer["depth"] = layer_depths[i]
             layer["height"] = layer_heights[i]
             layer["width"] = layer_widths[i]
 
             if layer_types is None:
-                layer["type"] = DEFAULT_LAYER_TYPE
+                if i > 1:
+                    layer["type"] = LAYER_FULLY_CONNECTED
+                else:
+                    layer["type"] = LAYER_CONVOLUTIONAL
             else:
+                assert layer_types[0] == 'conv', "Cromulon intro layer should be conv"
+                assert layer_types[1] == 'res', "Cromulon first layer should be res"
                 layer["type"] = layer_types[i]
 
             if i > 0:  # Enforce consistent dimensions for subsequent layers
@@ -221,15 +238,16 @@ class Topology(object):
                     current_n_kernels *= 2
                 elif previous_layer_type == LAYER_CONVOLUTIONAL:
                     # This will depend on choice of padding. Default for now is same, so easier.
+                    layer["depth"] = self.n_kernels
                     layer["height"] = int(prev_layer["height"])
                     layer["width"] = int(prev_layer["width"])
                 elif previous_layer_type == LAYER_RESIDUAL or layer["type"] == LAYER_RESIDUAL:
                     input_layer = layers[0]
                     layer["height"] = int(input_layer["height"])
                     layer["width"] = int(input_layer["width"])
-                if previous_layer_type in {'conv2d', 'conv1d', 'conv3d', 'pool2d', 'pool3d'}\
-                        and layer["type"] == LAYER_FULLY_CONNECTED:
-                    layer["width"] *= prev_layer["n_kernels"]
+                if previous_layer_type in {LAYER_CONVOLUTIONAL, LAYER_RESIDUAL} and \
+                                layer["type"] == LAYER_FULLY_CONNECTED:
+                    layer["depth"] = self.n_kernels
 
             layer["n_kernels"] = current_n_kernels
 
@@ -244,12 +262,13 @@ class Topology(object):
         :return:
         """
 
+        layer_depths = [DEFAULT_N_FEATURES] + [DEFAULT_DEPTH] * n_hidden_layers + [DEFAULT_N_OUTPUT_SERIES]
         layer_heights = [DEFAULT_N_FEATURES] + [DEFAULT_HEIGHT] * n_hidden_layers + [DEFAULT_N_FORECASTS]
         layer_widths = [DEFAULT_TIMESTEPS] + [DEFAULT_WIDTH] * n_hidden_layers + [DEFAULT_BINS]
 
         activation_functions = ['linear'] + [DEFAULT_ACT_FUNCTION] * n_hidden_layers + ['linear']
 
-        return layer_heights, layer_widths, activation_functions
+        return layer_depths, layer_heights, layer_widths, activation_functions
 
     def get_network_input_shape(self):
         """ Returns the required shape of input data.

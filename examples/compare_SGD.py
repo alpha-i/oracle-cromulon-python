@@ -11,12 +11,12 @@ logging.basicConfig(level=logging.DEBUG)
 
 FLAGS = tf.app.flags.FLAGS
 N_CYCLES = 5   # 20
-NOISE_AMPLITUDE = 0 # 800  # Rms noise relative to rms signal. 54% achieved on 400 with 64 train passes
-TRAIN_PASSES = [64]  # 8 works well [1, 4, 16, 64] # Big influence
-DEFAULT_EVAL_PASSES = [64]  # [1, 4, 16, 64]
+NOISE_AMPLITUDE = 0
+TRAIN_PASSES = [1]
+DEFAULT_EVAL_PASSES = [1]
 DEFAULT_RANDOM_SEED = 42
 
-N_RES_BLOCKS = [9]  # [4, 9, 11, 21] # Big Influence. 9, 11 fail at 800 noise, 128 passes
+N_RES_BLOCKS = [4]  # [4, 9, 11, 21] # Big Influence. 9, 11 fail at 800 noise, 128 passes
 N_BAYES_LAYERS = 1
 OPT_METHODS = ['Adam']  # GDO Adam: Adam performs better in noisy domain perhaps due to effectively large batch size
 N_NETWORKS = 1
@@ -26,50 +26,6 @@ SAVE_FILE = '/mnt/pika/MNIST/mnist_results.txt'
 ADAM_FILE = '/mnt/pika/MNIST/adam_results.txt'
 QUICK_TEST = False
 
-# RESULTS FOR 800 NOISE AMP  20 epoch average.
-# Updated prior from 0.8 to 1 and spike-slab from 0.5 to 0.7
-
-# RESULTS FOR 800 NOISE AMP  20 epoch average.
-# suppressed priors:
-# bayesian cost:  Predicted: 6772 of 10000 in bin 1 of 10  ( 17.93 % accuracy)
-# bayesian cost:  Predicted: 7266 of 10000                 (14.24 %)
-#   Predicted: 4914 of 10000 predictions fell in bin 1 of 10    (14.36)
-#  :   Predicted :5876 of 10000 predictions fell in bin 1 of 10  (17.88)
-#   Predicted : 4357 of 10000 predictions fell in bin 1 of 10  ( 22.47 %)
-#    Predicted : 6941 of 10000 predictions fell in bin 1 of 10   17.96 %
-#   Predicted : 5549 of 10000 predictions fell in bin 1 of 10  (17 %)
-#   Predicted : 3880 of 10000 predictions fell in bin 1 of 10. (18.62 % )
-# Predicted : 4626 of 10000 predictions fell in bin 1 of 10. (20.77 % )
-#  Predicted : 4000 of 10000 predictions fell in bin 1 of 10. (14.08 % )
-# 1e4 entropic cost: 44 of 400; 11%! terrible..
-# 1 entropic cost: 5445 of 10000 predictions fell in bin 0, 7.68 %
-# 1e-3 entropic cost:
-# 1e-6 entropic cost: 6319 of 10000 predictions fell in bin 1 of 10  15.09 %
-
-
-
-# RESULTS FOR 800 NOISE AMP. 3 cycle, 10 epoch average.
-# no supp priors:
-# bayesian cost: 12.3
-# entropic cost: 12.9 (max 18) # 12.3
-
-# WITH batch norm:
-# suppressed priors:
-# bayesian cost:
-# entropic cost:  10.9;   # 10000, so more than we will take
-
-# no supp priors:
-# bayesian cost: 10.45
-# entropic cost: 10.6
-
-# WITH no conv batch norm:
-# bayesian cost: 12.9
-# entropic cost: 17 (!) # repeat with 128: 12; 25 sec per epoch; 14sec per epoch at 64 passes.
-# but then not reproducible :/get 11 % twice over! weird!
-
-# WITH no transition batch norm:
-# bayesian cost:
-# entropic cost: 10.8
 
 def run_mnist_tests():
 
@@ -95,7 +51,6 @@ def run_mnist_tests():
         accuracy_array = np.asarray(accuracy_list)
         print(method, 'accuracy:', accuracy_list)
         print('Mean accuracy:', np.mean(accuracy_array))
-        # print('Log likelihood:', np.mean(likeli_array))
 
         if method == 'Adam':
             filename = ADAM_FILE

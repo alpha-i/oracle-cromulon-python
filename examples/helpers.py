@@ -10,7 +10,7 @@ def load_default_topology(series_name, tf_flags, n_layers):
     """The input and output layers must adhere to the dimensions of the features and labels.
     """
 
-    layer_types = ['full', 'full', 'full', 'full']
+    layer_types = ['conv', 'res', 'full', 'full']
     layer_heights = None
     layer_widths = None
     activation_functions = None
@@ -32,7 +32,7 @@ def load_default_topology(series_name, tf_flags, n_layers):
             layer_widths = [1, 1, 1, 1]
             activation_functions = ['linear', 'relu', 'relu', 'relu', 'linear']
         else:
-            layer_types = ['full', 'full', 'full', 'full']
+            layer_types = ['conv', 'res', 'full', 'full']
             layer_heights = [784, 400, 400, 10]
             layer_widths = [1, 1, 1, 1]
             activation_functions = ['linear', 'relu', 'relu', 'linear']
@@ -44,7 +44,7 @@ def load_default_topology(series_name, tf_flags, n_layers):
         if tf_flags.use_convolution:
 
             if n_layers == 4:
-                layer_types = ['full', 'full', 'full',  'full']
+                layer_types = ['conv', 'res', 'full',  'full']
                 layer_heights = [28,  14, 400, 10]
                 layer_widths = [28, 14, 1, 1]
             elif n_layers == 6:
@@ -117,11 +117,11 @@ def load_default_topology(series_name, tf_flags, n_layers):
     else:
         raise NotImplementedError
 
-    topology = topo.Topology(n_timesteps=n_timesteps,
+    topology = topo.Topology(n_timesteps=n_timesteps, n_features=n_features,
                              n_forecasts=n_output_series,
                              n_classification_bins=n_classification_bins, layer_types=layer_types,
                              layer_heights=layer_heights, layer_widths=layer_widths,
-                             activation_functions=activation_functions, n_features=n_features)
+                             activation_functions=activation_functions)
 
     return topology
 

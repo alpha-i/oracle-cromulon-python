@@ -151,12 +151,12 @@ def _log_epoch_loss(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use
     msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
     logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
 
-    if PRINT_KERNEL and use_convolution:
-        gr = tf.get_default_graph()
-        conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-        kernel_shape = conv1_kernel_val.shape
-        kernel_sample = conv1_kernel_val.flatten()[0:3]
-        logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
+    # if PRINT_KERNEL and use_convolution:
+    #     gr = tf.get_default_graph()
+    #     conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
+    #     kernel_shape = conv1_kernel_val.shape
+    #     kernel_sample = conv1_kernel_val.flatten()[0:3]
+    #     logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
 def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):

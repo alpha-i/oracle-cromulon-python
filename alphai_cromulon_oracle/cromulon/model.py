@@ -61,19 +61,19 @@ class Cromulon:
 
         # Bulk of the network consists of residual blocks
         for block_number in range(self._flags.n_res_blocks):
-            x = self._build_residual_block(x, block_number)
+            x = self.residual_block(x, block_number)
 
         # Add final Bayesian layer(s)
         x = self.looped_passes(x)
 
         return x
 
-    def _build_residual_block(self, x, block_number):
+    def residual_block(self, x, block_number):
 
         """ Residual Layer based on alphaZero architecture
 
-        :param signal: Tensor
-        :param int layer_number: Used to assign variable names
+        :param x: Tensor
+        :param int block_number: Used to assign variable names
         :return:
         """
 
@@ -141,7 +141,8 @@ class Cromulon:
         :return:
         """
 
-        for layer_number in range(self._topology.n_bayes_layers):
+        for bayes_layer in range(self._topology.n_bayes_layers):
+            layer_number = bayes_layer + 2
             signal = self.fully_connected_layer(signal, layer_number)
 
         return signal
@@ -158,7 +159,7 @@ class Cromulon:
 
         weights = self.bayes.compute_weights(layer_number)
         biases = self.bayes.compute_biases(layer_number)
-        x = tf.tensordot(x, weights, axes=2) + biases
+        x = tf.tensordot(x, weights, axes=3) + biases
 
         activation_function = self._topology.get_activation_function(layer_number)
 
@@ -187,20 +188,13 @@ class Cromulon:
         `(batch, depth, height, width, channels)` while DATA_FORMAT = `channels_first`
         corresponds to inputs with shape `(batch, channels, depth, height, width)`.
 
-        :param signal: A rank 5 tensor of dimensions [batch, series, time, features, filters]
-        :return:  A rank 5 tensor of dimensions [batch, series, time, features, filters]
+        :param signal: A rank 4 tensor of dimensions [batch, channels, time, features]
+        :param str layer_label: Label to identify the layer
+        :param int layer_number: Which block it belongs to
+        :return:  A rank 4 tensor of dimensions [batch, channels, time, features]
         """
 
-        current_layer = self._topology.layers[layer_number]
-        n_kernels = current_layer.get("n_kernels", self._topology.n_kernels)
-        dilation_rate = self._topology.dilation_rates
-        strides = self._topology.strides
-
-        kernel_size = self.calculate_kernel_size()
         op_name = LAYER_CONVOLUTIONAL + layer_label + str(layer_number)
-
-        # x = Conv2D(filters=mc.cnn_filter_num, kernel_size=mc.cnn_filter_size, padding="same",
-        #            data_format="channels_first", kernel_regularizer=l2(mc.l2_reg))(x)
 
         if self._flags.do_kernel_regularisation:
             regulariser = tf.contrib.layers.l2_regularizer(scale=0.1)
@@ -210,26 +204,26 @@ class Cromulon:
         try:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=n_kernels,
-                kernel_size=kernel_size,
+                filters=self._topology.n_kernels,
+                kernel_size=self.calculate_kernel_size(),
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
-                dilation_rate=dilation_rate,
-                strides=strides,
+                dilation_rate=self._topology.dilation_rates,
+                strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
                 reuse=True)
         except:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=n_kernels,
-                kernel_size=kernel_size,
+                filters=self._topology.n_kernels,
+                kernel_size=self.calculate_kernel_size(),
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
-                dilation_rate=dilation_rate,
-                strides=strides,
+                dilation_rate=self._topology.dilation_rates,
+                strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
                 reuse=False)

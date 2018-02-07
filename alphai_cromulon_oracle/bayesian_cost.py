@@ -164,8 +164,8 @@ class BayesianCost(object):
                 rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
                 if self._model._flags.n_train_passes == 1:  # Exploit common random numbers
-                    weights = self._model.compute_weights(layer, iteration=iteration)
-                    biases = self._model.compute_biases(layer, iteration=iteration)
+                    weights = self._model.compute_weights(layer)
+                    biases = self._model.compute_biases(layer)
 
                     log_qw += self.calculate_log_q_prior(weights, mu_w, rho_w)
                     log_qw += self.calculate_log_q_prior(biases, mu_b, rho_b)

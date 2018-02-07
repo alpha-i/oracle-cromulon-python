@@ -25,6 +25,7 @@ PRINT_KERNEL = True
 #         for sample in tf_flags.n_mc_samples:
 #             temp_data = sample_forecasts(data)
 
+
 def eval_neural_net(data, topology, tf_flags, last_train_file):
     """ Multiple passes allow us to estimate the posterior distribution.
 
