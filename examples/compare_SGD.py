@@ -76,13 +76,16 @@ def build_config(optimisation_method):
     config['n_networks'] = N_NETWORKS
     return config
 
-
 run_mnist_tests()
 
 # Cromulon results:
-## NOISE-FREE
+##  NOISE-FREE
 # 98.93 4 blocks; 1 pass; 100 epoch; 32 kernels
 # 99.22 6 blocks; 8 pass; 100 epoch; 32 kernels. Eval time:
+# LogLikeli values:
 
 # Now with linear output:
-# ?????      6 blocks; 8 pass; 100 epoch; 32 kernels. Eval time: 19 sec per epoch
+# 98.00; 98.78; LL -0.119   6 blocks; 8 pass; 100 epoch; 32 kernels; batch norm  Eval time: 16 sec/epoch
+# 99.18 ; 0.99.17 LL -0.042  6 blocks; 8 pass; 100 epoch; 32 kernels; no batch norm  Eval time: 12 sec/epoch
+# test: 99% with 2 blocks / no batch norm. With batch norm now get: 98 lol
+# 98.91; 0.07 w gdo and batch norm

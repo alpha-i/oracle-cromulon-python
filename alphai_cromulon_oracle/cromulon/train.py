@@ -12,8 +12,7 @@ from alphai_cromulon_oracle.cromulon import PRINT_LOSS_INTERVAL, PRINT_SUMMARY_I
 from alphai_cromulon_oracle.cromulon.model import Cromulon
 
 PRINT_KERNEL = True
-BOOL_TRUE = True
-EPSILON = 1e-10  # Small offset to prevent log(0)
+EPSILON = 1e-20  # Small offset to prevent log(0)
 
 
 def train(topology,
@@ -109,7 +108,7 @@ def train(topology,
 
                 _, batch_loss, batch_likeli, summary_results = \
                     sess.run([optimize, cost_operator, log_likeli, all_summaries],
-                             feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})
+                             feed_dict={x: batch_features, y: batch_labels, is_training: True})
                 epoch_loss += batch_loss
                 epoch_likeli += batch_likeli
 
@@ -218,10 +217,12 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
     # learning_rate = get_learning_rate(global_step, False)
 
     if tf_flags.optimisation_method == 'Adam':
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-        gradients, variables = zip(*optimizer.compute_gradients(cost_operator))
-        gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
-        optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)   # For batch normalisation
+        with tf.control_dependencies(update_ops):
+            optimizer = tf.train.AdamOptimizer(learning_rate)
+            gradients, variables = zip(*optimizer.compute_gradients(cost_operator))
+            gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
+            optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
     elif tf_flags.optimisation_method == 'GDO':
         if tf_flags.partial_retrain and do_retraining:
             final_layer_scope = str(topology.n_layers - 1)
@@ -235,7 +236,7 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
             optimizer = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
             clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
-            optimize = optimizer.apply_gradients(clipped_grads_and_vars)
+            optimize = optimizer.apply_gradients(clipped_grads_and_vars, global_step=global_step)
 
     else:
         raise NotImplementedError("Unknown optimisation method: ", tf_flags.optimisation_method)

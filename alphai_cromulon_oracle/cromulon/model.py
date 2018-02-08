@@ -54,8 +54,8 @@ class Cromulon:
         x = self.convolutional_layer(x, layer_label='input', layer_number=0)
 
         if self._flags.do_batch_norm:
-            layer_name = 'input_batch_norm_'
-            x = self.batch_normalisation(x, layer_name)
+            batch_norm_label = 'input_batch_norm_'
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = tf.nn.relu(x)
 
@@ -83,7 +83,7 @@ class Cromulon:
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'a'
-            x = self.batch_normalisation(x, batch_norm_label)
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = tf.nn.relu(x)
 
@@ -91,7 +91,7 @@ class Cromulon:
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'b'
-            x = self.batch_normalisation(x, batch_norm_label)
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = x + identity
 
@@ -164,7 +164,7 @@ class Cromulon:
 
         return activation_function(x)
 
-    def batch_normalisation(self, signal, norm_name):
+    def batch_normalisation(self, signal, norm_name, is_conv_layer):
         """ Normalises the signal to unit variance and zero mean.
 
         :param signal:
@@ -172,12 +172,14 @@ class Cromulon:
         :return:
         """
 
+        axis = 1 if is_conv_layer else -1
+
         try:
             signal = tf.layers.batch_normalization(signal, training=self._is_training,
-                                                   reuse=True, name=norm_name)
+                                                   reuse=True, name=norm_name, axis=axis)
         except:
             signal = tf.layers.batch_normalization(signal, training=self._is_training,
-                                                   reuse=False, name=norm_name)
+                                                   reuse=False, name=norm_name, axis=axis)
 
         return signal
 
