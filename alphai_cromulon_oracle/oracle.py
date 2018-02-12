@@ -29,12 +29,13 @@ from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 from alphai_cromulon_oracle.covariance import estimate_covariance
 from alphai_cromulon_oracle.helpers import TrainFileManager, logtime
 
+NETWORK_NAME = 'cromulon'
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
 DEFAULT_N_CORRELATED_SERIES = 5
 DEFAULT_N_CONV_FILTERS = 5
 DEFAULT_CONV_KERNEL_SIZE = [3, 3, 1]
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_cromulon"
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_" + NETWORK_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -85,21 +86,14 @@ class CromulonOracle(AbstractOracle):
         logger.info('Initialising Crocubot Oracle.')
 
         self.config = self.update_configuration(self.config)
-        self.network = self.config.get('network', DEFAULT_NETWORK)
+
         self._init_data_transformation()
         self._init_universe_provider()
 
         self._train_path = self.config['train_path']
-        self._covariance_method = self.config['covariance_method']
-
-        self._covariance_ndays = self.config['covariance_ndays']
-
-        self.use_historical_covariance = self.config.get('use_historical_covariance', False)
 
         n_correlated_series = self.config.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
-
         self._configuration = self.config
-
         self._init_train_file_manager()
 
         self._est_cov = None
@@ -212,18 +206,10 @@ class CromulonOracle(AbstractOracle):
 
     @logtime(message="Training the model.")
     def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
-        if self.network == 'crocubot':
-            crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
-        elif self.network == 'dropout':
-            dropout.train(data_provider, tensorflow_path, self._tensorflow_flags)
-        elif self.network == 'inception':
-            raise NotImplementedError('Requested network not supported:', self.network)
-            # inception.train(data_provider, tensorflow_path, self._tensorflow_flags)
-        else:
-            raise NotImplementedError('Requested network not supported:', self.network)
+        cromulon.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
 
     def _get_train_template(self):
-        return "{}_train_" + self.network
+        return TRAIN_FILE_NAME_TEMPLATE
 
     def predict(self, data, current_timestamp, number_chained_predictions):
         """
@@ -276,12 +262,9 @@ class CromulonOracle(AbstractOracle):
         eval_time = end_time - start_time
         logger.info("Network evaluation took: {} seconds".format(eval_time))
 
-        if self.network == 'crocubot':
-            if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
-                predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
-            predict_y = np.squeeze(predict_y, axis=1)
-        else:
-            predict_y = np.expand_dims(predict_y, axis=0)
+        if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
+            predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
+        predict_y = np.squeeze(predict_y, axis=1)
 
         means, conf_low, conf_high = self._data_transformation.inverse_transform_multi_predict_y(predict_y, symbols)
 
@@ -426,20 +409,6 @@ class CromulonOracle(AbstractOracle):
         if self._tensorflow_flags.predict_single_shares:
             train_x = self.expand_input_data(train_x)
 
-        if self.network == 'dropout':
-            logger.info("Reshaping and padding")
-            n_samples = train_x.shape[0]
-
-            train_x = np.reshape(train_x, [n_samples, 1, -1, 1])
-            n_ticks = train_x.shape[2]
-            reps = int(784 / n_ticks)
-            if reps > 1:
-                train_x = np.tile(train_x, (1, 1, reps, 1))
-
-            pad_elements = 784 - train_x.shape[2]
-            train_x = np.pad(train_x, [(0, 0), (0, 0), (0, pad_elements), (0, 0)], mode='reflect')
-            train_x = np.reshape(train_x, [n_samples, 28, 28, 1])
-
         train_x = self.verify_x_data(train_x)
 
         return train_x.astype(np.float32)  # FIXME: set float32 in data transform, conditional on config file
@@ -452,9 +421,6 @@ class CromulonOracle(AbstractOracle):
         if self._tensorflow_flags.predict_single_shares:
             n_feat_y = train_y.shape[2]
             train_y = np.reshape(train_y, [-1, 1, 1, n_feat_y])
-
-        if self.network == 'dropout':
-            train_y = np.squeeze(train_y)
 
         self.verify_y_data(train_y)
 
