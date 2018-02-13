@@ -15,6 +15,7 @@ import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
 
+DEFAULT_N_TRANSITION_KERNELS = 2
 LAYER_CONVOLUTIONAL = 'conv'
 LAYER_POOL = 'pool'
 LAYER_FULLY_CONNECTED = 'full'
@@ -62,6 +63,14 @@ class Cromulon:
         # Bulk of the network consists of residual blocks
         for block_number in range(self._flags.n_res_blocks):
             x = self.residual_block(x, block_number)
+
+        # Reduce dimensionality with 1x1 convolutional layer
+        x = self.convolutional_layer(x, layer_label='reduction', layer_number=99, kernel_size=1, n_kernels=DEFAULT_N_TRANSITION_KERNELS)
+        if self._flags.do_batch_norm:
+            batch_norm_label = 'output_batch_norm_'
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
+
+        x = tf.nn.relu(x)
 
         # Add final Bayesian layer(s)
         x = self.looped_passes(x)
@@ -183,7 +192,7 @@ class Cromulon:
 
         return signal
 
-    def convolutional_layer(self, signal, layer_label, layer_number):
+    def convolutional_layer(self, signal, layer_label, layer_number, kernel_size=None, n_kernels=None):
         """  Sets a convolutional layer with a two-dimensional kernel.
         The ordering of the dimensions in the inputs: DATA_FORMAT = `channels_last` corresponds to inputs with shape
         `(batch, depth, height, width, channels)` while DATA_FORMAT = `channels_first`
@@ -192,10 +201,19 @@ class Cromulon:
         :param signal: A rank 4 tensor of dimensions [batch, channels, time, features]
         :param str layer_label: Label to identify the layer
         :param int layer_number: Which block it belongs to
+                :param int layer_number: Which block it belongs to
+
+        :param int layer_number: Which block it belongs to
+
         :return:  A rank 4 tensor of dimensions [batch, channels, time, features]
         """
 
         op_name = LAYER_CONVOLUTIONAL + layer_label + str(layer_number)
+        if kernel_size is None:
+            kernel_size = self._topology.kernel_size
+
+        if n_kernels is None:
+            n_kernels = self._topology.n_kernels
 
         if self._flags.do_kernel_regularisation:
             regulariser = tf.contrib.layers.l2_regularizer(scale=0.1)
@@ -205,8 +223,8 @@ class Cromulon:
         try:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=self._topology.n_kernels,
-                kernel_size=self.calculate_kernel_size(),
+                filters=n_kernels,
+                kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
@@ -214,12 +232,13 @@ class Cromulon:
                 strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
+                use_bias=False,
                 reuse=True)
         except:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=self._topology.n_kernels,
-                kernel_size=self.calculate_kernel_size(),
+                filters=n_kernels,
+                kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
                 data_format=DATA_FORMAT,
@@ -227,6 +246,7 @@ class Cromulon:
                 strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
+                use_bias=False,
                 reuse=False)
 
         return signal

@@ -281,7 +281,7 @@ def log_network_confidence(predictions, g_step):
     """
 
     confidence_values = np.max(predictions, axis=-1).flatten()
-    typical_confidence = np.median(confidence_values)
+    mean_confidence = np.mean(confidence_values) * 100
     binned_predictions = np.argmax(predictions, axis=-1).flatten()
     n_predictions = len(binned_predictions)
 
@@ -290,7 +290,7 @@ def log_network_confidence(predictions, g_step):
     max_predicted = bin_counts[mode]
 
     if g_step:
-        logging.info('Confidence @ {} steps: {:.2f}; {}/{}'.format(g_step, typical_confidence, max_predicted, n_predictions))
+        logging.info('Confidence @ {} steps: {:.2f}; {}/{}'.format(g_step, mean_confidence, max_predicted, n_predictions))
     else:
         logging.info(
-            'Forecast confidence: {:.2f}; {}/{}'.format(typical_confidence, max_predicted, n_predictions))
+            'Forecast confidence: {:.2f}; {}/{}'.format(mean_confidence, max_predicted, n_predictions))

@@ -6,40 +6,11 @@ from timeit import default_timer as timer
 import numpy as np
 import tensorflow as tf
 
-# FIXME once time_series is updated, uncomment the below and delete the copy in this file
-# from alphai_time_series.calculator import make_diagonal_covariance_matrices
-
-from alphai_feature_generation.classifier import declassify_labels
+from alphai_feature_generation.classifier import declassify_single_pdf
 from alphai_cromulon_oracle.cromulon.model import Cromulon
 from alphai_cromulon_oracle.cromulon.train import log_network_confidence
 
 PRINT_KERNEL = True
-
-
-def multi_predict(n_forecasts, data, topology, tf_flags, last_train_file):
-    """   Performs multiple forecasts. The first is based on the data provided, subsequent ones
-    use random samples of the earlier forecast to extend the forecast.
-
-    :param n_forecasts:
-    :param data:
-    :param topology:
-    :param tf_flags:
-    :param last_train_file:
-    :return:
-    """
-
-    # First forecast is purely based upon the provided data
-    output = eval_neural_net(data, topology, tf_flags, last_train_file)
-    pdf_list = []  # List of pdfs at each forecasting step
-
-    for forecast in range(n_forecasts):
-        n_samples =
-        # First collect
-
-        for sample in tf_flags.n_mc_samples:
-            temp_data = sample_forecasts(data)
-
-    return pdf_list
 
 
 def eval_neural_net(data, topology, tf_flags, last_train_file):
@@ -70,36 +41,23 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
         delta_time = end_time - start_time
         logging.info("Loading the model from disk took:{}".format(delta_time))
 
-        graph = tf.get_default_graph()
-        # Finally we can retrieve tensors, operations, collections, etc.
-        if PRINT_KERNEL:
-            try:
-                kernel = graph.get_tensor_by_name('conv2d0/kernel:0').eval()
-                logging.info("Evaluating with kernel samples: {}".format(kernel.flatten()[0:3]))
-            except:
-                pass
-
         posterior = sess.run(y, feed_dict={x: data, is_training: False})
 
         log_network_confidence(posterior, None)
 
-    return np.squeeze(posterior, axis=2)
+    return posterior
 
 
-def forecast_means_and_variance(outputs, bin_distribution, tf_flags):
+def forecast_means_and_variance(outputs, bin_distribution):
     """ Each forecast comprises a mean and variance. NB not the covariance matrix
-    Oracle will perform this outside, but this function is useful for testing purposes
+    Oracle will perform this externally, but this function is useful for testing purposes
 
     :param nparray outputs: Raw output from the network, a 4D array of shape [n_passes, n_samples, n_series, classes]
     :param bin_distribution: Characterises the binning used to perform the classification task
-    :param tf_flags:
 
     :return: Means and variances of the posterior.
     """
 
-    if outputs.shape[0] != tf_flags.n_eval_passes:
-        raise ValueError('Unexpected output shape {}. It should be identical to n_eval_passes {}'
-                         .format(outputs.shape[0], tf_flags.n_eval_passes))
     n_samples = outputs.shape[1]
     n_series = outputs.shape[2]
 
@@ -108,35 +66,9 @@ def forecast_means_and_variance(outputs, bin_distribution, tf_flags):
 
     for i in range(n_samples):
         for j in range(n_series):
-            bin_passes = outputs[:, i, j, :]
-            temp_mean, temp_variance = declassify_labels(bin_distribution, bin_passes)
+            discrete_pdf = outputs[:, i, j, :]
+            temp_mean, temp_variance = declassify_single_pdf(bin_distribution, discrete_pdf)
             mean[i, j] = temp_mean
             variance[i, j] = temp_variance
 
-    if n_series > 1:
-        variance = make_diagonal_covariance_matrices(variance)
-
     return mean, variance
-
-
-# FIXME delete me once available in alphai_time_series
-def make_diagonal_covariance_matrices(variances):
-    """ Takes array of variances and makes diagonal covariance matrices
-
-    :param variances: [i, j] holds variance of forecast of sample i and series j
-    :return: Array of covariance matrices [n_samples, n_series, n_series]
-    """
-
-    if variances.ndim != 2:
-        raise ValueError('Dimensionality of the variances matrix {} should be 2'.format(variances.ndim))
-
-    n_samples = variances.shape[0]
-    n_series = variances.shape[1]
-
-    covariance_matrices = np.zeros((n_samples, n_series, n_series))
-
-    for i in range(n_samples):
-        diagonal_terms = variances[i, :]
-        covariance_matrices[i, :, :] = np.diag(diagonal_terms)
-
-    return covariance_matrices
