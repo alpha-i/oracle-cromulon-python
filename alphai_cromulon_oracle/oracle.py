@@ -148,8 +148,6 @@ class CromulonOracle(AbstractOracle):
             execution_time,
         ))
 
-        # FIXME These lines were agressively cutting the data. Batches drop drastically to < 10
-        # data = self._preprocess_raw_data(data)
         universe = self.get_universe(data)
         data = self._filter_universe_from_data_for_training(data, universe)
 
@@ -211,32 +209,16 @@ class CromulonOracle(AbstractOracle):
     def _get_train_template(self):
         return TRAIN_FILE_NAME_TEMPLATE
 
-    def predict(self, data, current_timestamp, number_chained_predictions):
-        """
-        Main method that gives us a prediction after the training phase is done
-        :param data: The dict of dataframes to be used for prediction
-        :type data: dict
-        :param current_timestamp: The timestamp of the time when the prediction is executed
-        :type current_timestamp: datetime.datetime
-        :param number_chained_predictions: The number of target timestamps, each separated by target_delta
-        :type number_chained_predictions: Integer
-        :return: Mean vector or covariance matrix together with the timestamp of the prediction
-        :rtype: PredictionResult
-        """
-        universe = self.get_universe(data)
+    def predict_classification(self, data, current_timestamp):
+        """ Returns the raw pdf from the network. """
 
+        universe = self.get_universe(data)
         data = self._filter_universe_from_data_for_prediction(data, current_timestamp, universe)
 
-        if self._topology is None:
-            logger.warning('Not ready for prediction - safer to run train first')
-
-        logger.info('Cromulon Oracle prediction on {}.'.format(current_timestamp))
-
         latest_train_file = self._train_file_manager.latest_train_filename(current_timestamp)
-        predict_x, symbols, prediction_timestamp, target_timestamps = self._data_transformation.create_predict_data(data)
 
-        logger.info('Predicting mean values.')
-        start_time = timer()
+        predict_x, symbols, prediction_timestamp, target_timestamp = self._data_transformation.create_predict_data(
+            data)
         predict_x = self._preprocess_inputs(predict_x)
 
         if self._topology is None:
@@ -258,15 +240,50 @@ class CromulonOracle(AbstractOracle):
             latest_train_file
         )
 
-        end_time = timer()
-        eval_time = end_time - start_time
-        logger.info("Network evaluation took: {} seconds".format(eval_time))
-
         if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
             predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
         predict_y = np.squeeze(predict_y, axis=1)
 
-        means, conf_low, conf_high = self._data_transformation.inverse_transform_multi_predict_y(predict_y, symbols)
+        return predict_y, symbols, target_timestamp
+
+    def predict(self, data, current_timestamp, number_of_iterations=1):
+        """
+        Main method that gives us a prediction after the training phase is done
+        :param data: The dict of dataframes to be used for prediction
+        :type data: dict
+        :param current_timestamp: The timestamp of the time when the prediction is executed
+        :type current_timestamp: datetime.datetime
+        :param number_chained_predictions: The number of target timestamps, each separated by target_delta
+        :type number_chained_predictions: Integer
+        :return: Mean vector or covariance matrix together with the timestamp of the prediction
+        :rtype: PredictionResult
+        """
+
+        if self._topology is None:
+            logger.warning('Not ready for prediction - safer to run train first')
+        logger.info('Cromulon Oracle prediction on {}.'.format(current_timestamp))
+
+        predict_y_list = []
+        for i in range(number_of_iterations):
+            predict_y, symbols, target_timestamps = self.predict_classification(data, current_timestamp)
+            predict_y_list.append(predict_y)
+
+        predict_y_stack = np.stack(predict_y_list)
+        average_predict_y = np.mean(predict_y_stack, axis=0)
+
+        means, conf_low, conf_high = self._data_transformation.inverse_transform_multi_predict_y(average_predict_y, symbols)
+        self.log_validity_of_predictions(means, conf_low, conf_high)
+
+        means_pd = pd.DataFrame(data=means, columns=symbols, index=target_timestamps)
+        conf_low_pd = pd.DataFrame(data=conf_low, columns=symbols, index=target_timestamps)
+        conf_high_pd = pd.DataFrame(data=conf_high, columns=symbols, index=target_timestamps)
+
+        means_pd, conf_low_pd, conf_high_pd = self.filter_predictions(means_pd, conf_low_pd, conf_high_pd)
+
+        return PredictionResult(means_pd, conf_low_pd, conf_high_pd, current_timestamp)
+
+    def log_validity_of_predictions(self, means, conf_low, conf_high):
+        """ Checks that the network outputs are sensible. """
 
         if not (np.isfinite(conf_low).all() and np.isfinite(conf_high).all()):
             logger.warning('Confidence interval contains non-finite values.')
@@ -275,14 +292,6 @@ class CromulonOracle(AbstractOracle):
             logger.warning('Means found to contain non-finite values.')
 
         logger.info('Samples from predicted means: {}'.format(means[0:10]))
-
-        means_pd = pd.DataFrame(data=means, columns=symbols, index=target_timestamps)
-        conf_low_pd = pd.DataFrame(data=conf_low, columns=symbols, index=target_timestamps)
-        conf_high_pd = pd.DataFrame(data=conf_high, columns=symbols, index=target_timestamps)
-
-        means_pd, conf_low_pd, conf_high_pd = self.filter_predictions(means_pd, conf_low_pd, conf_high_pd)
-
-        return PredictionResult(means_pd, conf_low_pd, conf_high_pd, prediction_timestamp)
 
     def filter_predictions(self, means, conf_low, conf_high):
         """ Drops any predictions that are NaN, and remove those symbols from the corresponding confidence dataframe.
