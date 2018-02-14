@@ -11,13 +11,13 @@ import numpy as np
 import pandas as pd
 
 from alphai_feature_generation.cleaning import resample_ohlcv, fill_gaps
-from alphai_feature_generation.transformation import FinancialDataTransformation
+from alphai_feature_generation.transformation import GymDataTransformation
 from alphai_feature_generation.universe import VolumeUniverseProvider
 
 from alphai_time_series.transform import gaussianise
 from alphai_delphi.oracle import AbstractOracle, PredictionResult
 
-from alphai_cromulon_oracle.crocubot.helpers import TensorflowPath, TensorboardOptions
+from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
 from alphai_cromulon_oracle.data.providers import TrainDataProvider
 
 
@@ -43,17 +43,13 @@ logger = logging.getLogger(__name__)
 class CromulonOracle(AbstractOracle):
 
     def _sanity_check(self):
-        assert self.scheduling.prediction_delta.days >= self.config['universe']['ndays_window']
+        pass
 
     def global_transform(self, data):
 
         transformed_data = self._data_transformation.apply_global_transformations(data)
 
         return transformed_data
-
-    def get_universe(self, data):
-
-        return self.universe_provider.get_historical_universes(data)
 
     def resample(self, data):
 
@@ -77,26 +73,25 @@ class CromulonOracle(AbstractOracle):
     def load(self):
         pass
 
+    def get_universe(self):
+        pass
+
     def __init__(self, config):
         """
         :param configuration: Dictionary containing all the parameters. Full specifications can be found at:
-        oracle-crocubot-python/docs/crocubot_options.md
+        oracle-cromulon-python/docs/cromulon_options.md
         """
         super().__init__(config)
-        logger.info('Initialising Crocubot Oracle.')
+        logger.info('Initialising Cromulon Oracle.')
 
         self.config = self.update_configuration(self.config)
 
         self._init_data_transformation()
-        self._init_universe_provider()
-
         self._train_path = self.config['train_path']
 
         n_correlated_series = self.config.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
         self._configuration = self.config
         self._init_train_file_manager()
-
-        self._est_cov = None
 
         self._tensorflow_flags = build_tensorflow_flags(self.config)  # Perhaps use separate config dict here?
 
@@ -117,11 +112,6 @@ class CromulonOracle(AbstractOracle):
         )
         self._train_file_manager.ensure_path_exists()
 
-    def _init_universe_provider(self):
-        universe_config = self.config['universe']
-        universe_config["exchange"] = self._data_transformation.exchange_calendar.name
-        self.universe_provider = VolumeUniverseProvider(universe_config)
-
     def _init_data_transformation(self):
         data_transformation_config = self.config['data_transformation']
 
@@ -135,7 +125,7 @@ class CromulonOracle(AbstractOracle):
 
         self._target_feature = self._extract_target_feature(self._feature_list)
 
-        self._data_transformation = FinancialDataTransformation(data_transformation_config)
+        self._data_transformation = GymDataTransformation(data_transformation_config)
 
     def train(self, data, execution_time):
         """
@@ -148,10 +138,7 @@ class CromulonOracle(AbstractOracle):
             execution_time,
         ))
 
-        universe = self.get_universe(data)
-        data = self._filter_universe_from_data_for_training(data, universe)
-
-        train_x_dict, train_y_dict = self._data_transformation.create_train_data(data, universe)
+        train_x_dict, train_y_dict = self._data_transformation.create_train_data(data)
 
         logger.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x_dict)
@@ -253,8 +240,8 @@ class CromulonOracle(AbstractOracle):
         :type data: dict
         :param current_timestamp: The timestamp of the time when the prediction is executed
         :type current_timestamp: datetime.datetime
-        :param number_chained_predictions: The number of target timestamps, each separated by target_delta
-        :type number_chained_predictions: Integer
+        :param number_of_iterations: The number of iterations which we use to sample the uncertain features.
+        :type number_of_iterations: Integer
         :return: Mean vector or covariance matrix together with the timestamp of the prediction
         :rtype: PredictionResult
         """
@@ -403,7 +390,7 @@ class CromulonOracle(AbstractOracle):
         return config
 
     def _preprocess_inputs(self, train_x_dict):
-        """ Prepare training data to be fed into crocubot. """
+        """ Prepare training data to be fed into Cromulon. """
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
@@ -569,25 +556,24 @@ class CromulonOracle(AbstractOracle):
 
         return filtered
 
-    def _filter_universe_from_data_for_training(self, data, universe):
+
+class OraclePrediction:
+    def __init__(self, mean_forecast, lower_bound, upper_bound, current_timestamp):
+        """ Container for the oracle predictions.
+
+        :param mean_forecast: Prediction values for various series at various times
+        :type mean_forecast: pd.DataFrame
+        :param lower_bound: Lower edge of the requested confidence interval
+        :type lower_bound: pd.DataFrame
+        :param upper_bound: Upper edge of the requested confidence interval
+        :type upper_bound: pd.DataFrame
+        :param current_timestamp: Timestamp when the prediction was made
+        :type target_timestamp: datetime
         """
-        Filters the dataframes inside the dict, returning a new dict with only the columns
-        available in the universe for that particular date
-        :param data: dict of dataframes
-        :type data: dict
-        :param universe: dataframe containing mapping of data -> list of assets
-        :type universe: pd.DataFrame
-        :return: dict of pd.DataFrame
-        :rtype dict
-        """
+        self.mean_forecast = mean_forecast
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.current_timestamp = current_timestamp
 
-        assets = []
-        for idx, row in universe.iterrows():
-            assets = assets + list(row.assets)
-
-        assets = set(assets)
-        filtered = {}
-        for feature, df in data.items():
-            filtered[feature] = df.drop(df.columns.difference(assets), axis=1)
-
-        return filtered
+    def __repr__(self):
+        return "<Oracle prediction: {}>".format(self.__dict__)
