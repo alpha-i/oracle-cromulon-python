@@ -185,9 +185,12 @@ def load_gym_dataframe():
 
     df = load_raw_gym_data()
     df = df.set_index(df.date)
-    df.index = pd.to_datetime(df.index)
-    df['date'] = df.index
+    df.index = pd.to_datetime(df.index, utc=True).round('T')
+    df.index = df.index.tz_convert(pytz.timezone('US/Pacific'))
 
+    df = df.loc[~df.index.duplicated(keep='first')]  # Remove duplicate entries
+
+    df['date'] = df.index
     # One hot encode categorical columns
     columns = ["day_of_week", "month", "hour"]
     df = pd.get_dummies(df, columns=columns)

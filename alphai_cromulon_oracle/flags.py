@@ -61,7 +61,6 @@ def build_tensorflow_flags(config):
     tf.app.flags.DEFINE_integer('n_eval_passes', config['n_eval_passes'], """Number of passes to average over during evaluation.""")
 
     # Initial conditions
-    tf.app.flags.DEFINE_float('INITIAL_ALPHA', config['INITIAL_ALPHA'], """Prior on weights.""")
     tf.app.flags.DEFINE_float('INITIAL_WEIGHT_UNCERTAINTY', config['INITIAL_WEIGHT_UNCERTAINTY'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('INITIAL_BIAS_UNCERTAINTY', config['INITIAL_BIAS_UNCERTAINTY'], """Initial standard deviation on bias.""")
     tf.app.flags.DEFINE_float('INITIAL_WEIGHT_DISPLACEMENT', config['INITIAL_WEIGHT_DISPLACEMENT'], """Initial offset on weight distributions.""")

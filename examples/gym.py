@@ -128,9 +128,10 @@ def load_gym_config():
         'n_features_per_series': 271,
         'n_forecasts': n_forecasts,
         'n_classification_bins': 12,
-        'layer_heights': [200, 200, 200],
-        'layer_widths': [1, 1, 1],
-        'activation_functions': ['relu', 'relu', 'relu'],
+        'layer_heights': [400, 400, 400, 400],
+        'layer_widths': [1, 1, 1, 1],
+        'layer_types': ['conv', 'res', 'full', 'full'],
+        'activation_functions': ['relu', 'relu', 'relu', 'relu'],
 
         # Initial conditions
         'INITIAL_WEIGHT_UNCERTAINTY': 0.02,

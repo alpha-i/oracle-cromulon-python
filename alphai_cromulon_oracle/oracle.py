@@ -6,16 +6,16 @@
 import logging
 from timeit import default_timer as timer
 from copy import deepcopy
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
 
 from alphai_feature_generation.cleaning import resample_ohlcv, fill_gaps
 from alphai_feature_generation.transformation import GymDataTransformation
-from alphai_feature_generation.universe import VolumeUniverseProvider
 
 from alphai_time_series.transform import gaussianise
-from alphai_delphi.oracle import AbstractOracle, PredictionResult
+from alphai_delphi.oracle import AbstractOracle
 
 from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
 from alphai_cromulon_oracle.data.providers import TrainDataProvider
@@ -26,14 +26,14 @@ import alphai_cromulon_oracle.cromulon.evaluate as cromulon_eval
 from alphai_cromulon_oracle.flags import build_tensorflow_flags
 import alphai_cromulon_oracle.topology as tp
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
-from alphai_cromulon_oracle.covariance import estimate_covariance
+
 from alphai_cromulon_oracle.helpers import TrainFileManager, logtime
 
 NETWORK_NAME = 'cromulon'
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
-DEFAULT_N_CORRELATED_SERIES = 5
-DEFAULT_N_CONV_FILTERS = 5
-DEFAULT_CONV_KERNEL_SIZE = [3, 3, 1]
+DEFAULT_N_CORRELATED_SERIES = 1
+DEFAULT_N_CONV_FILTERS = 32
+DEFAULT_CONV_KERNEL_SIZE = [3, 3]
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
 TRAIN_FILE_NAME_TEMPLATE = "{}_train_" + NETWORK_NAME
 
@@ -199,9 +199,6 @@ class CromulonOracle(AbstractOracle):
     def predict_classification(self, data, current_timestamp):
         """ Returns the raw pdf from the network. """
 
-        universe = self.get_universe(data)
-        data = self._filter_universe_from_data_for_prediction(data, current_timestamp, universe)
-
         latest_train_file = self._train_file_manager.latest_train_filename(current_timestamp)
 
         predict_x, symbols, prediction_timestamp, target_timestamp = self._data_transformation.create_predict_data(
@@ -231,7 +228,13 @@ class CromulonOracle(AbstractOracle):
             predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
         predict_y = np.squeeze(predict_y, axis=1)
 
-        return predict_y, symbols, target_timestamp
+        target_timestamps = []
+        for i in range(self._topology.n_forecasts):
+            temp_timestamp = deepcopy(target_timestamp)
+            target_timestamps.append(temp_timestamp)
+            target_timestamp += timedelta(days=self._data_transformation.target_delta_ndays)
+
+        return predict_y, symbols, target_timestamps
 
     def predict(self, data, current_timestamp, number_of_iterations=1):
         """
@@ -242,8 +245,8 @@ class CromulonOracle(AbstractOracle):
         :type current_timestamp: datetime.datetime
         :param number_of_iterations: The number of iterations which we use to sample the uncertain features.
         :type number_of_iterations: Integer
-        :return: Mean vector or covariance matrix together with the timestamp of the prediction
-        :rtype: PredictionResult
+        :return: Mean forecast, lower and upper confidence limits, and the timestamp of the prediction
+        :rtype: OraclePrediction
         """
 
         if self._topology is None:
@@ -267,7 +270,7 @@ class CromulonOracle(AbstractOracle):
 
         means_pd, conf_low_pd, conf_high_pd = self.filter_predictions(means_pd, conf_low_pd, conf_high_pd)
 
-        return PredictionResult(means_pd, conf_low_pd, conf_high_pd, current_timestamp)
+        return OraclePrediction(means_pd, conf_low_pd, conf_high_pd, current_timestamp)
 
     def log_validity_of_predictions(self, means, conf_low, conf_high):
         """ Checks that the network outputs are sensible. """
@@ -354,30 +357,6 @@ class CromulonOracle(AbstractOracle):
             logger.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
 
         return x_data
-
-    def calculate_historical_covariance(self, predict_data, symbols):
-        # Call the covariance library
-
-        start_time = timer()
-        cov = estimate_covariance(
-            data=predict_data,
-            n_days=self._covariance_ndays,
-            minutes_after_open=self._data_transformation.target_market_minute,
-            estimation_method=self._covariance_method,
-            exchange_calendar=self._data_transformation.exchange_calendar,
-            forecast_interval_in_days=self._data_transformation.target_delta_ndays,
-            target_symbols=symbols
-        )
-        end_time = timer()
-        cov_time = end_time - start_time
-        logger.info("Historical covariance estimation took:{}".format(cov_time))
-        logger.info("Cov shape:{}".format(cov.shape))
-        if not np.isfinite(cov).all():
-            logger.warning('Covariance matrix computation failed. Contains non-finite values.')
-            logger.warning('Problematic data: {}'.format(predict_data))
-            logger.warning('Derived covariance: {}'.format(cov))
-
-        return pd.DataFrame(data=cov, columns=symbols, index=symbols)
 
     def update_configuration(self, config):
         """ Pass on some config entries to data_transformation"""
@@ -498,7 +477,7 @@ class CromulonOracle(AbstractOracle):
         layer_types = self._configuration.get('layer_types', default_layer_types)
 
         # Override input layer to match data
-        layer_depths[0] = int(self._n_input_series)
+        layer_depths[0] = 1  # n input series currently fixed to 1
         layer_heights[0] = n_timesteps
         layer_widths[0] = self._n_features
 
@@ -510,7 +489,6 @@ class CromulonOracle(AbstractOracle):
         conv_config["strides"] = self._configuration.get('strides', 1)
 
         self._topology = tp.Topology(
-            n_series=self._n_input_series,
             n_timesteps=n_timesteps,
             n_forecasts=self._n_forecasts,
             n_classification_bins=self._configuration['n_classification_bins'],

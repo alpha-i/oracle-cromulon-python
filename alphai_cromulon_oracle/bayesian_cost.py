@@ -165,7 +165,6 @@ class BayesianCost(object):
 
                 log_pw += self.calculate_log_weight_prior(weights, layer)
                 log_pw += self.calculate_log_bias_prior(biases, layer)
-                log_pw += self.calculate_log_hyperprior(layer)
 
         return log_pw, log_qw
 
@@ -193,20 +192,12 @@ class BayesianCost(object):
     def calculate_log_bias_prior(self, biases, layer):
         """
         At present we impose the same prior on the biases as is imposed on the weights
-        :param biases: The biases of the layer for which the prior value is to be calculated
+        :param biases: The biases of the layer for fwhich the prior value is to be calculated
         :param layer: The layer number for which the weights are given.
         :return: The log-probability value.
         """
 
         return self.calculate_log_weight_prior(biases, layer)
-
-    def calculate_log_hyperprior(self, layer):
-        """
-        Compute the hyper prior for a layer. Does make any difference to the optimizer in the current form.
-        :param layer: The layer number for which the hyper prior is to be calculated.
-        :return: The log-probability value.
-        """
-        return - self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
 
     @staticmethod
     def calculate_log_q_prior(theta, mu, rho):

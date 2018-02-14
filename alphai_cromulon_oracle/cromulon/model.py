@@ -10,7 +10,7 @@ This modules contains two classes
 """
 
 import logging
-import numpy as np
+
 import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
@@ -270,9 +270,10 @@ class Cromulon:
         partial_new_shape = tf.shape(input_signal)[0:1]
         one = tf.expand_dims(tf.constant(int(1)), axis=0)
         nbins = tf.expand_dims(tf.constant(self._topology.n_classification_bins), axis=0)
+        n_forecasts = tf.expand_dims(tf.constant(self._topology.n_forecasts), axis=0)
 
         # Will need to update this if using multiple forecasts
-        dummy_shape = tf.concat([one, partial_new_shape, one, one, nbins], 0)
+        dummy_shape = tf.concat([one, partial_new_shape, one, n_forecasts, nbins], 0)
 
         return tf.zeros(dummy_shape)
 
@@ -312,8 +313,6 @@ class BayesLayers:
     VAR_BIAS_MU = 'mu_b'
     VAR_BIAS_NOISE = 'bias_noise'
 
-    VAR_LOG_ALPHA = 'log_alpha'
-
     def __init__(self, topology, flags):
         """
 
@@ -346,8 +345,7 @@ class BayesLayers:
             self.VAR_BIAS_NOISE,
             self.VAR_WEIGHT_RHO,
             self.VAR_WEIGHT_MU,
-            self.VAR_WEIGHT_NOISE,
-            self.VAR_LOG_ALPHA
+            self.VAR_WEIGHT_NOISE
         ]
 
     def initialise_bayesian_parameters(self):
@@ -359,7 +357,6 @@ class BayesLayers:
 
         initial_rho_weights = tf.contrib.distributions.softplus_inverse(weight_uncertainty)
         initial_rho_bias = tf.contrib.distributions.softplus_inverse(bias_uncertainty)
-        initial_alpha = self._flags.INITIAL_ALPHA
 
         for layer_number in range(self._topology.n_layers):
             layer_type = self._topology.layers[layer_number]["type"]
@@ -390,13 +387,6 @@ class BayesLayers:
                     self.VAR_BIAS_RHO,
                     initial_rho_bias + tf.zeros(b_shape, tm.DEFAULT_TF_TYPE)
                 )
-
-                self._create_variable_for_layer(
-                    layer_number,
-                    self.VAR_LOG_ALPHA,
-                    np.log(initial_alpha).astype(self._flags.d_type),
-                    False
-                )  # Hyperprior on the distribution of the weights
 
     def _create_variable_for_layer(self, layer_number, variable_name, initializer, is_trainable=True):
 

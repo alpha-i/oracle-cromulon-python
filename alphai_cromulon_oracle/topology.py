@@ -283,6 +283,6 @@ class Topology(object):
         """
 
         input_layer = self.layers[0]
-        input_shape = (input_layer["height"], input_layer["width"])
+        input_shape = (input_layer["depth"], input_layer["height"], input_layer["width"])
 
         return input_shape
