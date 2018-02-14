@@ -6,7 +6,6 @@ from timeit import default_timer as timer
 import numpy as np
 import tensorflow as tf
 
-from alphai_feature_generation.classifier import declassify_single_pdf
 from alphai_cromulon_oracle.cromulon.model import Cromulon
 from alphai_cromulon_oracle.cromulon.train import log_network_confidence
 
@@ -67,7 +66,7 @@ def forecast_means_and_variance(outputs, bin_distribution):
     for i in range(n_samples):
         for j in range(n_series):
             discrete_pdf = outputs[:, i, j, :]
-            temp_mean, temp_variance = declassify_single_pdf(bin_distribution, discrete_pdf)
+            temp_mean, temp_variance = bin_distribution.declassify_single_pdf(discrete_pdf)
             mean[i, j] = temp_mean
             variance[i, j] = temp_variance
 
