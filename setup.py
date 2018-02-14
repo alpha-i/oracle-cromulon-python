@@ -3,9 +3,9 @@ from setuptools import find_packages
 
 
 setup(
-    name='alphai_crocubot_oracle',
-    version='3.0.0',
-    description='Alpha-I Crocubot',
+    name='alphai_cromulon_oracle',
+    version='1.0.0',
+    description='Alpha-I Cromulon',
     author='Sreekumar Thaithara Balan, Christopher Bonnett, Fergus Simpson',
     author_email='sreekumar.balan@alpha-i.co, christopher.bonnett@alpha-i.co, fergus.simpson@alpha-i.co',
     packages=find_packages(exclude=['doc', 'tests*']),
