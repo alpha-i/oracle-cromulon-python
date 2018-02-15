@@ -24,6 +24,7 @@ DEFAULT_TEST_FRACTION = 0.05
 DROP_MONTHS = False  # set True for random forest, as it
 COARSE_TEMP = False
 DROP_DAYS = False
+DEFAULT_TIME_RESOLUTION = '15T'
 
 
 def load_scaled_gym_data(do_random_split, test_fraction=DEFAULT_TEST_FRACTION, start_test_date=None):
@@ -185,7 +186,7 @@ def load_gym_dataframe():
 
     df = load_raw_gym_data()
     df = df.set_index(df.date)
-    df.index = pd.to_datetime(df.index, utc=True).round('T')
+    df.index = pd.to_datetime(df.index, utc=True).round(DEFAULT_TIME_RESOLUTION)
     df.index = df.index.tz_convert(pytz.timezone('US/Pacific'))
 
     df = df.loc[~df.index.duplicated(keep='first')]  # Remove duplicate entries

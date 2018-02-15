@@ -21,7 +21,7 @@ LAYER_POOL = 'pool'
 LAYER_FULLY_CONNECTED = 'full'
 LAYER_RESIDUAL = 'res'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
-DATA_FORMAT = 'channels_first'  # Slightly faster for cuDNN to use CHW format
+# DATA_FORMAT = 'channels_first'  # Slightly faster for cuDNN to use CHW format
 RANDOM_SEED = None  # Set to None for best performance, but lacks reproducibility
 
 if RANDOM_SEED:  # How many passes over the bayes layers can be performed in parallel. Default is 10.
@@ -41,6 +41,12 @@ class Cromulon:
         self._topology = topology
         self._flags = flags
         self._is_training = is_training
+
+        if flags.use_gpu:
+            self.data_format = 'channels_first'
+        else:
+            self.data_format = 'channels_last'
+
         self.bayes = BayesLayers(topology, flags)
         self.intialise_variables()
 
@@ -50,6 +56,10 @@ class Cromulon:
         :param x: A 3D tensor of dimensions [samples, time, features]
         :return: A 2D tensor representing the probabiity distribution of dimensions [samples, classification_bins]
         """
+
+        # Adapt data format if needed
+        if not self._flags.use_gpu:
+            x = tf.transpose(x, [0, 2, 3, 1])
 
         # Process input in accordance with https://www.gwern.net/docs/rl/2017-silver.pdf
         x = self.convolutional_layer(x, layer_label='input', layer_number=0)
@@ -71,6 +81,10 @@ class Cromulon:
             x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = tf.nn.relu(x)
+
+        # Revert data format if needed
+        if not self._flags.use_gpu:
+            x = tf.transpose(x, [0, 2, 3, 1])
 
         # Add final Bayesian layer(s)
         x = self.looped_passes(x)
@@ -227,7 +241,7 @@ class Cromulon:
                 kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
-                data_format=DATA_FORMAT,
+                data_format=self.data_format,
                 dilation_rate=self._topology.dilation_rates,
                 strides=self._topology.strides,
                 name=op_name,
@@ -241,7 +255,7 @@ class Cromulon:
                 kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
-                data_format=DATA_FORMAT,
+                data_format=self.data_format,
                 dilation_rate=self._topology.dilation_rates,
                 strides=self._topology.strides,
                 name=op_name,
@@ -258,7 +272,7 @@ class Cromulon:
         :return:
         """
 
-        return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format=DATA_FORMAT)
+        return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format=self.data_format)
 
     def calculate_dummy_output(self, input_signal):
         """ Need a tensor which mimics the shape of the output of the network

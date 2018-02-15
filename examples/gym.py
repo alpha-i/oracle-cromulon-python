@@ -119,6 +119,7 @@ def load_gym_config():
         'n_train_passes': 32,
         'n_eval_passes': 32,
         'resume_training': False,
+        'use_gpu': False,
 
         # Topology
         'n_series': 1,
