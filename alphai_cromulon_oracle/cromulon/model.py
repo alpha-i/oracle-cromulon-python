@@ -153,7 +153,7 @@ class Cromulon:
         # Average probability over multiple passes
         output_signal = tf.reduce_mean(output_signal, axis=0)
 
-        return tf.expand_dims(output_signal, axis=0)
+        return output_signal
 
     def bayes_forward_pass(self, signal):
         """  Propagate only through the fully connected layers.

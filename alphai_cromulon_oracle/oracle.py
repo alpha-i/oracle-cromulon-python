@@ -94,13 +94,12 @@ class CromulonOracle(AbstractOracle):
         self._init_train_file_manager()
 
         self._tensorflow_flags = build_tensorflow_flags(self.config)  # Perhaps use separate config dict here?
+        self._n_forecasts = self.config.get('n_forecasts', 1)
 
         if self._tensorflow_flags.predict_single_shares:
             self._n_input_series = int(np.minimum(n_correlated_series, self.config['n_series']))
-            self._n_forecasts = 1
         else:
             self._n_input_series = self.config['n_series']
-            self._n_forecasts = self.config['n_forecasts']
 
         self._topology = None
 
@@ -224,15 +223,11 @@ class CromulonOracle(AbstractOracle):
             latest_train_file
         )
 
-        if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
-            predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
-        predict_y = np.squeeze(predict_y, axis=1)
-
         target_timestamps = []
         for i in range(self._topology.n_forecasts):
             temp_timestamp = deepcopy(target_timestamp)
             target_timestamps.append(temp_timestamp)
-            target_timestamp += timedelta(days=self._data_transformation.target_delta_ndays)
+            target_timestamp += timedelta(hours=self._data_transformation.target_delta_hours)
 
         return predict_y, symbols, target_timestamps
 
@@ -365,6 +360,7 @@ class CromulonOracle(AbstractOracle):
         config["data_transformation"]["nassets"] = config["nassets"]
         config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
         config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
+        config["data_transformation"]["n_forecasts"] = config.get("n_forecasts", 1)
 
         return config
 

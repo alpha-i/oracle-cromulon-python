@@ -2,15 +2,22 @@
 
 from datetime import date
 from datetime import datetime as dt
+import logging
 import pandas as pd
 import numpy as np
-import pickle
+
+import matplotlib.pyplot as plt
+from matplotlib.dates import AutoDateFormatter, AutoDateLocator
 
 from alphai_cromulon_oracle.oracle import CromulonOracle
 from alphai_cromulon_oracle.oracle import OraclePrediction
 from alphai_delphi.oracle.oracle_configuration import OracleConfiguration
 
 import examples.gym_iotools as io
+
+logger = logging.getLogger('tipper')
+logger.addHandler(logging.StreamHandler())
+logging.basicConfig(level=logging.DEBUG)
 
 EXECUTION_TIME = date(2017, 12, 12)
 D_TYPE = 'float32'
@@ -25,7 +32,18 @@ def run_oracle():
     oracle = CromulonOracle(config)
     oracle.train(data_dict, EXECUTION_TIME)
 
-    return oracle.predict(data_dict, EXECUTION_TIME, number_of_iterations=1)
+    prediction = oracle.predict(data_dict, EXECUTION_TIME, number_of_iterations=1)
+    actuals = extract_actuals(data_dict, prediction.lower_bound.index)
+
+    return prediction, actuals
+
+
+def extract_actuals(data_dict, index):
+
+    target = data_dict['number_people']
+    actuals = target.loc[index]
+
+    return actuals
 
 
 def make_dummy_prediction():
@@ -69,7 +87,7 @@ def make_dict_from_dataframe(df):
 
 def load_gym_config():
 
-    n_forecasts = 5
+    n_forecasts = 48
 
     configuration = {
         'nassets': 1,
@@ -79,26 +97,29 @@ def load_gym_config():
             'feature_config_list': [
                 {
                     'name': 'number_people',
-                    'normalization': 'standard',
-                    'length': 50,
-                    'is_target': True
+                    'normalization': 'min_max',
+                    'length': 20,
+                    'is_target': True,
+                    'resolution': 60
                 },
                 {
-                    'name': 'temperature',
-                    'normalization': 'standard',
-                    'length': 50
+                    'name': 'number_people',
+                    'normalization': 'min_max',
+                    'length': 20,
+                    'resolution': 1440
                 },
                 ],
             'target_config_list': [
                                        {
                                            'name': 'number_people',
-                                           'length': 5
+                                           'length': n_forecasts,
+                                           'resolution': 4
                                        },
             ],
             'data_name': 'GYM',
             'features_ndays': 10,
             'features_resample_minutes': 15,
-            'target_delta_ndays': 1,
+            'target_delta_hours': 1,
         },
         'train_path': '/tmp/cromulon/',
         'model_save_path': '/tmp/cromulon/',
@@ -111,15 +132,15 @@ def load_gym_config():
         'normalise_per_series': True,
 
         # Training specific
-        'n_epochs': 1,
-        'n_retrain_epochs': 1,
-        'learning_rate': 2e-3,
-        'batch_size': 100,
+        'n_epochs': 6000,
+        'n_retrain_epochs': 100,
+        'learning_rate': 1e-3,
+        'batch_size': 200,
         'cost_type': 'bayes',
         'n_train_passes': 32,
         'n_eval_passes': 32,
-        'resume_training': False,
-        'use_gpu': False,
+        'resume_training': True,
+        'use_gpu': True,
 
         # Topology
         'n_series': 1,
@@ -128,11 +149,11 @@ def load_gym_config():
         'n_res_blocks': 6,
         'n_features_per_series': 271,
         'n_forecasts': n_forecasts,
-        'n_classification_bins': 12,
-        'layer_heights': [400, 400, 400, 400],
-        'layer_widths': [1, 1, 1, 1],
-        'layer_types': ['conv', 'res', 'full', 'full'],
-        'activation_functions': ['relu', 'relu', 'relu', 'relu'],
+        'n_classification_bins': 6,
+        'layer_heights': [400, 400, 400, 400, 400],
+        'layer_widths': [1, 1, 1, 1, 1],
+        'layer_types': ['conv', 'res', 'full', 'full', 'full'],
+        'activation_functions': ['relu', 'relu', 'relu', 'linear', 'linear'],
 
         # Initial conditions
         'INITIAL_WEIGHT_UNCERTAINTY': 0.02,
@@ -173,12 +194,27 @@ def load_gym_config():
 
     return oracle_config
 
-
-
 # prediction = make_dummy_prediction()
 #
 # with open('./dummy_prediction.pickle', 'wb') as handle:
 #     pickle.dump(prediction, handle)
-prediction_result = run_oracle()
+predictions, actuals = run_oracle()
 
-print("Predictions: ", prediction_result)
+print("Predictions: ", predictions)
+print("actuals: ", actuals)
+
+plt.figure(num=1)
+
+ax = plt.axes()
+
+t_predict = predictions.lower_bound.index.values
+
+ax.plot(t_predict, predictions.lower_bound.values)
+ax.plot(t_predict, predictions.upper_bound.values)
+
+# Need actuals too
+t_actuals = t_predict
+ax.scatter(t_actuals.tolist(), list(actuals.values))
+
+
+plt.show()
