@@ -1,7 +1,8 @@
 # Uses the oracle to train and predict the gym data.
 
-from datetime import date
+from datetime import date, timedelta
 from datetime import datetime as dt
+from copy import deepcopy
 import logging
 import pandas as pd
 import numpy as np
@@ -19,7 +20,7 @@ logger = logging.getLogger('tipper')
 logger.addHandler(logging.StreamHandler())
 logging.basicConfig(level=logging.DEBUG)
 
-EXECUTION_TIME = date(2017, 12, 12)
+EXECUTION_TIME = date(2016, 12, 7)  # beware - chunks missing from data in 2017
 D_TYPE = 'float32'
 
 
@@ -27,15 +28,26 @@ def run_oracle():
 
     config = load_gym_config()
     gym_df = io.load_gym_dataframe()
-    data_dict = make_dict_from_dataframe(gym_df)
+
+    cut_gym_df = deepcopy(gym_df)
+    cut_time = EXECUTION_TIME + timedelta(days=1)
+    cut_gym_df = truncate_dataframe(cut_gym_df, cut_time)
+
+    full_data_dict = make_dict_from_dataframe(gym_df)
+    data_dict = make_dict_from_dataframe(cut_gym_df)
 
     oracle = CromulonOracle(config)
-    oracle.train(data_dict, EXECUTION_TIME)
+    oracle.train(full_data_dict, EXECUTION_TIME)
 
     prediction = oracle.predict(data_dict, EXECUTION_TIME, number_of_iterations=1)
-    actuals = extract_actuals(data_dict, prediction.lower_bound.index)
+    actuals = extract_actuals(full_data_dict, prediction.lower_bound.index)
 
     return prediction, actuals
+
+
+def truncate_dataframe(gym_df, execution_time):
+
+    return gym_df.ix[:execution_time]    # gym_df[(gym_df['date'] < EXECUTION_TIME)]
 
 
 def extract_actuals(data_dict, index):
@@ -87,7 +99,7 @@ def make_dict_from_dataframe(df):
 
 def load_gym_config():
 
-    n_forecasts = 48
+    n_forecasts = 84  # 7x24
 
     configuration = {
         'nassets': 1,
@@ -132,8 +144,8 @@ def load_gym_config():
         'normalise_per_series': True,
 
         # Training specific
-        'n_epochs': 6000,
-        'n_retrain_epochs': 100,
+        'n_epochs': 200,
+        'n_retrain_epochs': 20,
         'learning_rate': 1e-3,
         'batch_size': 200,
         'cost_type': 'bayes',
@@ -216,5 +228,5 @@ ax.plot(t_predict, predictions.upper_bound.values)
 t_actuals = t_predict
 ax.scatter(t_actuals.tolist(), list(actuals.values))
 
-
+plt.ylim(0, 45)
 plt.show()
