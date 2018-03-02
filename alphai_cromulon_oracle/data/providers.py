@@ -6,8 +6,6 @@ import numpy as np
 from alphai_data_sources.data_sources import DataSourceGenerator
 from alphai_data_sources.generator import BatchGenerator, BatchOptions
 
-from alphai_feature_generation.classifier import classify_labels
-
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 TrainData = namedtuple('TrainData', 'features labels')
@@ -195,9 +193,9 @@ class TrainDataProviderForDataSource(AbstractTrainDataProvider):
         """
 
         if self._for_training:
-            noise_shape = (60000, 28, 28, 1)
+            noise_shape = (60000, 1, 28, 28)
         else:
-            noise_shape = (10000, 28, 28, 1)
+            noise_shape = (10000, 1, 28, 28)
 
         mnist_sigma = 0.31
         self._noise_data = np.random.normal(loc=0.0, scale=mnist_sigma, size=noise_shape)

@@ -35,7 +35,8 @@ def run_timed_benchmark_mnist(series_name, tf_flags, do_training, config, multi_
                                                            True
                                                            )
 
-            tensorflow_path = TensorflowPath(save_file)
+            model_file = save_file if tf_flags.resume_training else None
+            tensorflow_path = TensorflowPath(save_file, model_file)
             tensorboard_options = TensorboardOptions(tf_flags.tensorboard_log_path,
                                                      tf_flags.learning_rate,
                                                      tf_flags.batch_size,

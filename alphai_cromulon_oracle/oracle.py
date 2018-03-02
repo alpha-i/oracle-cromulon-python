@@ -1,4 +1,3 @@
-# Interface with quant workflow.
 # Trains the network then uses it to make predictions
 # Also transforms the data before and after the predictions are made
 
@@ -7,119 +6,163 @@
 import logging
 from timeit import default_timer as timer
 from copy import deepcopy
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
 
+from alphai_feature_generation.cleaning import resample_ohlcv, fill_gaps
+from alphai_feature_generation.transformation import GymDataTransformation
+
+from alphai_time_series.transform import gaussianise
+from alphai_delphi.oracle import AbstractOracle
+
 from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
 from alphai_cromulon_oracle.data.providers import TrainDataProvider
-from alphai_feature_generation.transformation import FinancialDataTransformation
-from alphai_time_series.transform import gaussianise
 
-import alphai_cromulon_oracle.cromulon.train as crocubot
-import alphai_cromulon_oracle.cromulon.evaluate as crocubot_eval
-import alphai_cromulon_oracle.dropout.train as dropout
-import alphai_cromulon_oracle.dropout.evaluate as dropout_eval
+
+import alphai_cromulon_oracle.cromulon.train as cromulon
+import alphai_cromulon_oracle.cromulon.evaluate as cromulon_eval
 from alphai_cromulon_oracle.flags import build_tensorflow_flags
 import alphai_cromulon_oracle.topology as tp
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
-from alphai_cromulon_oracle.covariance import estimate_covariance
+
 from alphai_cromulon_oracle.helpers import TrainFileManager, logtime
 
+NETWORK_NAME = 'cromulon'
 CLIP_VALUE = 5.0  # Largest number allowed to enter the network
-DEFAULT_N_CORRELATED_SERIES = 5
-DEFAULT_N_CONV_FILTERS = 5
-DEFAULT_CONV_KERNEL_SIZE = [3, 3, 1]
+DEFAULT_N_CORRELATED_SERIES = 1
+DEFAULT_N_CONV_FILTERS = 32
+DEFAULT_CONV_KERNEL_SIZE = [3, 3]
 FEATURE_TO_RANK_CORRELATIONS = 0  # Use the first feature to form correlation coefficients
-TRAIN_FILE_NAME_TEMPLATE = "{}_train_crocubot"
-DEFAULT_NETWORK = 'crocubot'
+TRAIN_FILE_NAME_TEMPLATE = "{}_train_" + NETWORK_NAME
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__)
 
 
-class CromulonOracle:
-    def __init__(self, configuration):
+class CromulonOracle(AbstractOracle):
+
+    def _sanity_check(self):
+        pass
+
+    def global_transform(self, data):
+
+        transformed_data = self._data_transformation.apply_global_transformations(data)
+
+        return transformed_data
+
+    def resample(self, data):
+
+        resampled_raw_data = resample_ohlcv(data, "{}T".format(self._data_transformation.features_resample_minutes))
+
+        return resampled_raw_data
+
+    def fill_nan(self, data):
+
+        filled_data = fill_gaps(data, self._data_transformation.fill_limit, dropna=True)
+
+        return filled_data
+
+    def save(self):
+        pass
+
+    @property
+    def target_feature(self):
+        return self._target_feature
+
+    def load(self):
+        pass
+
+    def get_universe(self):
+        pass
+
+    def __init__(self, config):
         """
         :param configuration: Dictionary containing all the parameters. Full specifications can be found at:
-        oracle-crocubot-python/docs/crocubot_options.md
+        oracle-cromulon-python/docs/cromulon_options.md
         """
+        super().__init__(config)
+        logger.info('Initialising Cromulon Oracle.')
 
-        self.network = configuration.get('network', DEFAULT_NETWORK)
-        logging.info('Initialising {} oracle.'.format(self.network))
+        self.config = self.update_configuration(self.config)
 
-        configuration = self.update_configuration(configuration)
-        feature_list = configuration['data_transformation']['feature_config_list']
+        self._init_data_transformation()
+        self._train_path = self.config['train_path']
 
-        self._data_transformation = FinancialDataTransformation(configuration['data_transformation'])
-        self._train_path = configuration['train_path']
-        self._covariance_method = configuration['covariance_method']
-        self._covariance_ndays = configuration['covariance_ndays']
-        self._n_features = len(feature_list)
+        n_correlated_series = self.config.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
+        self._configuration = self.config
+        self._init_train_file_manager()
 
-        self.use_historical_covariance = configuration.get('use_historical_covariance', False)
-        n_correlated_series = configuration.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
-
-        self._configuration = configuration
-        self._train_file_manager = TrainFileManager(
-            self._train_path,
-            self._get_train_template(),
-            DATETIME_FORMAT_COMPACT
-        )
-
-        self._train_file_manager.ensure_path_exists()
-        self._est_cov = None
-
-        self._tensorflow_flags = build_tensorflow_flags(configuration)  # Perhaps use separate config dict here?
+        self._tensorflow_flags = build_tensorflow_flags(self.config)  # Perhaps use separate config dict here?
+        self._n_forecasts = self.config.get('n_forecasts', 1)
 
         if self._tensorflow_flags.predict_single_shares:
-            self._n_input_series = int(np.minimum(n_correlated_series, configuration['n_series']))
-            self._n_forecasts = 1
+            self._n_input_series = int(np.minimum(n_correlated_series, self.config['n_series']))
         else:
-            self._n_input_series = configuration['n_series']
-            self._n_forecasts = configuration['n_forecasts']
+            self._n_input_series = self.config['n_series']
 
         self._topology = None
 
-    def train(self, historical_universes, train_data, execution_time):
+    def _init_train_file_manager(self):
+        self._train_file_manager = TrainFileManager(
+            self._train_path,
+            TRAIN_FILE_NAME_TEMPLATE,
+            DATETIME_FORMAT_COMPACT
+        )
+        self._train_file_manager.ensure_path_exists()
+
+    def _init_data_transformation(self):
+        data_transformation_config = self.config['data_transformation']
+
+        self._feature_list = data_transformation_config['feature_config_list']
+        self._n_features = len(self._feature_list)
+
+        data_transformation_config["prediction_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
+        data_transformation_config["features_start_market_minute"] = self.scheduling.training_frequency.minutes_offset
+        data_transformation_config["target_delta_ndays"] = int(self.scheduling.prediction_horizon.days)
+        data_transformation_config["target_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
+
+        self._target_feature = self._extract_target_feature(self._feature_list)
+
+        self._data_transformation = GymDataTransformation(data_transformation_config)
+
+    def train(self, data, execution_time):
         """
         Trains the model
-
-        :param pd.DataFrame historical_universes: dates and symbols of historical universes
-        :param dict train_data: OHLCV data as dictionary of pandas DataFrame.
+        :param dict data: OHLCV data as dictionary of pandas DataFrame.
         :param datetime.datetime execution_time: time of execution of training
         :return:
         """
-        logging.info('Training model on {}.'.format(
+        logger.info('Training model on {}.'.format(
             execution_time,
         ))
 
-        self.verify_pricing_data(train_data)
-        train_x_dict, train_y_dict = self._data_transformation.create_train_data(train_data, historical_universes)
+        train_x_dict, train_y_dict = self._data_transformation.create_train_data(data)
 
-        logging.info("Preprocessing training data")
+        logger.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x_dict)
         train_y = self._preprocess_outputs(train_y_dict)
-        logging.info("Processed train_x shape {}".format(train_x.shape))
+        logger.info("Processed train_x shape {}".format(train_x.shape))
         train_x, train_y = self.filter_nan_samples(train_x, train_y)
-        logging.info("Filtered train_x shape {}".format(train_x.shape))
+        logger.info("Filtered train_x shape {}".format(train_x.shape))
         n_valid_samples = train_x.shape[0]
 
         if n_valid_samples == 0:
             raise ValueError("Aborting training: No valid samples")
         elif n_valid_samples < 2e4:
-            logging.warning("Low number of training samples: {}".format(n_valid_samples))
+            logger.warning("Low number of training samples: {}".format(n_valid_samples))
 
         # Topology can either be directly constructed from layers, or build from sequence of parameters
         if self._topology is None:
             n_timesteps = train_x.shape[2]
             self.initialise_topology(n_timesteps)
 
-        logging.info('Initialised network topology: {}.'.format(self._topology.layers))
+        logger.info('Initialised network topology: {}.'.format(self._topology.layers))
 
-        logging.info('Training features of shape: {}.'.format(
+        logger.info('Training features of shape: {}.'.format(
             train_x.shape,
         ))
-        logging.info('Training labels of shape: {}.'.format(
+        logger.info('Training labels of shape: {}.'.format(
             train_y.shape,
         ))
 
@@ -141,120 +184,115 @@ class CromulonOracle:
                                                  )
 
         first_sample = train_x[0, :].flatten()
-        logging.info("Sample from first example in train_x: {}".format(first_sample[0:8]))
+        logger.info("Sample from first example in train_x: {}".format(first_sample[0:8]))
         data_provider = TrainDataProvider(train_x, train_y, self._tensorflow_flags.batch_size)
         self._do_train(tensorflow_path, tensorboard_options, data_provider)
 
     @logtime(message="Training the model.")
     def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
-        if self.network == 'crocubot':
-            crocubot.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
-        elif self.network == 'dropout':
-            dropout.train(data_provider, tensorflow_path, self._tensorflow_flags)
-        elif self.network == 'inception':
-            raise NotImplementedError('Requested network not supported:', self.network)
-            # inception.train(data_provider, tensorflow_path, self._tensorflow_flags)
-        else:
-            raise NotImplementedError('Requested network not supported:', self.network)
+        cromulon.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
 
     def _get_train_template(self):
-        return "{}_train_" + self.network
+        return TRAIN_FILE_NAME_TEMPLATE
 
-    def predict(self, predict_data, execution_time):
-        """
+    def predict_classification(self, data, current_timestamp):
+        """ Returns the raw pdf from the network. """
 
-        :param dict predict_data: OHLCV data as dictionary of pandas DataFrame
-        :param datetime.datetime execution_time: time of execution of prediction
+        latest_train_file = self._train_file_manager.latest_train_filename(current_timestamp)
 
-        :return : mean vector (pd.Series) and two covariance matrices (pd.DF)
-        """
-
-        if self._topology is None:
-            logging.warning('Not ready for prediction - safer to run train first')
-
-        logging.info('Oracle prediction on {}.'.format(execution_time))
-
-        self.verify_pricing_data(predict_data)
-        latest_train_file = self._train_file_manager.latest_train_filename(execution_time)
-        predict_x, symbols, predict_timestamp, target_timestamp = \
-            self._data_transformation.create_predict_data(predict_data)
-
-        logging.info('Predicting mean values.')
-        start_time = timer()
+        predict_x, symbols, prediction_timestamp, target_timestamp = self._data_transformation.create_predict_data(
+            data)
         predict_x = self._preprocess_inputs(predict_x)
 
         if self._topology is None:
             n_timesteps = predict_x.shape[2]
             self.initialise_topology(n_timesteps)
 
-        if self.network == 'crocubot':
-            # Verify data is the correct shape
-            network_input_shape = self._topology.get_network_input_shape()
-            data_input_shape = predict_x.shape[-3:]
+        # Verify data is the correct shape
+        network_input_shape = self._topology.get_network_input_shape()
+        data_input_shape = predict_x.shape[-3:]
 
-            if data_input_shape != network_input_shape:
-                err_msg = 'Data shape' + str(data_input_shape) + " doesnt match network input " + str(
-                    network_input_shape)
-                raise ValueError(err_msg)
+        if data_input_shape != network_input_shape:
+            err_msg = 'Data shape' + str(data_input_shape) + " doesnt match network input " + str(
+                network_input_shape)
+            raise ValueError(err_msg)
 
-            predict_y = crocubot_eval.eval_neural_net(
-                predict_x, self._topology,
-                self._tensorflow_flags,
-                latest_train_file
-            )
-        else:
-            predict_y = dropout_eval.eval_neural_net(predict_x, self._tensorflow_flags, latest_train_file)
+        predict_y = cromulon_eval.eval_neural_net(
+            predict_x, self._topology,
+            self._tensorflow_flags,
+            latest_train_file
+        )
 
-        end_time = timer()
-        eval_time = end_time - start_time
-        logging.info("Network evaluation took: {} seconds".format(eval_time))
+        target_timestamps = []
+        for i in range(self._topology.n_forecasts):
+            temp_timestamp = deepcopy(target_timestamp)
+            target_timestamps.append(temp_timestamp)
+            target_timestamp += timedelta(hours=self._data_transformation.target_delta_hours)
 
-        if self.network == 'crocubot':
-            if self._tensorflow_flags.predict_single_shares:  # Return batch axis to series position
-                predict_y = np.swapaxes(predict_y, axis1=1, axis2=2)
-            predict_y = np.squeeze(predict_y, axis=1)
-        else:
-            predict_y = np.expand_dims(predict_y, axis=0)
+        return predict_y, symbols, target_timestamps
 
-        means, forecast_covariance = self._data_transformation.inverse_transform_multi_predict_y(predict_y, symbols)
-        if not np.isfinite(forecast_covariance).all():
-            logging.warning('Forecast covariance contains non-finite values.')
+    def predict(self, data, current_timestamp, number_of_iterations=1):
+        """
+        Main method that gives us a prediction after the training phase is done
+        :param data: The dict of dataframes to be used for prediction
+        :type data: dict
+        :param current_timestamp: The timestamp of the time when the prediction is executed
+        :type current_timestamp: datetime.datetime
+        :param number_of_iterations: The number of iterations which we use to sample the uncertain features.
+        :type number_of_iterations: Integer
+        :return: Mean forecast, lower and upper confidence limits, and the timestamp of the prediction
+        :rtype: OraclePrediction
+        """
 
-        logging.info('Samples from predicted means: {}'.format(means[0:10]))
+        if self._topology is None:
+            logger.warning('Not ready for prediction - safer to run train first')
+        logger.info('Cromulon Oracle prediction on {}.'.format(current_timestamp))
+
+        predict_y_list = []
+        for i in range(number_of_iterations):
+            predict_y, symbols, target_timestamps = self.predict_classification(data, current_timestamp)
+            predict_y_list.append(predict_y)
+
+        predict_y_stack = np.stack(predict_y_list)
+        average_predict_y = np.mean(predict_y_stack, axis=0)
+
+        means, conf_low, conf_high = self._data_transformation.inverse_transform_multi_predict_y(average_predict_y, symbols)
+        self.log_validity_of_predictions(means, conf_low, conf_high)
+
+        means_pd = pd.DataFrame(data=means, columns=symbols, index=target_timestamps)
+        conf_low_pd = pd.DataFrame(data=conf_low, columns=symbols, index=target_timestamps)
+        conf_high_pd = pd.DataFrame(data=conf_high, columns=symbols, index=target_timestamps)
+
+        means_pd, conf_low_pd, conf_high_pd = self.filter_predictions(means_pd, conf_low_pd, conf_high_pd)
+
+        return OraclePrediction(means_pd, conf_low_pd, conf_high_pd, current_timestamp)
+
+    def log_validity_of_predictions(self, means, conf_low, conf_high):
+        """ Checks that the network outputs are sensible. """
+
+        if not (np.isfinite(conf_low).all() and np.isfinite(conf_high).all()):
+            logger.warning('Confidence interval contains non-finite values.')
+
         if not np.isfinite(means).all():
-            logging.warning('Means found to contain non-finite values.')
+            logger.warning('Means found to contain non-finite values.')
 
-        means_pd = pd.Series(np.squeeze(means), index=symbols)
+        logger.info('Samples from predicted means: {}'.format(means[0:10]))
 
-        if self.use_historical_covariance:
-            covariance = self.calculate_historical_covariance(predict_data, symbols)
-            logging.info('Samples from historical covariance: {}'.format(np.diag(covariance)[0:5]))
-            logging.warning('Invoking temporary covariance hack')
-            cov_diag = np.diag(covariance) + 1e-4
-            covariance = np.diag(cov_diag)
-        else:
-            covariance = forecast_covariance
-            logging.info("Samples from forecast_covariance: {}".format(np.diag(covariance)[0:5]))
-
-        covariance_pd = pd.DataFrame(data=covariance, columns=symbols, index=symbols)
-
-        means_pd, covariance_pd = self.filter_predictions(means_pd, covariance_pd)
-        return means_pd, covariance_pd
-
-    def filter_predictions(self, means, covariance):
-        """ Remove nans from the series and remove those symbols from the covariance dataframe
-
-        :param pdSeries means:
-        :param pdDF covariance:
-        :return: pdSeries, pdDF
+    def filter_predictions(self, means, conf_low, conf_high):
+        """ Drops any predictions that are NaN, and remove those symbols from the corresponding confidence dataframe.
+        :param pdDF means:  The predictions from which we'll extract the valid ones
+        :param pdDF conf_low: Lower bound of the confidence range of the prediction
+        :param pdDF conf_high: Upper bound of the confidence range of the prediction
+        :return: pdDF, pdDF, pdDF
         """
 
         means = means.dropna()
 
         valid_symbols = means.index.tolist()
-        covariance = covariance.loc[valid_symbols, valid_symbols]
+        conf_low = conf_low.loc[valid_symbols]
+        conf_high = conf_high.loc[valid_symbols]
 
-        return means, covariance
+        return means, conf_low, conf_high
 
     def filter_nan_samples(self, train_x, train_y):
         """ Remove any sample in zeroth dimension which holds a nan """
@@ -284,25 +322,17 @@ class CromulonOracle:
         mean = np.mean(finite_data)
         sigma = np.std(finite_data)
 
-        logging.info("{} Infs, Nans: {}, {}".format(data_name, infs, nans))
-        logging.info("{} Min, Max: {}, {}".format(data_name, min_data, max_data))
-        logging.info("{} Mean, Sigma: {}, {}".format(data_name, mean, sigma))
+        logger.info("{} Infs, Nans: {}, {}".format(data_name, infs, nans))
+        logger.info("{} Min, Max: {}, {}".format(data_name, min_data, max_data))
+        logger.info("{} Mean, Sigma: {}, {}".format(data_name, mean, sigma))
 
         if data_name == 'X_data' and np.abs(mean) > 1e-2:
-            logging.warning('Mean of input data is too large')
+            logger.warning('Mean of input data is too large')
 
         if data_name == 'Y_data' and max_data < 1e-2:
             raise ValueError("Y Data not classified")
 
         return min_data, max_data
-
-    def verify_pricing_data(self, predict_data):
-        """ Check for any issues in raw data. """
-
-        close = predict_data['close'].values
-        min_price, max_price = self.print_verification_report(close, 'Close')
-        if min_price < 1e-3:
-            logging.warning("Found an unusually small price: {}".format(min_price))
 
     def verify_y_data(self, y_data):
         testy = deepcopy(y_data)
@@ -318,34 +348,10 @@ class CromulonOracle:
             n_clipped_elements = np.sum(CLIP_VALUE < np.abs(testx))
             n_elements = len(testx)
             x_data = np.clip(x_data, a_min=-CLIP_VALUE, a_max=CLIP_VALUE)
-            logging.warning("Large inputs detected: clip values exceeding {}".format(CLIP_VALUE))
-            logging.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
+            logger.warning("Large inputs detected: clip values exceeding {}".format(CLIP_VALUE))
+            logger.info("{} of {} elements were clipped.".format(n_clipped_elements, n_elements))
 
         return x_data
-
-    def calculate_historical_covariance(self, predict_data, symbols):
-        # Call the covariance library
-
-        start_time = timer()
-        cov = estimate_covariance(
-            data=predict_data,
-            n_days=self._covariance_ndays,
-            minutes_after_open=self._data_transformation.target_market_minute,
-            estimation_method=self._covariance_method,
-            exchange_calendar=self._data_transformation.exchange_calendar,
-            forecast_interval_in_days=self._data_transformation.target_delta_ndays,
-            target_symbols=symbols
-        )
-        end_time = timer()
-        cov_time = end_time - start_time
-        logging.info("Historical covariance estimation took:{}".format(cov_time))
-        logging.info("Cov shape:{}".format(cov.shape))
-        if not np.isfinite(cov).all():
-            logging.warning('Covariance matrix computation failed. Contains non-finite values.')
-            logging.warning('Problematic data: {}'.format(predict_data))
-            logging.warning('Derived covariance: {}'.format(cov))
-
-        return pd.DataFrame(data=cov, columns=symbols, index=symbols)
 
     def update_configuration(self, config):
         """ Pass on some config entries to data_transformation"""
@@ -354,16 +360,17 @@ class CromulonOracle:
         config["data_transformation"]["nassets"] = config["nassets"]
         config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
         config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
+        config["data_transformation"]["n_forecasts"] = config.get("n_forecasts", 1)
 
         return config
 
     def _preprocess_inputs(self, train_x_dict):
-        """ Prepare training data to be fed into crocubot. """
+        """ Prepare training data to be fed into Cromulon. """
 
         numpy_arrays = []
         for key, value in train_x_dict.items():
             numpy_arrays.append(value)
-            logging.info("Appending feature of shape {}".format(value.shape))
+            logger.info("Appending feature of shape {}".format(value.shape))
 
         # Currently train_x will have dimensions [features; samples; timesteps; symbols]
         train_x = np.stack(numpy_arrays, axis=0)
@@ -372,20 +379,6 @@ class CromulonOracle:
         # Expand dataset if requested
         if self._tensorflow_flags.predict_single_shares:
             train_x = self.expand_input_data(train_x)
-
-        if self.network == 'dropout':
-            logging.info("Reshaping and padding")
-            n_samples = train_x.shape[0]
-
-            train_x = np.reshape(train_x, [n_samples, 1, -1, 1])
-            n_ticks = train_x.shape[2]
-            reps = int(784 / n_ticks)
-            if reps > 1:
-                train_x = np.tile(train_x, (1, 1, reps, 1))
-
-            pad_elements = 784 - train_x.shape[2]
-            train_x = np.pad(train_x, [(0, 0), (0, 0), (0, pad_elements), (0, 0)], mode='reflect')
-            train_x = np.reshape(train_x, [n_samples, 28, 28, 1])
 
         train_x = self.verify_x_data(train_x)
 
@@ -400,16 +393,12 @@ class CromulonOracle:
             n_feat_y = train_y.shape[2]
             train_y = np.reshape(train_y, [-1, 1, 1, n_feat_y])
 
-        if self.network == 'dropout':
-            train_y = np.squeeze(train_y)
-
         self.verify_y_data(train_y)
 
         return train_y.astype(np.float32)  # FIXME:set float32 in data transform, conditional on config file
 
     def gaussianise_series(self, train_x):
         """  Gaussianise each series within each batch - but don't normalise means
-
         :param nparray train_x: Series in format [batches, features, series]. NB ensure all features
             are of the same kind
         :return: nparray The same data but now each series is gaussianised
@@ -424,7 +413,6 @@ class CromulonOracle:
 
     def reorder_input_dimensions(self, train_x):
         """ Reassign ordering of dimensions.
-
         :param train_x:  Enters with dimensions  [features; samples; timesteps; series]
         :return: train_x  Now with dimensions  [samples; series ; time; features]
         """
@@ -445,8 +433,8 @@ class CromulonOracle:
         n_timesteps = train_x.shape[2]
         n_features = train_x.shape[3]
         n_expanded_samples = n_samples * n_series
-        logging.info("Data found to hold {} samples, {} series, {} timesteps, {} features.".format(
-                n_samples, n_series, n_timesteps, n_features))
+        logger.info("Data found to hold {} samples, {} series, {} timesteps, {} features.".format(
+            n_samples, n_series, n_timesteps, n_features))
 
         target_shape = [n_expanded_samples, self._n_input_series, n_timesteps, n_features]
         found_duplicates = False
@@ -471,7 +459,7 @@ class CromulonOracle:
                         corr_train_x[sample_number, :, i] = train_x[sample, :, corr_series_index]
 
         if found_duplicates:
-            logging.warning('Some NaNs or duplicate series were found in the data')
+            logger.warning('Some NaNs or duplicate series were found in the data')
 
         return corr_train_x
 
@@ -485,7 +473,7 @@ class CromulonOracle:
         layer_types = self._configuration.get('layer_types', default_layer_types)
 
         # Override input layer to match data
-        layer_depths[0] = int(self._n_input_series)
+        layer_depths[0] = 1  # n input series currently fixed to 1
         layer_heights[0] = n_timesteps
         layer_widths[0] = self._n_features
 
@@ -497,7 +485,6 @@ class CromulonOracle:
         conv_config["strides"] = self._configuration.get('strides', 1)
 
         self._topology = tp.Topology(
-            n_series=self._n_input_series,
             n_timesteps=n_timesteps,
             n_forecasts=self._n_forecasts,
             n_classification_bins=self._configuration['n_classification_bins'],
@@ -509,3 +496,58 @@ class CromulonOracle:
             n_features=self._n_features,
             conv_config=conv_config
         )
+
+    def _extract_target_feature(self, feature_list):
+        for feature in feature_list:
+            if feature['is_target']:
+                return feature['name']
+
+        raise ValueError("You must specify at least one target feature")
+
+    def _filter_universe_from_data_for_prediction(self, data, current_timestamp, universe):
+        """
+        Filters the dataframes inside the dict, returning a new dict with only the columns
+        available in the universe for that particular date
+        :param data: dict of dataframes
+        :type data: dict
+        :param current_timestamp: the current timestamp
+        :type datetime.datetime
+        :param universe: dataframe containing mapping of data -> list of assets
+        :type universe: pd.DataFrame
+        :return: dict of pd.DataFrame
+        :rtype dict
+        """
+        current_date = current_timestamp.date()
+        assets = []
+        for idx, row in universe.iterrows():
+            if row.start_date <= current_date <= row.end_date:
+                assets = row.assets
+                break
+
+        filtered = {}
+        for feature, df in data.items():
+            filtered[feature] = df.drop(df.columns.difference(assets), axis=1)
+
+        return filtered
+
+
+class OraclePrediction:
+    def __init__(self, mean_forecast, lower_bound, upper_bound, current_timestamp):
+        """ Container for the oracle predictions.
+
+        :param mean_forecast: Prediction values for various series at various times
+        :type mean_forecast: pd.DataFrame
+        :param lower_bound: Lower edge of the requested confidence interval
+        :type lower_bound: pd.DataFrame
+        :param upper_bound: Upper edge of the requested confidence interval
+        :type upper_bound: pd.DataFrame
+        :param current_timestamp: Timestamp when the prediction was made
+        :type target_timestamp: datetime
+        """
+        self.mean_forecast = mean_forecast
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.current_timestamp = current_timestamp
+
+    def __repr__(self):
+        return "<Oracle prediction: {}>".format(self.__dict__)

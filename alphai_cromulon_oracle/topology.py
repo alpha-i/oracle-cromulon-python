@@ -4,7 +4,7 @@
 import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
-from alphai_cromulon_oracle.cromulon.model import LAYER_CONVOLUTIONAL, LAYER_POOL, LAYER_FULLY_CONNECTED, LAYER_RESIDUAL
+from alphai_cromulon_oracle.cromulon.model import LAYER_CONVOLUTIONAL, LAYER_POOL, LAYER_FULLY_CONNECTED, LAYER_RESIDUAL, DEFAULT_N_TRANSITION_KERNELS
 
 ACTIVATION_FN_LINEAR = "linear"
 ACTIVATION_FN_SELU = "selu"
@@ -13,7 +13,7 @@ ACTIVATION_FN_RELU = "relu"
 ALLOWED_ACTIVATION_FN = [ACTIVATION_FN_RELU, ACTIVATION_FN_SELU, ACTIVATION_FN_LINEAR]
 ALLOWED_LAYER_TYPES = [LAYER_CONVOLUTIONAL, LAYER_POOL, LAYER_FULLY_CONNECTED, LAYER_RESIDUAL]
 
-DEFAULT_N_KERNELS = 32
+DEFAULT_N_KERNELS = 64
 DEFAULT_TIMESTEPS = 28
 DEFAULT_N_FEATURES = 28
 DEFAULT_BINS = 10
@@ -74,14 +74,20 @@ class Topology(object):
             self.dilation_rates = 1
             self.strides = 1
 
-        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
+        self.n_transition_kernels = DEFAULT_N_TRANSITION_KERNELS  # How many kernels to use when transitioning from conv to full
 
-        layers[0]["depth"] = 1
-        layers[0]["height"] = n_timesteps
-        layers[0]["width"] = n_features
-        layers[-1]["depth"] = 1
-        layers[-1]["height"] = n_forecasts
-        layers[-1]["width"] = n_classification_bins
+        # First two Cromulon layers, and final layers, must be consistent with data
+        layer_depths[0] = 1
+        layer_heights[0] = n_timesteps
+        layer_widths[0] = n_features
+        layer_depths[1] = self.n_kernels
+        layer_heights[1] = n_timesteps
+        layer_widths[1] = n_features
+        layer_depths[-1] = 1
+        layer_heights[-1] = n_forecasts
+        layer_widths[-1] = n_classification_bins
+
+        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
 
         self._verify_layers(layers)
         self.layers = layers
@@ -247,7 +253,7 @@ class Topology(object):
                     layer["width"] = int(input_layer["width"])
                 if previous_layer_type in {LAYER_CONVOLUTIONAL, LAYER_RESIDUAL} and \
                                 layer["type"] == LAYER_FULLY_CONNECTED:
-                    layer["depth"] = self.n_kernels
+                    layer["depth"] = self.n_transition_kernels
 
             layer["n_kernels"] = current_n_kernels
 
@@ -277,6 +283,6 @@ class Topology(object):
         """
 
         input_layer = self.layers[0]
-        input_shape = (input_layer["height"], input_layer["width"])
+        input_shape = (input_layer["depth"], input_layer["height"], input_layer["width"])
 
         return input_shape

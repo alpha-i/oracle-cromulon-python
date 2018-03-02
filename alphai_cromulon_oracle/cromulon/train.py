@@ -12,7 +12,7 @@ from alphai_cromulon_oracle.cromulon import PRINT_LOSS_INTERVAL, PRINT_SUMMARY_I
 from alphai_cromulon_oracle.cromulon.model import Cromulon
 
 PRINT_KERNEL = True
-BOOL_TRUE = True
+EPSILON = 1e-20  # Small offset to prevent log(0)
 
 
 def train(topology,
@@ -46,7 +46,7 @@ def train(topology,
     global_step = tf.Variable(0, trainable=False, name='global_step')
     n_batches = data_provider.number_of_batches
 
-    cost_operator, log_predict, log_likeli = _set_cost_operator(cromulon, x, y, n_batches, tf_flags, global_step)
+    cost_operator, predictions, log_likeli = _set_cost_operator(cromulon, x, y, n_batches, tf_flags, global_step)
     tf.summary.scalar("cost", cost_operator)
     optimize = _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, topology)
 
@@ -104,10 +104,11 @@ def train(topology,
                         batch_labels.shape,
                         tf_flags.cost_type
                     ))
+                    logging.info("{} blocks; {} kernels; {} batch norm".format(tf_flags.n_res_blocks, topology.n_kernels, tf_flags.do_batch_norm))
 
                 _, batch_loss, batch_likeli, summary_results = \
                     sess.run([optimize, cost_operator, log_likeli, all_summaries],
-                             feed_dict={x: batch_features, y: batch_labels, is_training: BOOL_TRUE})
+                             feed_dict={x: batch_features, y: batch_labels, is_training: True})
                 epoch_loss += batch_loss
                 epoch_likeli += batch_likeli
 
@@ -125,11 +126,12 @@ def train(topology,
 
             do_logging = (epoch % PRINT_LOSS_INTERVAL) == 0 or epoch == number_of_epochs - 1
             if do_logging:
-                sample_log_predictions = sess.run(log_predict,
+                g_step = sess.run(global_step)
+                sample_log_predictions = sess.run(predictions,
                                                   feed_dict={x: batch_features, y: batch_labels, is_training: False})
                 _log_epoch_loss(epoch, epoch_loss, epoch_likeli, number_of_epochs, time_epoch,
                                       tf_flags.use_convolution)
-                log_network_confidence(sample_log_predictions)
+                log_network_confidence(sample_log_predictions, g_step)
 
         out_path = saver.save(sess, tensorflow_path.session_save_path)
         logging.info("Model saved in file:{}".format(out_path))
@@ -150,13 +152,6 @@ def _log_epoch_loss(epoch, epoch_loss, log_likelihood, n_epochs, time_epoch, use
 
     msg = "Epoch {} of {} ... Loss: {:.3e}. LogLikeli: {:.3e} in {:.1f} seconds."
     logging.info(msg.format(epoch + 1, n_epochs, epoch_loss, log_likelihood, time_epoch))
-
-    # if PRINT_KERNEL and use_convolution:
-    #     gr = tf.get_default_graph()
-    #     conv1_kernel_val = gr.get_tensor_by_name('conv3d0/kernel:0').eval()
-    #     kernel_shape = conv1_kernel_val.shape
-    #     kernel_sample = conv1_kernel_val.flatten()[0:3]
-    #     logging.info("Sample from first layer {} kernel: {}".format(kernel_shape, kernel_sample))
 
 
 def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
@@ -180,7 +175,8 @@ def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
                                     n_batches
                                     )
 
-    log_predictions = cromulon.show_me_what_you_got(x)
+    predictions = cromulon.show_me_what_you_got(x)
+    log_predictions = tf.log(predictions + EPSILON)
 
     if tf_flags.cost_type == 'bbalpha':
         cost_operator = cost_object.get_hellinger_cost(x, labels, tf_flags.n_train_passes, cromulon)
@@ -199,7 +195,7 @@ def _set_cost_operator(cromulon, x, labels, n_batches, tf_flags, global_step):
 
     total_cost = tf.reduce_mean(cost_operator)
 
-    return total_cost, log_predictions, log_likelihood
+    return total_cost, predictions, log_likelihood
 
 
 def _log_topology_parameters_size(topology):
@@ -218,12 +214,15 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
     """ Define the algorithm for updating the trainable variables. """
 
     learning_rate = tf_flags.retrain_learning_rate if do_retraining else tf_flags.learning_rate
+    # learning_rate = get_learning_rate(global_step, False)
 
     if tf_flags.optimisation_method == 'Adam':
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-        gradients, variables = zip(*optimizer.compute_gradients(cost_operator))
-        gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
-        optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)   # For batch normalisation
+        with tf.control_dependencies(update_ops):
+            optimizer = tf.train.AdamOptimizer(learning_rate)
+            gradients, variables = zip(*optimizer.compute_gradients(cost_operator))
+            gradients, _ = tf.clip_by_global_norm(gradients, MAX_GRADIENT)
+            optimize = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
     elif tf_flags.optimisation_method == 'GDO':
         if tf_flags.partial_retrain and do_retraining:
             final_layer_scope = str(topology.n_layers - 1)
@@ -237,7 +236,7 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
             optimizer = tf.train.GradientDescentOptimizer(learning_rate)
             grads_and_vars = optimizer.compute_gradients(cost_operator, var_list=trainable_var_list)
             clipped_grads_and_vars = [(tf.clip_by_value(g, -MAX_GRADIENT, MAX_GRADIENT), v) for g, v in grads_and_vars]
-            optimize = optimizer.apply_gradients(clipped_grads_and_vars)
+            optimize = optimizer.apply_gradients(clipped_grads_and_vars, global_step=global_step)
 
     else:
         raise NotImplementedError("Unknown optimisation method: ", tf_flags.optimisation_method)
@@ -245,27 +244,53 @@ def _set_training_operator(cost_operator, global_step, tf_flags, do_retraining, 
     return optimize
 
 
-def log_network_confidence(log_predictions):
+def get_learning_rate(global_step, use_alphago_learning_schedule):
+    """ Decide the learning rate at a given stage in training.
+
+    :param int global_step: Total number of steps the network has been trained
+    :param bool use_alphago_learning_schedule: Whether to use the schedule presented in Silver et al 2017
+    :return: The learning rate
+    """
+
+    if use_alphago_learning_schedule:
+        progress = global_step / 1000
+    else:
+        progress = global_step / 10
+
+    if progress < 200:
+        learning_rate = 0.1
+    elif progress < 400:
+        learning_rate = 1e-2
+    elif progress < 600:
+        learning_rate = 1e-3
+    elif progress < 700:
+        learning_rate = 1e-4
+    elif progress < 800:
+        learning_rate = 1e-5
+    else:
+        learning_rate = 1e-5
+
+    return learning_rate
+
+
+def log_network_confidence(predictions, g_step):
     """  From a sample of predictions, returns the typical confidence applied to a forecast.
 
     :param nparray log_predictions: multidimensional array of log probabilities [samples, n_forecasts, n_bins]
     :return: null
     """
 
-    predictions = np.exp(log_predictions)
-    nbins = predictions.shape[-1]
     confidence_values = np.max(predictions, axis=-1).flatten()
-    typical_confidence = np.median(confidence_values)
+    mean_confidence = np.mean(confidence_values) * 100
     binned_predictions = np.argmax(predictions, axis=-1).flatten()
     n_predictions = len(binned_predictions)
 
-    bincounts = np.bincount(binned_predictions)
+    bin_counts = np.bincount(binned_predictions)
+    mode = np.argmax(bin_counts)
+    max_predicted = bin_counts[mode]
 
-    mode = np.argmax(bincounts)
-    max_predicted = bincounts[mode]
-    logging.info('Typical y confidence: {}; {}/{}'.format(typical_confidence, max_predicted, n_predictions))
-
-    mean_counts = n_predictions / nbins
-    sigma = np.sqrt(mean_counts)
-    max_expected_counts = mean_counts + 5 * sigma
-
+    if g_step:
+        logging.info('Confidence @ {} steps: {:.2f}; {}/{}'.format(g_step, mean_confidence, max_predicted, n_predictions))
+    else:
+        logging.info(
+            'Forecast confidence: {:.2f}; {}/{}'.format(mean_confidence, max_predicted, n_predictions))

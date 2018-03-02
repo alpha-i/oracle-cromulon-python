@@ -11,7 +11,7 @@ import alphai_cromulon_oracle.tensormaths as tm
 
 from tensorflow.python.ops import math_ops
 
-N_BATCHES_SUPPRESSED_PRIOR = 1000  # How many batches over which we gradually introduce the prior
+N_BATCHES_SUPPRESSED_PRIOR = 1  # How many batches over which we gradually introduce the prior
 ENTROPIC_COST_STRENGTH = 1e-3  # How strongly the cost function is modified
 
 
@@ -36,7 +36,7 @@ class BayesianCost(object):
         self._spike_std_dvn = tf.cast(spike_std_dvn,  tm.DEFAULT_TF_TYPE)
         self._spike_slab_weighting = tf.cast(spike_slab_weighting,  tm.DEFAULT_TF_TYPE)
 
-    def get_bayesian_cost(self, prediction, truth, global_step=None):
+    def get_bayesian_cost(self, log_prediction, truth, global_step=None):
         """
 
         :param prediction:
@@ -45,7 +45,7 @@ class BayesianCost(object):
         :return:
         """
         log_pw, log_qw = self.calculate_priors()
-        log_likelihood = self.calculate_likelihood(truth, prediction)
+        log_likelihood = self.calculate_likelihood(truth, log_prediction)
 
         prior_strength = self.calculate_prior_strength(global_step)
         log_prior = (log_qw - log_pw) * self._epoch_fraction * prior_strength
@@ -55,21 +55,6 @@ class BayesianCost(object):
         cost = log_prior - log_likelihood + l2_loss
 
         return cost, log_likelihood
-
-    def get_variance_cost(self, log_prediction):
-        """ Discourages the network from monotonously predicting a single outcome.
-        If all predictions are the same then variance is low.  This worked pretty well but was an ad hoc test,
-        but largely superceded by get_entropy_cost. """
-
-        log_prediction = tf.squeeze(log_prediction)
-
-        nbins =  tf.shape(log_prediction)[-1]
-        one_hot_predict = tf.one_hot(tf.nn.top_k(log_prediction).indices, nbins)
-
-        mean, variance = tf.nn.moments(one_hot_predict, axes=0)
-        variance = tf.squeeze(variance)
-
-        return tf.reduce_sum(tf.reciprocal(0.01 + variance))
 
     def get_entropy_cost(self, prediction, truth, global_step=None):
 
@@ -180,7 +165,6 @@ class BayesianCost(object):
 
                 log_pw += self.calculate_log_weight_prior(weights, layer)
                 log_pw += self.calculate_log_bias_prior(biases, layer)
-                log_pw += self.calculate_log_hyperprior(layer)
 
         return log_pw, log_qw
 
@@ -208,20 +192,12 @@ class BayesianCost(object):
     def calculate_log_bias_prior(self, biases, layer):
         """
         At present we impose the same prior on the biases as is imposed on the weights
-        :param biases: The biases of the layer for which the prior value is to be calculated
+        :param biases: The biases of the layer for fwhich the prior value is to be calculated
         :param layer: The layer number for which the weights are given.
         :return: The log-probability value.
         """
 
         return self.calculate_log_weight_prior(biases, layer)
-
-    def calculate_log_hyperprior(self, layer):
-        """
-        Compute the hyper prior for a layer. Does make any difference to the optimizer in the current form.
-        :param layer: The layer number for which the hyper prior is to be calculated.
-        :return: The log-probability value.
-        """
-        return - self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
 
     @staticmethod
     def calculate_log_q_prior(theta, mu, rho):

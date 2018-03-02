@@ -16,6 +16,9 @@ def build_tensorflow_flags(config):
 
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
 
+    tf.app.flags.DEFINE_boolean('use_gpu', config['use_gpu'],
+                                """Whether to use GPU formatting of convolutional layers. """)
+
     tf.app.flags.DEFINE_integer('n_res_blocks', config['n_res_blocks'], """Number of residual blocks.""")
 
     tf.app.flags.DEFINE_boolean('do_kernel_regularisation', config['do_kernel_regularisation'],
@@ -23,9 +26,6 @@ def build_tensorflow_flags(config):
 
     tf.app.flags.DEFINE_boolean('do_batch_norm', config['do_batch_norm'],
                                 """Whether to use batch normalisation. """)
-
-    tf.app.flags.DEFINE_boolean('apply_temporal_suppression', config['apply_temporal_suppression'],
-                                """Whether to penalise data which is further in the past. """)
 
     tf.app.flags.DEFINE_boolean('partial_retrain', config['partial_retrain'],
                                 """Whether to retrain all layers or just the fully connected ones. """)
@@ -64,7 +64,6 @@ def build_tensorflow_flags(config):
     tf.app.flags.DEFINE_integer('n_eval_passes', config['n_eval_passes'], """Number of passes to average over during evaluation.""")
 
     # Initial conditions
-    tf.app.flags.DEFINE_float('INITIAL_ALPHA', config['INITIAL_ALPHA'], """Prior on weights.""")
     tf.app.flags.DEFINE_float('INITIAL_WEIGHT_UNCERTAINTY', config['INITIAL_WEIGHT_UNCERTAINTY'], """Initial standard deviation on weights.""")
     tf.app.flags.DEFINE_float('INITIAL_BIAS_UNCERTAINTY', config['INITIAL_BIAS_UNCERTAINTY'], """Initial standard deviation on bias.""")
     tf.app.flags.DEFINE_float('INITIAL_WEIGHT_DISPLACEMENT', config['INITIAL_WEIGHT_DISPLACEMENT'], """Initial offset on weight distributions.""")

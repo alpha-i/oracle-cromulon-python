@@ -10,17 +10,18 @@ This modules contains two classes
 """
 
 import logging
-import numpy as np
+
 import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
 
+DEFAULT_N_TRANSITION_KERNELS = 2
 LAYER_CONVOLUTIONAL = 'conv'
 LAYER_POOL = 'pool'
 LAYER_FULLY_CONNECTED = 'full'
 LAYER_RESIDUAL = 'res'
 DEFAULT_PADDING = 'same'  # TBC: add 'valid', will need to add support in topology.py
-DATA_FORMAT = 'channels_first'  # Slightly faster for cuDNN to use CHW format
+# DATA_FORMAT = 'channels_first'  # Slightly faster for cuDNN to use CHW format
 RANDOM_SEED = None  # Set to None for best performance, but lacks reproducibility
 
 if RANDOM_SEED:  # How many passes over the bayes layers can be performed in parallel. Default is 10.
@@ -40,28 +41,50 @@ class Cromulon:
         self._topology = topology
         self._flags = flags
         self._is_training = is_training
+
+        if flags.use_gpu:
+            self.data_format = 'channels_first'
+        else:
+            self.data_format = 'channels_last'
+
         self.bayes = BayesLayers(topology, flags)
         self.intialise_variables()
 
     def show_me_what_you_got(self, x):
-        """  Predict the future outcome of the temporal signal x.
+        """ Predict the future outcome of the temporal signal x.
 
         :param x: A 3D tensor of dimensions [samples, time, features]
-        :return: A 2D tensor representing the probabiity distribution of dimensions [samples, classification_bin]
+        :return: A 2D tensor representing the probabiity distribution of dimensions [samples, classification_bins]
         """
+
+        # Adapt data format if needed
+        if not self._flags.use_gpu:
+            x = tf.transpose(x, [0, 2, 3, 1])
 
         # Process input in accordance with https://www.gwern.net/docs/rl/2017-silver.pdf
         x = self.convolutional_layer(x, layer_label='input', layer_number=0)
 
         if self._flags.do_batch_norm:
-            layer_name = 'input_batch_norm_'
-            x = self.batch_normalisation(x, layer_name)
+            batch_norm_label = 'input_batch_norm_'
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = tf.nn.relu(x)
 
         # Bulk of the network consists of residual blocks
         for block_number in range(self._flags.n_res_blocks):
             x = self.residual_block(x, block_number)
+
+        # Reduce dimensionality with 1x1 convolutional layer
+        x = self.convolutional_layer(x, layer_label='reduction', layer_number=99, kernel_size=1, n_kernels=DEFAULT_N_TRANSITION_KERNELS)
+        if self._flags.do_batch_norm:
+            batch_norm_label = 'output_batch_norm_'
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
+
+        x = tf.nn.relu(x)
+
+        # Revert data format if needed
+        if not self._flags.use_gpu:
+            x = tf.transpose(x, [0, 2, 3, 1])
 
         # Add final Bayesian layer(s)
         x = self.looped_passes(x)
@@ -83,7 +106,7 @@ class Cromulon:
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'a'
-            x = self.batch_normalisation(x, batch_norm_label)
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = tf.nn.relu(x)
 
@@ -91,7 +114,7 @@ class Cromulon:
 
         if self._flags.do_batch_norm:
             batch_norm_label = 'batch_norm_' + str(block_number) + 'b'
-            x = self.batch_normalisation(x, batch_norm_label)
+            x = self.batch_normalisation(x, batch_norm_label, is_conv_layer=True)
 
         x = x + identity
 
@@ -109,7 +132,6 @@ class Cromulon:
         start_index = tf.constant(0)
         n_passes = tf.cond(self._is_training, lambda: self._flags.n_train_passes,
                            lambda: self._flags.n_eval_passes)
-        normalisation = tf.log(tf.cast(n_passes, tf.float32))
 
         def condition(index, _):
             return tf.less(index, n_passes)
@@ -126,12 +148,12 @@ class Cromulon:
         output_list = tf.while_loop(condition, body, [start_index, dummy_output],
                                     parallel_iterations=N_PARALLEL_PASSES, shape_invariants=loop_shape)[1]
         output_signal = tf.stack(output_list[1:], axis=0)  # Ignore dummy first entry
-        output_signal = tf.nn.log_softmax(output_signal, dim=-1)  # Create discrete PDFs
+        output_signal = tf.nn.softmax(output_signal, dim=-1)  # Create discrete PDFs
 
         # Average probability over multiple passes
-        output_signal = tf.reduce_logsumexp(output_signal, axis=0) - normalisation
+        output_signal = tf.reduce_mean(output_signal, axis=0)
 
-        return tf.expand_dims(output_signal, axis=0)
+        return output_signal
 
     def bayes_forward_pass(self, signal):
         """  Propagate only through the fully connected layers.
@@ -165,7 +187,7 @@ class Cromulon:
 
         return activation_function(x)
 
-    def batch_normalisation(self, signal, norm_name):
+    def batch_normalisation(self, signal, norm_name, is_conv_layer):
         """ Normalises the signal to unit variance and zero mean.
 
         :param signal:
@@ -173,16 +195,18 @@ class Cromulon:
         :return:
         """
 
+        axis = 1 if is_conv_layer else -1
+
         try:
             signal = tf.layers.batch_normalization(signal, training=self._is_training,
-                                                   reuse=True, name=norm_name)
+                                                   reuse=True, name=norm_name, axis=axis)
         except:
             signal = tf.layers.batch_normalization(signal, training=self._is_training,
-                                                   reuse=False, name=norm_name)
+                                                   reuse=False, name=norm_name, axis=axis)
 
         return signal
 
-    def convolutional_layer(self, signal, layer_label, layer_number):
+    def convolutional_layer(self, signal, layer_label, layer_number, kernel_size=None, n_kernels=None):
         """  Sets a convolutional layer with a two-dimensional kernel.
         The ordering of the dimensions in the inputs: DATA_FORMAT = `channels_last` corresponds to inputs with shape
         `(batch, depth, height, width, channels)` while DATA_FORMAT = `channels_first`
@@ -191,10 +215,19 @@ class Cromulon:
         :param signal: A rank 4 tensor of dimensions [batch, channels, time, features]
         :param str layer_label: Label to identify the layer
         :param int layer_number: Which block it belongs to
+                :param int layer_number: Which block it belongs to
+
+        :param int layer_number: Which block it belongs to
+
         :return:  A rank 4 tensor of dimensions [batch, channels, time, features]
         """
 
         op_name = LAYER_CONVOLUTIONAL + layer_label + str(layer_number)
+        if kernel_size is None:
+            kernel_size = self._topology.kernel_size
+
+        if n_kernels is None:
+            n_kernels = self._topology.n_kernels
 
         if self._flags.do_kernel_regularisation:
             regulariser = tf.contrib.layers.l2_regularizer(scale=0.1)
@@ -204,28 +237,30 @@ class Cromulon:
         try:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=self._topology.n_kernels,
-                kernel_size=self.calculate_kernel_size(),
+                filters=n_kernels,
+                kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
-                data_format=DATA_FORMAT,
+                data_format=self.data_format,
                 dilation_rate=self._topology.dilation_rates,
                 strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
+                use_bias=False,
                 reuse=True)
         except:
             signal = tf.layers.conv2d(
                 inputs=signal,
-                filters=self._topology.n_kernels,
-                kernel_size=self.calculate_kernel_size(),
+                filters=n_kernels,
+                kernel_size=kernel_size,
                 padding=DEFAULT_PADDING,
                 activation=None,
-                data_format=DATA_FORMAT,
+                data_format=self.data_format,
                 dilation_rate=self._topology.dilation_rates,
                 strides=self._topology.strides,
                 name=op_name,
                 kernel_regularizer=regulariser,
+                use_bias=False,
                 reuse=False)
 
         return signal
@@ -237,7 +272,7 @@ class Cromulon:
         :return:
         """
 
-        return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format=DATA_FORMAT)
+        return tf.layers.max_pooling2d(inputs=signal, pool_size=[2, 2], strides=2, data_format=self.data_format)
 
     def calculate_dummy_output(self, input_signal):
         """ Need a tensor which mimics the shape of the output of the network
@@ -249,9 +284,10 @@ class Cromulon:
         partial_new_shape = tf.shape(input_signal)[0:1]
         one = tf.expand_dims(tf.constant(int(1)), axis=0)
         nbins = tf.expand_dims(tf.constant(self._topology.n_classification_bins), axis=0)
+        n_forecasts = tf.expand_dims(tf.constant(self._topology.n_forecasts), axis=0)
 
         # Will need to update this if using multiple forecasts
-        dummy_shape = tf.concat([one, partial_new_shape, one, one, nbins], 0)
+        dummy_shape = tf.concat([one, partial_new_shape, one, n_forecasts, nbins], 0)
 
         return tf.zeros(dummy_shape)
 
@@ -291,8 +327,6 @@ class BayesLayers:
     VAR_BIAS_MU = 'mu_b'
     VAR_BIAS_NOISE = 'bias_noise'
 
-    VAR_LOG_ALPHA = 'log_alpha'
-
     def __init__(self, topology, flags):
         """
 
@@ -325,8 +359,7 @@ class BayesLayers:
             self.VAR_BIAS_NOISE,
             self.VAR_WEIGHT_RHO,
             self.VAR_WEIGHT_MU,
-            self.VAR_WEIGHT_NOISE,
-            self.VAR_LOG_ALPHA
+            self.VAR_WEIGHT_NOISE
         ]
 
     def initialise_bayesian_parameters(self):
@@ -338,7 +371,6 @@ class BayesLayers:
 
         initial_rho_weights = tf.contrib.distributions.softplus_inverse(weight_uncertainty)
         initial_rho_bias = tf.contrib.distributions.softplus_inverse(bias_uncertainty)
-        initial_alpha = self._flags.INITIAL_ALPHA
 
         for layer_number in range(self._topology.n_layers):
             layer_type = self._topology.layers[layer_number]["type"]
@@ -369,13 +401,6 @@ class BayesLayers:
                     self.VAR_BIAS_RHO,
                     initial_rho_bias + tf.zeros(b_shape, tm.DEFAULT_TF_TYPE)
                 )
-
-                self._create_variable_for_layer(
-                    layer_number,
-                    self.VAR_LOG_ALPHA,
-                    np.log(initial_alpha).astype(self._flags.d_type),
-                    False
-                )  # Hyperprior on the distribution of the weights
 
     def _create_variable_for_layer(self, layer_number, variable_name, initializer, is_trainable=True):
 
