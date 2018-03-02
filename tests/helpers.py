@@ -7,7 +7,7 @@ import pandas_market_calendars as mcal
 from alphai_feature_generation.cleaning import (
     convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv)
 from alphai_cromulon_oracle.flags import build_tensorflow_flags
-from alphai_cromulon_oracle.oracle import CrocubotOracle
+from alphai_cromulon_oracle.oracle import CromulonOracle
 from tests.hdf5_reader import read_feature_data_dict_from_hdf5
 
 DATA_FILENAME = 'sample_hdf5.h5'
@@ -56,7 +56,7 @@ def read_hdf5_into_dict_of_data_frames(start_date, end_date, symbols, file_path,
     return data_dict
 
 
-class DummyCrocubotOracle(CrocubotOracle):
+class DummyCromulonOracle(CromulonOracle):
     def __init__(self, configuration):
         super().__init__(configuration)
 
@@ -132,7 +132,11 @@ def load_default_config():
         'double_gaussian_weights_prior': False,
         'wide_prior_std': 1.2,
         'narrow_prior_std': 0.05,
-        'spike_slab_weighting': 0.5
+        'spike_slab_weighting': 0.5,
+
+        'use_gpu': False,
+        'n_res_blocks': 6,
+        'do_kernel_regularisation': True
     }
 
     return configuration

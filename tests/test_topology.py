@@ -4,7 +4,7 @@ from alphai_cromulon_oracle.topology import (
     Topology,
     DEFAULT_HEIGHT,
     DEFAULT_WIDTH,
-    DEFAULT_N_SERIES,
+    DEFAULT_N_FEATURES,
     DEFAULT_DEPTH
 )
 
@@ -53,7 +53,7 @@ class TestTopology(unittest.TestCase):
     def test_get_weight_shape(self):
 
         weight_shape = self.topology.get_weight_shape(0)
-        assert weight_shape == [self.topology.n_series, DEFAULT_N_SERIES, self.topology.n_features, DEFAULT_DEPTH,
+        assert weight_shape == [self.topology.n_series, DEFAULT_N_FEATURES, self.topology.n_features, DEFAULT_DEPTH,
                                 DEFAULT_HEIGHT, DEFAULT_WIDTH]
 
     def test_get_bias_shape(self):

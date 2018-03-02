@@ -14,7 +14,7 @@ from tests.helpers import (
     create_fixtures,
     destroy_fixtures,
     read_hdf5_into_dict_of_data_frames,
-    DummyCrocubotOracle,
+    DummyCromulonOracle,
 )
 
 
@@ -55,7 +55,7 @@ class TestCrocubot(TestCase):
 
         configuration = load_default_config()
         configuration['n_correlated_series'] = 1
-        model = DummyCrocubotOracle(configuration)
+        model = DummyCromulonOracle(configuration)
 
         train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         prediction_time = train_time + timedelta(minutes=1)
@@ -74,7 +74,7 @@ class TestCrocubot(TestCase):
         historical_universes, data = self._prepare_data_for_test()
 
         configuration = load_default_config()
-        model = DummyCrocubotOracle(configuration)
+        model = DummyCromulonOracle(configuration)
 
         model.train(historical_universes, data, train_time)
 
@@ -84,7 +84,7 @@ class TestCrocubot(TestCase):
 
     def test_crocubot_predict_without_train_file(self):
         configuration = load_default_config()
-        model = DummyCrocubotOracle(configuration)
+        model = DummyCromulonOracle(configuration)
 
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 

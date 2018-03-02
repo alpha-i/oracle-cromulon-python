@@ -4,7 +4,7 @@ from scipy.stats import norm
 
 from alphai_cromulon_oracle.bayesian_cost import BayesianCost
 from alphai_cromulon_oracle.topology import Topology
-from alphai_cromulon_oracle.cromulon.model import CrocuBotModel
+from alphai_cromulon_oracle.cromulon.model import Cromulon
 from tests.helpers import get_default_flags
 
 
@@ -38,7 +38,7 @@ class TestBayesianCost(tf.test.TestCase):
         ]
         topology = Topology(layer_number)
 
-        self.model = CrocuBotModel(topology, flags, is_training=True)
+        self.model = Cromulon(topology, flags, is_training=True)
 
         # case1 no error thrown
         use_double_gaussian_weights_prior = True

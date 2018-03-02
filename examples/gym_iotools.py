@@ -9,6 +9,7 @@
 #        'hour_9', 'hour_10', 'hour_11', 'hour_12', 'hour_13', 'hour_14',
 #        'hour_15', 'hour_16', 'hour_17', 'hour_18', 'hour_19', 'hour_20',
 #        'hour_21', 'hour_22', 'hour_23'],
+import os
 import numpy as np
 import pandas as pd
 import pytz
@@ -19,7 +20,8 @@ from sklearn.preprocessing import StandardScaler
 
 import alphai_feature_generation.classifier  as cl
 
-GYM_DATA_FILE = '/mnt/pika/Kaggle/Data/Gym/data.csv'
+GYM_DATA_FILE = os.path.join(os.path.dirname(__file__), 'data.csv')
+
 DEFAULT_TEST_FRACTION = 0.05
 DROP_MONTHS = False  # set True for random forest, as it
 COARSE_TEMP = False
@@ -210,8 +212,8 @@ def classify_training_data(y_train, y_test, n_bins):
 
     classifier = cl.BinDistribution(y_train, n_bins)
 
-    y_train_bins = cl.classify_labels(classifier.bin_edges, y_train)
-    y_test_bins = cl.classify_labels(classifier.bin_edges, y_test)
+    y_train_bins = classifier.classify_labels(y_train)
+    y_test_bins = classifier.classify_labels(y_test)
 
     return y_train_bins, y_test_bins
 
@@ -220,7 +222,7 @@ def declassify_bins(y_continuous, y_binned, n_bins):
 
     classifier = cl.BinDistribution(y_continuous, n_bins)
 
-    return cl.extract_point_estimates(classifier.weighted_bin_centres, y_binned, use_median=True)
+    return classifier.extract_point_estimates( y_binned, use_median=True)
 
 
 def declassify_bins_with_errors(y_continuous, y_binned, n_bins):
@@ -233,7 +235,7 @@ def declassify_bins_with_errors(y_continuous, y_binned, n_bins):
 
     for i in range(n_pdfs):
         ybins = y_binned[i, :]
-        temp_mean, temp_variance = cl.declassify_single_pdf(classifier, ybins)
+        temp_mean, temp_variance = classifier.declassify_single_pdf(ybins)
         mean[i] = temp_mean
         variance[i] = temp_variance
 
