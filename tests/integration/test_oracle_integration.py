@@ -1,11 +1,13 @@
 import unittest
+import pytest
+
 from alphai_cromulon_oracle.oracle import CromulonOracle
 
 
+@pytest.mark.skip()
 class TestOracleIntegration(unittest.TestCase):
     def setUp(self):
         self.oracle_class = CromulonOracle
-        self.configuration =
 
     def get_data(self):
         self.data = make_dict_from_dataframe(gym_df)

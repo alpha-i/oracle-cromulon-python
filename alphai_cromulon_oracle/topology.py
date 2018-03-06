@@ -1,10 +1,14 @@
 # Defines the layout of the cromulon network:
 # Holds a list of layers: [0] Conv layer [1] Residual blocks [2.....N] Bayesian Layers
 
+import logging
+
 import tensorflow as tf
 
 import alphai_cromulon_oracle.tensormaths as tm
 from alphai_cromulon_oracle.cromulon.model import LAYER_CONVOLUTIONAL, LAYER_POOL, LAYER_FULLY_CONNECTED, LAYER_RESIDUAL, DEFAULT_N_TRANSITION_KERNELS
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 ACTIVATION_FN_LINEAR = "linear"
 ACTIVATION_FN_SELU = "selu"
@@ -27,6 +31,11 @@ DEFAULT_N_OUTPUT_SERIES = 1
 DEFAULT_ACT_FUNCTION = ACTIVATION_FN_RELU
 DEFAULT_LAYER_TYPE = LAYER_FULLY_CONNECTED
 
+DEFAULT_LAYER_WIDTHS = [DEFAULT_TIMESTEPS] + [DEFAULT_WIDTH] * DEFAULT_HIDDEN_LAYERS + [DEFAULT_BINS]
+DEFAULT_LAYER_HEIGHTS = [DEFAULT_N_FEATURES] + [DEFAULT_HEIGHT] * DEFAULT_HIDDEN_LAYERS + [DEFAULT_N_FORECASTS]
+DEFAULT_LAYER_DEPTHS = [DEFAULT_N_FEATURES] + [DEFAULT_DEPTH] * DEFAULT_HIDDEN_LAYERS + [DEFAULT_N_OUTPUT_SERIES]
+DEFAULT_LAYER_ACTIVATION_FUNCTIONS = [ACTIVATION_FN_LINEAR] + [DEFAULT_ACT_FUNCTION] * DEFAULT_HIDDEN_LAYERS + [ACTIVATION_FN_LINEAR]
+
 
 class Topology(object):
     """
@@ -34,79 +43,97 @@ class Topology(object):
     Run checks on the user input to verify that it defines a valid topology.
     """
 
-    def __init__(self, n_timesteps=DEFAULT_TIMESTEPS, n_features=DEFAULT_N_FEATURES,
-                 n_forecasts=DEFAULT_N_FORECASTS, n_classification_bins=DEFAULT_BINS, layer_heights=None,
-                 layer_widths=None, layer_depths=None, activation_functions=None, layer_types=None,
-                 conv_config=None):
+    def __init__(self,
+                 n_timesteps=DEFAULT_TIMESTEPS,
+                 n_features=DEFAULT_N_FEATURES,
+                 n_forecasts=DEFAULT_N_FORECASTS,
+                 n_classification_bins=DEFAULT_BINS,
+                 layer_heights=None,
+                 layer_widths=None,
+                 layer_depths=None,
+                 activation_functions=None,
+                 layer_types=None,
+                 conv_config=None
+        ):
         """
         Following info is required to construct a topology object
+
         :param n_timesteps: Length of timesteps dimension; defines height of input layer
+        :param n_features:
         :param n_forecasts: Number of forecasts; defines width of output layer
         :param n_classification_bins:
         :param layer_heights:
         :param layer_widths:
+        :param layer_depths:
         :param activation_functions:
+        :param layer_types:
+        :param conv_config:
         """
 
         if layer_heights is None:
             assert layer_widths is None and activation_functions is None and layer_depths is None
-            layer_depths, layer_heights, layer_widths, activation_functions = \
-                self.get_default_layers(DEFAULT_HIDDEN_LAYERS)
+            layer_depths, layer_heights, layer_widths, activation_functions = self.get_default_layers()
+        elif layer_depths is None:
+            layer_depths = [DEFAULT_DEPTH] * len(layer_heights)
         else:
-            if layer_depths is None:
-                layer_depths = [DEFAULT_DEPTH] * len(layer_heights)
-            else:
-                assert len(layer_depths) == len(layer_heights), "Length of depths array does not match height array"
-            assert len(layer_widths) == len(layer_heights), "Length of widths array does not match height array"
-            assert len(activation_functions) == len(layer_heights), "Length of act fns does not match height array"
+            assert len(layer_depths) == len(layer_heights), "Length of depths array does not match height array"
+        assert len(layer_widths) == len(layer_heights), "Length of widths array does not match height array"
+        assert len(activation_functions) == len(layer_heights), "Length of act fns does not match height array"
 
         # Setup convolution params if specified
         if conv_config:
-            print("Convolution config", conv_config)
+            logging.debug("Convolution config", conv_config)
             self.kernel_size = conv_config['kernel_size']
             self.n_kernels = conv_config["n_kernels"]  # kernels used in first conv layer.
             self.dilation_rates = conv_config["dilation_rates"]
             self.strides = conv_config["strides"]
         else:
-            print("******** No convolution config found ********")
+            logging.debug("******** No convolution config found ********")
             self.kernel_size = DEFAULT_KERNEL_SIZE
             self.n_kernels = DEFAULT_N_KERNELS
             self.dilation_rates = 1
             self.strides = 1
 
-        self.n_transition_kernels = DEFAULT_N_TRANSITION_KERNELS  # How many kernels to use when transitioning from conv to full
+        # How many kernels to use when transitioning from conv to full
+        self.n_transition_kernels = DEFAULT_N_TRANSITION_KERNELS
 
         # First two Cromulon layers, and final layers, must be consistent with data
+
+        # first layer
         layer_depths[0] = 1
         layer_heights[0] = n_timesteps
         layer_widths[0] = n_features
+
+        # second layer
         layer_depths[1] = self.n_kernels
         layer_heights[1] = n_timesteps
         layer_widths[1] = n_features
+
+        # last layer
         layer_depths[-1] = 1
         layer_heights[-1] = n_forecasts
         layer_widths[-1] = n_classification_bins
 
-        layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
+        self.layers = self._build_layers(layer_depths, layer_heights, layer_widths, activation_functions, layer_types)
 
-        self._verify_layers(layers)
-        self.layers = layers
-        self.n_layers = len(layers) - 1  # n layers of neurons are connected by n-1 sets of weights
+        self._verify_layers()
+        self.n_layers = len(self.layers) - 1  # n layers of neurons are connected by n-1 sets of weights
         self.n_bayes_layers = self.n_layers - 2
+
         self.n_timesteps = n_timesteps
         self.n_features = n_features
         self.n_forecasts = n_forecasts
         self.n_classification_bins = n_classification_bins
-        self.n_parameters = self._calculate_number_of_parameters(layers)
+        self.n_parameters = self._calculate_number_of_parameters()
 
-    def _verify_layers(self, layers):
+    def _verify_layers(self):
         """
         A function that checks each layer to ensure that it is valid i.e., expected activation function, trainable
         flag, etc.
         :param layers:
         :return: None
         """
-        for i, layer in enumerate(layers):
+        for i, layer in enumerate(self.layers):
 
             if layer["activation_func"] not in ALLOWED_ACTIVATION_FN:
                 raise ValueError('Unexpected activation function ' + str(layer["activation_func"]))
@@ -124,15 +151,19 @@ class Topology(object):
             if not isinstance(layer["trainable"], bool):
                 raise ValueError('Layer {} trainable should be a boolean'.format(i))
 
-    def _calculate_number_of_parameters(self, layers):
+    def _calculate_number_of_parameters(self):
         """ Returns total number of connections, assuming layers are fully connected"""
 
-        n_parameters = 0
-        for i in range(self.n_layers):
-            j = i + 1
-            n_parameters += layers[i]["width"] * layers[i]["height"] * layers[j]["height"] * layers[j]["width"]
+        number_of_parameters = 0
 
-        return n_parameters
+        def _calculate_layer_n_parameters(layer_number):
+            the_layer = self.layers[layer_number]
+            return the_layer["width"] * the_layer["height"]
+
+        for i in range(self.n_layers):
+            number_of_parameters += _calculate_layer_n_parameters(i) * _calculate_layer_n_parameters(i + 1)
+
+        return number_of_parameters
 
     def get_cell_shape(self, layer_number):
         """
@@ -216,7 +247,7 @@ class Topology(object):
         current_n_kernels = self.n_kernels
 
         for i in range(n_layers):
-            layer = {}
+            layer = dict()
             layer["activation_func"] = activation_functions[i]
             layer["trainable"] = True  # Just hardcode for now, will be configurable in future
             layer["cell_height"] = 1  # Just hardcode for now, will be configurable in future
@@ -262,19 +293,12 @@ class Topology(object):
         return layers
 
     @staticmethod
-    def get_default_layers(n_hidden_layers):
+    def get_default_layers():
         """ Compiles the list of layer heights, widths and activation funcs to be used if none are provided
 
         :return:
         """
-
-        layer_depths = [DEFAULT_N_FEATURES] + [DEFAULT_DEPTH] * n_hidden_layers + [DEFAULT_N_OUTPUT_SERIES]
-        layer_heights = [DEFAULT_N_FEATURES] + [DEFAULT_HEIGHT] * n_hidden_layers + [DEFAULT_N_FORECASTS]
-        layer_widths = [DEFAULT_TIMESTEPS] + [DEFAULT_WIDTH] * n_hidden_layers + [DEFAULT_BINS]
-
-        activation_functions = ['linear'] + [DEFAULT_ACT_FUNCTION] * n_hidden_layers + ['linear']
-
-        return layer_depths, layer_heights, layer_widths, activation_functions
+        return DEFAULT_LAYER_DEPTHS, DEFAULT_LAYER_HEIGHTS, DEFAULT_LAYER_WIDTHS, DEFAULT_LAYER_ACTIVATION_FUNCTIONS
 
     def get_network_input_shape(self):
         """ Returns the required shape of input data.
