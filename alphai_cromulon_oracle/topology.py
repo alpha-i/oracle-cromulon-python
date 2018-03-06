@@ -121,7 +121,6 @@ class Topology(object):
         self.n_bayes_layers = self.n_layers - 2
 
         self.n_timesteps = n_timesteps
-        self.n_features = n_features
         self.n_forecasts = n_forecasts
         self.n_classification_bins = n_classification_bins
         self.n_parameters = self._calculate_number_of_parameters()
