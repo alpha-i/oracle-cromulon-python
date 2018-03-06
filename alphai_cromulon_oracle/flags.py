@@ -16,7 +16,7 @@ def build_tensorflow_flags(config):
 
     random_seed = config.get('random_seed', DEFAULT_RANDOM_SEED)
 
-    tf.app.flags.DEFINE_boolean('use_gpu', config['use_gpu'],
+    tf.app.flags.DEFINE_boolean('use_gpu', config.get('use_gpu', False),
                                 """Whether to use GPU formatting of convolutional layers. """)
 
     tf.app.flags.DEFINE_integer('n_res_blocks', config['n_res_blocks'], """Number of residual blocks.""")
