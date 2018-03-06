@@ -114,17 +114,14 @@ class CromulonOracle(AbstractOracle):
     def _init_data_transformation(self):
         data_transformation_config = self.config['data_transformation']
 
-        self._feature_list = data_transformation_config['feature_config_list']
-        self._n_features = len(self._feature_list)
-
         data_transformation_config["prediction_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
         data_transformation_config["features_start_market_minute"] = self.scheduling.training_frequency.minutes_offset
         data_transformation_config["target_delta_ndays"] = int(self.scheduling.prediction_horizon.days)
         data_transformation_config["target_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
 
-        self._target_feature = self._extract_target_feature(self._feature_list)
-
         self._data_transformation = GymDataTransformation(data_transformation_config)
+        self._target_feature = self._data_transformation.get_target_feature()
+        self._n_features = len(self._data_transformation.features)
 
     def train(self, data, execution_time):
         """
@@ -227,7 +224,8 @@ class CromulonOracle(AbstractOracle):
         for i in range(self._topology.n_forecasts):
             temp_timestamp = deepcopy(target_timestamp)
             target_timestamps.append(temp_timestamp)
-            target_timestamp += timedelta(hours=self._data_transformation.target_delta_hours)
+            target_delta_hours = int(self._data_transformation.target_delta_ndays * 24)
+            target_timestamp += timedelta(hours=target_delta_hours)
 
         return predict_y, symbols, target_timestamps
 
@@ -496,13 +494,6 @@ class CromulonOracle(AbstractOracle):
             n_features=self._n_features,
             conv_config=conv_config
         )
-
-    def _extract_target_feature(self, feature_list):
-        for feature in feature_list:
-            if feature['is_target']:
-                return feature['name']
-
-        raise ValueError("You must specify at least one target feature")
 
     def _filter_universe_from_data_for_prediction(self, data, current_timestamp, universe):
         """

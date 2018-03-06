@@ -121,17 +121,17 @@ def load_gym_config():
                     'resolution': 1440
                 },
                 ],
-            'target_config_list': [
-                                       {
-                                           'name': 'number_people',
-                                           'length': n_forecasts,
-                                           'resolution': 4
-                                       },
-            ],
+            # TODO ASK FERGUS ABOUT THIS
+            # 'target_config_list': [
+            #                            {
+            #                                'name': 'number_people',
+            #                                'length': n_forecasts,
+            #                                'resolution': 4
+            #                            },
+            # ],
             'data_name': 'GYM',
             'features_ndays': 10,
-            'features_resample_minutes': 15,
-            'target_delta_hours': 1,
+            'features_resample_minutes': 15
         },
         'train_path': '/tmp/cromulon/',
         'model_save_path': '/tmp/cromulon/',
@@ -184,10 +184,10 @@ def load_gym_config():
     oracle_config = OracleConfiguration(
         {
             "scheduling": {
-                "prediction_horizon": 240,
+                "prediction_horizon": 1/24,
                 "prediction_frequency":
                     {
-                        "frequency_type": "DAILY",
+                        "frequency_type": "MINUTE",
                         "days_offset": 0,
                         "minutes_offset": 15
                     },

@@ -3,18 +3,20 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 import pandas as pd
+from alphai_delphi.oracle.oracle_configuration import OracleConfiguration
 
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 from alphai_cromulon_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
 from tests.helpers import (
-    load_default_config,
     FIXTURE_DESTINATION_DIR,
     FIXTURE_DATA_FULLPATH,
     create_fixtures,
     destroy_fixtures,
     read_hdf5_into_dict_of_data_frames,
     DummyCromulonOracle,
+    default_oracle_config,
+    default_scheduling_config
 )
 
 
@@ -53,17 +55,23 @@ class TestCrocubot(TestCase):
     def test_crocubot_train_and_predict(self):
         historical_universes, data = self._prepare_data_for_test()
 
-        configuration = load_default_config()
-        configuration['n_correlated_series'] = 1
-        model = DummyCromulonOracle(configuration)
+        oracle_configuration = default_oracle_config()
+        oracle_configuration['n_correlated_series'] = 1
+
+        configuration = OracleConfiguration({
+            'scheduling': default_scheduling_config(),
+            'oracle': oracle_configuration
+        })
+
+        oracle = DummyCromulonOracle(configuration)
 
         train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
         prediction_time = train_time + timedelta(minutes=1)
 
-        model.train(historical_universes, data, train_time)
+        oracle.train(data, train_time)
 
         _, predict_data = self._prepare_data_for_test()
-        model.predict(predict_data, prediction_time)
+        oracle.predict(predict_data, prediction_time)
 
     def test_crocubot_train_and_save_file(self):
         train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
@@ -73,25 +81,33 @@ class TestCrocubot(TestCase):
 
         historical_universes, data = self._prepare_data_for_test()
 
-        configuration = load_default_config()
-        model = DummyCromulonOracle(configuration)
+        configuration = OracleConfiguration({
+            'scheduling': default_scheduling_config(),
+            'oracle': default_oracle_config()
+        })
 
-        model.train(historical_universes, data, train_time)
+        oracle = DummyCromulonOracle(configuration)
+
+        oracle.train(data, train_time)
 
         tf_suffix = '.index'  # TF adds stuff to the end of its save files
         full_tensorflow_path = expected_train_path + tf_suffix
         self.assertTrue(os.path.exists(full_tensorflow_path))
 
     def test_crocubot_predict_without_train_file(self):
-        configuration = load_default_config()
-        model = DummyCromulonOracle(configuration)
+        configuration = OracleConfiguration({
+            'scheduling': default_scheduling_config(),
+            'oracle': default_oracle_config()
+        })
+
+        oracle = DummyCromulonOracle(configuration)
 
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 
         _, predict_data = self._prepare_data_for_test()
         self.assertRaises(
             ValueError,
-            model.predict,
+            oracle.predict,
             predict_data,
             execution_time
         )
