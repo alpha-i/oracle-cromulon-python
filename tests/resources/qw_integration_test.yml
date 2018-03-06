@@ -66,7 +66,7 @@ quant_workflow:
       tensorboard_log_path: '/tmp/integration_test_zipline_root/tensorboard'
       covariance_method: Ledoit
       covariance_ndays: 50
-      model_save_path: '/tmp/integration_test_zipline_root/model'
+      model_save_path: '/tmp/integration_test_zipline_root/cromulon'
       d_type: float32
       tf_type: 32
       random_seed: 0

@@ -38,7 +38,7 @@ def eval_neural_net(data, topology, tf_flags, last_train_file):
         saver.restore(sess, last_train_file)
         end_time = timer()
         delta_time = end_time - start_time
-        logging.info("Loading the model from disk took:{}".format(delta_time))
+        logging.info("Loading the cromulon from disk took:{}".format(delta_time))
 
         posterior = sess.run(y, feed_dict={x: data, is_training: False})
 

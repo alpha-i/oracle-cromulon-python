@@ -31,46 +31,41 @@ class TestBayesianCost(tf.test.TestCase):
 
         flags = get_default_flags()
 
-        layer_number = [
-            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-            {"activation_func": "relu", "trainable": False, "height": 20, "width": 10, "cell_height": 1},
-            {"activation_func": "linear", "trainable": False, "height": 20, "width": 10, "cell_height": 1}
-        ]
-        topology = Topology(layer_number)
+        topology = Topology()
 
-        self.model = Cromulon(topology, flags, is_training=True)
+        self.cromulon = Cromulon(topology, flags, is_training=True)
 
         # case1 no error thrown
         use_double_gaussian_weights_prior = True
         slab_std_dvn = 1.2
         spike_std_dvn = 0.05
         spike_slab_weighting = 0.5
-        BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn, spike_slab_weighting)
+        BayesianCost(self.cromulon, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn, spike_slab_weighting)
 
         # case2 slab_std_dvn < 0
         slab_std_dvn = -1.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
 
         # case3 slab_std_dvn > 100
         slab_std_dvn = 101.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
 
         # case4 spike_std_dvn < 0
         spike_std_dvn = -1.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
 
         # case5 spike_std_dvn > 100
         spike_std_dvn = 101.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
@@ -78,21 +73,21 @@ class TestBayesianCost(tf.test.TestCase):
         # case6 spike_std_dvn > slab_std_dvn
         spike_std_dvn = 5.
         slab_std_dvn = 1.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
 
         # case7 spike_slab_weighting < 0
         spike_slab_weighting = -1.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
 
         # case8 spike_slab_weighting > 1.
         spike_slab_weighting = 2.
-        self.assertRaises(ValueError, BayesianCost, model=self.model,
+        self.assertRaises(ValueError, BayesianCost, bayes_layers=self.cromulon.bayes,
                           use_double_gaussian_weights_prior=use_double_gaussian_weights_prior,
                           slab_std_dvn=slab_std_dvn, spike_std_dvn=spike_std_dvn,
                           spike_slab_weighting=spike_slab_weighting)
@@ -103,25 +98,13 @@ class TestBayesianCost(tf.test.TestCase):
 
         with self.test_session():
             layer = 0
-            layer_name = str(layer)
-            alpha_value = 0.2
-            log_alpha_value = np.log(alpha_value).astype(np.float32)
-            init_log_alpha = tf.constant_initializer(log_alpha_value)
-            with tf.variable_scope(layer_name):
-                log_alpha = tf.get_variable('log_alpha', shape=(), initializer=init_log_alpha)
-
-            log_alpha.initializer.run()
-            self.assertEqual(log_alpha.eval(), log_alpha_value)
-            log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
-            # TODO this a now a test get_layer_variable()
-            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
 
             # case 1 slab prior
             use_double_gaussian_weights_prior = True
             slab_std_dvn = 1.
             spike_std_dvn = 0.05
             spike_slab_weighting = 1.
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             weights = np.random.normal(size=5)
             weights = weights.astype(np.float32)
@@ -133,7 +116,7 @@ class TestBayesianCost(tf.test.TestCase):
             slab_std_dvn = 2.  # note that we have condition that slab_std_dvn >= spike_std_dvn
             spike_std_dvn = 1.
             spike_slab_weighting = 0.
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             log_prior_value_computed = bayes_cost.calculate_log_weight_prior(weights, layer)
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
@@ -142,20 +125,12 @@ class TestBayesianCost(tf.test.TestCase):
             slab_std_dvn = 2.
             spike_std_dvn = 1.
             spike_slab_weighting = 0.5
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             log_prior_value_computed = bayes_cost.calculate_log_weight_prior(weights, layer)
             log_prior_value_expected = np.sum(np.log(spike_slab_weighting * norm.pdf(weights / slab_std_dvn) /
                                                      slab_std_dvn + (1. - spike_slab_weighting) *
                                                      norm.pdf(weights / spike_std_dvn) / spike_std_dvn))
-            self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
-
-            # case 4 no double Gaussian prior
-            use_double_gaussian_weights_prior = False
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
-                                      spike_slab_weighting)
-            log_prior_value_computed = bayes_cost.calculate_log_weight_prior(weights, layer)
-            log_prior_value_expected = np.sum(norm.logpdf(weights, scale=alpha_value))
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
 
     def test_calculate_log_bias_prior(self):
@@ -167,25 +142,13 @@ class TestBayesianCost(tf.test.TestCase):
 
         with self.test_session():
             layer = 0
-            layer_name = str(layer)
-            alpha_value = 0.2
-            log_alpha_value = np.log(alpha_value).astype(np.float32)
-            init_log_alpha = tf.constant_initializer(log_alpha_value)
-            with tf.variable_scope(layer_name):
-                log_alpha = tf.get_variable('log_alpha', shape=(), initializer=init_log_alpha)
-
-            log_alpha.initializer.run()
-            self.assertEqual(log_alpha.eval(), log_alpha_value)
-            log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
-            # TODO this a now a test get_layer_variable()
-            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
 
             # case 1 slab prior
             use_double_gaussian_weights_prior = True
             slab_std_dvn = 1.
             spike_std_dvn = 0.05
             spike_slab_weighting = 1.
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             weights = np.random.normal(size=5)
             weights = weights.astype(np.float32)
@@ -197,7 +160,7 @@ class TestBayesianCost(tf.test.TestCase):
             slab_std_dvn = 2.  # note that we have condition that slab_std_dvn >= spike_std_dvn
             spike_std_dvn = 1.
             spike_slab_weighting = 0.
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             log_prior_value_computed = bayes_cost.calculate_log_weight_prior(weights, layer)
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
@@ -206,48 +169,10 @@ class TestBayesianCost(tf.test.TestCase):
             slab_std_dvn = 2.
             spike_std_dvn = 1.
             spike_slab_weighting = 0.5
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
+            bayes_cost = BayesianCost(self.cromulon.bayes, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
                                       spike_slab_weighting)
             log_prior_value_computed = bayes_cost.calculate_log_bias_prior(weights, layer)
             log_prior_value_expected = np.sum(np.log(spike_slab_weighting * norm.pdf(weights / slab_std_dvn) /
                                                      slab_std_dvn + (1. - spike_slab_weighting) *
                                                      norm.pdf(weights / spike_std_dvn) / spike_std_dvn))
-            self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
-
-            # case 4 no double Gaussian prior
-            use_double_gaussian_weights_prior = False
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
-                                      spike_slab_weighting)
-            log_prior_value_computed = bayes_cost.calculate_log_bias_prior(weights, layer)
-            log_prior_value_expected = np.sum(norm.logpdf(weights, scale=alpha_value))
-            self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)
-
-    def test_calculate_log_hyperprior(self):
-
-        self.test_init()
-
-        with self.test_session():
-            layer = 0
-            layer_name = str(layer)
-            alpha_value = 0.2
-            log_alpha_value = np.log(alpha_value).astype(np.float32)
-            init_log_alpha = tf.constant_initializer(log_alpha_value)
-            with tf.variable_scope(layer_name):
-                log_alpha = tf.get_variable(self.model.VAR_LOG_ALPHA, shape=(), initializer=init_log_alpha)
-
-            log_alpha.initializer.run()
-            self.assertEqual(log_alpha.eval(), log_alpha_value)
-            log_alpha_retrieved = self.model.get_variable(0, self.model.VAR_LOG_ALPHA)
-            # TODO this a now a test get_variable()
-            self.assertEqual(log_alpha_retrieved.eval(), log_alpha_value)
-
-            # case 1 test the hyper prior
-            use_double_gaussian_weights_prior = True
-            slab_std_dvn = 1.
-            spike_std_dvn = 0.05
-            spike_slab_weighting = 1.
-            bayes_cost = BayesianCost(self.model, use_double_gaussian_weights_prior, slab_std_dvn, spike_std_dvn,
-                                      spike_slab_weighting)
-            log_prior_value_computed = bayes_cost.calculate_log_hyperprior(layer)
-            log_prior_value_expected = - log_alpha_value
             self.assertAlmostEqual(log_prior_value_computed.eval(), log_prior_value_expected, places=5)

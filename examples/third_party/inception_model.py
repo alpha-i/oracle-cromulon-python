@@ -17,7 +17,7 @@
 The Inception v3 architecture is described in http://arxiv.org/abs/1512.00567
 
 Summary of available functions:
- inference: Compute inference on the model inputs to make a prediction
+ inference: Compute inference on the cromulon inputs to make a prediction
  loss: Compute the loss of the prediction with respect to the labels
 """
 from __future__ import absolute_import
@@ -32,9 +32,9 @@ from inception.slim import slim
 
 FLAGS = tf.app.flags.FLAGS
 
-# If a model is trained using multiple GPUs, prefix all Op names with tower_name
+# If a cromulon is trained using multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
-# names of the summaries when visualizing a model.
+# names of the summaries when visualizing a cromulon.
 TOWER_NAME = 'tower'
 
 # Batch normalization. Constant governing the exponential moving average of
@@ -47,18 +47,18 @@ MOVING_AVERAGE_DECAY = 0.9999
 
 def inference(images, num_classes, for_training=False, restore_logits=True,
               scope=None):
-    """Build Inception v3 model architecture.
+    """Build Inception v3 cromulon architecture.
 
     See here for reference: http://arxiv.org/abs/1512.00567
 
     Args:
       images: Images returned from inputs() or distorted_inputs().
       num_classes: number of classes
-      for_training: If set to `True`, build the inference model for training.
+      for_training: If set to `True`, build the inference cromulon for training.
         Kernels that operate differently for inference during training
         e.g. dropout, are appropriately configured.
       restore_logits: whether or not the logits layers should be restored.
-        Useful for fine-tuning a model with different num_classes.
+        Useful for fine-tuning a cromulon with different num_classes.
       scope: optional prefix string identifying the ImageNet tower.
 
     Returns:
@@ -86,7 +86,7 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
                 restore_logits=restore_logits,
                 scope=scope)
 
-    # Add summaries for viewing model statistics on TensorBoard.
+    # Add summaries for viewing cromulon statistics on TensorBoard.
     _activation_summaries(endpoints)
 
     # Grab the logits associated with the side head. Employed during training.
@@ -96,7 +96,7 @@ def inference(images, num_classes, for_training=False, restore_logits=True,
 
 
 def loss(logits, labels, batch_size=None):
-    """Adds all losses for the model.
+    """Adds all losses for the cromulon.
 
     Note the final loss is not returned. Instead, the list of losses are collected
     by slim.losses. The losses are accumulated in tower_loss() and summed to

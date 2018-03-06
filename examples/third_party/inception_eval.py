@@ -34,7 +34,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string('eval_dir', '/tmp/imagenet_eval',
                            """Directory where to write event logs.""")
 tf.app.flags.DEFINE_string('checkpoint_dir', '/tmp/imagenet_train',
-                           """Directory where to read model checkpoints.""")
+                           """Directory where to read cromulon checkpoints.""")
 
 # Flags governing the frequency of the eval.
 tf.app.flags.DEFINE_integer('eval_interval_secs', 60 * 5,
@@ -72,10 +72,10 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
                                                  ckpt.model_checkpoint_path))
 
             # Assuming model_checkpoint_path looks something like:
-            #   /my-favorite-path/imagenet_train/model.ckpt-0,
+            #   /my-favorite-path/imagenet_train/cromulon.ckpt-0,
             # extract global_step from it.
             global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-            print('Successfully loaded model from %s at step=%s.' %
+            print('Successfully loaded cromulon from %s at step=%s.' %
                   (ckpt.model_checkpoint_path, global_step))
         else:
             print('No checkpoint file found')
@@ -132,7 +132,7 @@ def _eval_once(saver, summary_writer, top_1_op, top_5_op, summary_op):
 
 
 def evaluate(dataset):
-    """Evaluate model on Dataset for a number of steps."""
+    """Evaluate cromulon on Dataset for a number of steps."""
     with tf.Graph().as_default():
         # Get images and labels from the dataset.
         images, labels = image_processing.inputs(dataset)
@@ -142,7 +142,7 @@ def evaluate(dataset):
         num_classes = dataset.num_classes() + 1
 
         # Build a Graph that computes the logits predictions from the
-        # inference model.
+        # inference cromulon.
         logits, _ = inception.inference(images, num_classes)
 
         # Calculate predictions.

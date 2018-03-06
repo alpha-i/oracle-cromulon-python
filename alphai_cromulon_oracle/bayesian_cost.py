@@ -136,7 +136,7 @@ class BayesianCost(object):
 
         return log_py
 
-    def calculate_priors(self, iteration=0):
+    def calculate_priors(self):
         log_pw = 0.
         log_qw = 0.
 
@@ -148,7 +148,7 @@ class BayesianCost(object):
                 mu_b = self._model.get_variable(layer, self._model.VAR_BIAS_MU)
                 rho_b = self._model.get_variable(layer, self._model.VAR_BIAS_RHO)
 
-                if self._model._flags.n_train_passes == 1:  # Exploit common random numbers
+                if self._model.flags.n_train_passes == 1:  # Exploit common random numbers
                     weights = self._model.compute_weights(layer)
                     biases = self._model.compute_biases(layer)
 
@@ -168,7 +168,7 @@ class BayesianCost(object):
 
         return log_pw, log_qw
 
-    def calculate_log_weight_prior(self, weights, layer):
+    def calculate_log_weight_prior(self, weights, layers):
         """
         See Equation 7 in https://arxiv.org/pdf/1505.05424.pdf
         :param weights: The weights of the layer for which the prior value is to be calculated
@@ -183,9 +183,7 @@ class BayesianCost(object):
             p_total = tf.stack([log_p_spike, log_p_slab], axis=0)
             log_pw = tf.reduce_logsumexp(p_total, axis=0)
         else:
-            # FIXME this may be removed in the future as the double Gaussian is a better way to do things!
-            log_alpha = self._model.get_variable(layer, self._model.VAR_LOG_ALPHA)
-            log_pw = tm.log_gaussian_logsigma(weights, 0., log_alpha)
+            raise NotImplementedError("Double Gaussian is Mandatory")
 
         return tf.reduce_sum(log_pw)
 

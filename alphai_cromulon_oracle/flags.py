@@ -48,7 +48,7 @@ def build_tensorflow_flags(config):
 
     # Training specific
     tf.app.flags.DEFINE_integer('n_epochs', config['n_epochs'], """How many epochs to be used for training.""")
-    tf.app.flags.DEFINE_integer('n_retrain_epochs', config['n_retrain_epochs'], """How many epochs to be used for re-training a previously stored model.""")
+    tf.app.flags.DEFINE_integer('n_retrain_epochs', config['n_retrain_epochs'], """How many epochs to be used for re-training a previously stored cromulon.""")
     tf.app.flags.DEFINE_float('learning_rate', config['learning_rate'], """Total number of data samples to be used for training.""")
     tf.app.flags.DEFINE_float('retrain_learning_rate', config['retrain_learning_rate'], """Total number of data samples to be used for training.""")
 

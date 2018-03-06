@@ -64,9 +64,9 @@ def train(topology,
         if do_retraining:
 
             if tf_flags.n_retrain_epochs < 1:
-                return epoch_loss_list  # Don't waste time loading model
+                return epoch_loss_list  # Don't waste time loading cromulon
             try:
-                logging.info("Attempting to load model from {}".format(tensorflow_path.model_restore_path))
+                logging.info("Attempting to load cromulon from {}".format(tensorflow_path.model_restore_path))
                 saver.restore(sess, tensorflow_path.model_restore_path)
                 logging.info("Model restored.")
                 number_of_epochs = tf_flags.n_retrain_epochs

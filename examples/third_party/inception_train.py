@@ -53,12 +53,12 @@ tf.app.flags.DEFINE_boolean('fine_tune', False,
                             """of weights in order to train the network on a """
                             """new task.""")
 tf.app.flags.DEFINE_string('pretrained_model_checkpoint_path', '',
-                           """If specified, restore this pretrained model """
+                           """If specified, restore this pretrained cromulon """
                            """before beginning any training.""")
 
 # **IMPORTANT**
 # Please note that this learning rate schedule is heavily dependent on the
-# hardware architecture, batch size and any changes to the model architecture
+# hardware architecture, batch size and any changes to the cromulon architecture
 # specification. Selecting a finely tuned learning rate schedule is an
 # empirical process that requires some experimentation. Please see README.md
 # more guidance and discussion.
@@ -80,7 +80,7 @@ RMSPROP_EPSILON = 1.0  # Epsilon term for RMSProp.
 
 
 def _tower_loss(images, labels, num_classes, scope, reuse_variables=None):
-    """Calculate the total loss on a single tower running the ImageNet model.
+    """Calculate the total loss on a single tower running the ImageNet cromulon.
 
     We perform 'batch splitting'. This means that we cut up a batch across
     multiple GPUs. For instance, if the batch size = 32 and num_gpus = 2,
@@ -97,7 +97,7 @@ def _tower_loss(images, labels, num_classes, scope, reuse_variables=None):
     Returns:
        Tensor of shape [] containing the total loss for a batch of data
     """
-    # When fine-tuning a model, we do not restore the logits but instead we
+    # When fine-tuning a cromulon, we do not restore the logits but instead we
     # randomly initialize the logits. The number of classes in the output of the
     # logit is the number of classes in specified Dataset.
     restore_logits = not FLAGS.fine_tune
@@ -225,7 +225,7 @@ def train(dataset):
         images_splits = tf.split(axis=0, num_or_size_splits=FLAGS.num_gpus, value=images)
         labels_splits = tf.split(axis=0, num_or_size_splits=FLAGS.num_gpus, value=labels)
 
-        # Calculate the gradients for each model tower.
+        # Calculate the gradients for each cromulon tower.
         tower_grads = []
         reuse_variables = None
         for i in range(FLAGS.num_gpus):
@@ -233,8 +233,8 @@ def train(dataset):
                 with tf.name_scope('%s_%d' % (inception.TOWER_NAME, i)) as scope:
                     # Force all Variables to reside on the CPU.
                     with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
-                        # Calculate the loss for one tower of the ImageNet model. This
-                        # function constructs the entire ImageNet model but shares the
+                        # Calculate the loss for one tower of the ImageNet cromulon. This
+                        # function constructs the entire ImageNet cromulon but shares the
                         # variables across all towers.
                         loss = _tower_loss(images_splits[i], labels_splits[i], num_classes,
                                            scope, reuse_variables)
@@ -322,7 +322,7 @@ def train(dataset):
                 slim.variables.VARIABLES_TO_RESTORE)
             restorer = tf.train.Saver(variables_to_restore)
             restorer.restore(sess, FLAGS.pretrained_model_checkpoint_path)
-            print('%s: Pre-trained model restored from %s' %
+            print('%s: Pre-trained cromulon restored from %s' %
                   (datetime.now(), FLAGS.pretrained_model_checkpoint_path))
 
         # Start the queue runners.
@@ -350,7 +350,7 @@ def train(dataset):
                 summary_str = sess.run(summary_op)
                 summary_writer.add_summary(summary_str, step)
 
-            # Save the model checkpoint periodically.
+            # Save the cromulon checkpoint periodically.
             if step % 5000 == 0 or (step + 1) == FLAGS.max_steps:
-                checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+                checkpoint_path = os.path.join(FLAGS.train_dir, 'cromulon.ckpt')
                 saver.save(sess, checkpoint_path, global_step=step)

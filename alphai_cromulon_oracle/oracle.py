@@ -128,12 +128,12 @@ class CromulonOracle(AbstractOracle):
 
     def train(self, data, execution_time):
         """
-        Trains the model
+        Trains the cromulon
         :param dict data: OHLCV data as dictionary of pandas DataFrame.
         :param datetime.datetime execution_time: time of execution of training
         :return:
         """
-        logger.info('Training model on {}.'.format(
+        logger.info('Training cromulon on {}.'.format(
             execution_time,
         ))
 
@@ -188,7 +188,7 @@ class CromulonOracle(AbstractOracle):
         data_provider = TrainDataProvider(train_x, train_y, self._tensorflow_flags.batch_size)
         self._do_train(tensorflow_path, tensorboard_options, data_provider)
 
-    @logtime(message="Training the model.")
+    @logtime(message="Training the cromulon.")
     def _do_train(self, tensorflow_path, tensorboard_options, data_provider):
         cromulon.train(self._topology, data_provider, tensorflow_path, tensorboard_options, self._tensorflow_flags)
 

@@ -51,7 +51,7 @@ def train(data_provider, tensorflow_path, tf_flags):
         is_model_ready = False
         if tensorflow_path.can_restore_model():
             try:
-                logging.info("Attempting to load model from {}".format(tensorflow_path.model_restore_path))
+                logging.info("Attempting to load cromulon from {}".format(tensorflow_path.model_restore_path))
                 saver.restore(sess, tensorflow_path.model_restore_path)
                 logging.info("Model restored.")
                 number_of_epochs = tf_flags.n_retrain_epochs

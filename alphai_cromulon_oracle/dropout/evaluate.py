@@ -34,7 +34,7 @@ def eval_neural_net(predict_x, tf_flags, load_file):
         saver.restore(sess, load_file)
         end_time = timer()
         delta_time = end_time - start_time
-        logging.info("Loading the model from disk took:{}".format(delta_time))
+        logging.info("Loading the cromulon from disk took:{}".format(delta_time))
 
         prediction = sess.run(eval_operator, feed_dict={x: predict_x, is_training: False})
 

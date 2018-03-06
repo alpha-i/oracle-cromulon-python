@@ -50,6 +50,10 @@ class Cromulon:
         self.bayes = BayesLayers(topology, flags)
         self.intialise_variables()
 
+    @property
+    def topology(self):
+        return self._topology
+
     def show_me_what_you_got(self, x):
         """ Predict the future outcome of the temporal signal x.
 
@@ -218,7 +222,8 @@ class Cromulon:
                 :param int layer_number: Which block it belongs to
 
         :param int layer_number: Which block it belongs to
-
+        :param kernel_size:
+        :param n_kernels:
         :return:  A rank 4 tensor of dimensions [batch, channels, time, features]
         """
 
@@ -332,7 +337,7 @@ class BayesLayers:
 
         :param Topology topology:
         :param flags flags:
-        :param tf.bool is_training: Whether the model will be training or evaluating
+        :param tf.bool is_training: Whether the cromulon will be training or evaluating
         """
 
         self._topology = topology
@@ -350,6 +355,10 @@ class BayesLayers:
     @property
     def number_of_layers(self):
         return self._topology.n_layers
+
+    @property
+    def flags(self):
+        return self._flags
 
     @property
     def layer_variables_list(self):
