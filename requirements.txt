@@ -1,9 +1,9 @@
 --extra-index-url https://pypi.fury.io/reW6hdjFCrSbpo3ehrBu/alpha-i/
-alphai_feature_generation==1.4.0-dev-gym
+alphai_calendars
+alphai_feature_generation>=2.0.0,<3.0.0
 alphai_covariance==0.1.4
-alphai_data_sources
+alphai_data_sources>=1.0.1
 alphai_delphi>=2.1.0,<3.0.0
 tensorflow==1.4.0
 numpy>=1.12.0
 scikit-learn>=0.19.0
-
