@@ -81,7 +81,7 @@ quant_workflow:
       n_eval_passes: 1
       resume_training: True
       n_series: 1
-      nassets: 3
+      n_assets: 3
       n_forecasts: 1
       n_classification_bins: 11
       classify_per_series: True

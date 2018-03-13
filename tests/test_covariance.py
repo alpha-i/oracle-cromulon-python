@@ -1,9 +1,10 @@
+from datetime import timedelta
 from unittest import TestCase
 from tests.helpers import (create_fixtures, destroy_fixtures, read_hdf5_into_dict_of_data_frames, FIXTURE_DATA_FULLPATH)
 import pandas as pd
 from alphai_cromulon_oracle.covariance import estimate_covariance, DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR, \
     returns_minutes_after_market_open_data_frame
-from alphai_feature_generation.transformation import FinancialDataTransformation
+from alphai_feature_generation.transformation import FinancialDataTransformation, GymDataTransformation
 
 from sklearn.covariance import GraphLassoCV
 import numpy as np
@@ -42,26 +43,26 @@ class TestCrocubot(TestCase):
                 },
             ],
             'fill_limit': 0,
-            'exchange_name': 'NYSE',
+            'calendar_name': 'NYSE',
             'features_ndays': 9,
             'features_resample_minutes': 15,
             'features_start_market_minute': 60,
             'prediction_frequency_ndays': 1,
             'prediction_market_minute': 60,
-            'target_delta_ndays': 1,
+            'target_delta': timedelta(days=1),
             'target_market_minute': 60,
             'n_classification_bins': 12,
-            'nassets': 3,
+            'n_assets': 3,
             'classify_per_series': False,
             'normalise_per_series': False
         }
 
-        data_transformation = FinancialDataTransformation(configuration)
+        data_transformation = GymDataTransformation(configuration)
         universe, data = self._prepare_data_for_test()
         estimation_method = "Ledoit"
         exchange_calendar = data_transformation.exchange_calendar
         ndays = data_transformation.features_ndays  # FIXME this is the only value that works now.
-        forecast_interval = data_transformation.target_delta_ndays
+        forecast_interval = data_transformation.target_delta.days
         target_market_minute = data_transformation.target_market_minute
         covariance_matrix = estimate_covariance(data, ndays, target_market_minute, estimation_method, exchange_calendar,
                                                 forecast_interval)

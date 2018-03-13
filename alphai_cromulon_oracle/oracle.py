@@ -4,7 +4,6 @@
 # A fairly generic interface, in that it can easily applied to other models
 
 import logging
-from timeit import default_timer as timer
 from copy import deepcopy
 from datetime import timedelta
 
@@ -15,7 +14,7 @@ from alphai_feature_generation.cleaning import resample_ohlcv, fill_gaps
 from alphai_feature_generation.transformation import GymDataTransformation
 
 from alphai_time_series.transform import gaussianise
-from alphai_delphi.oracle import AbstractOracle
+from alphai_delphi.oracle.abstract_oracle import AbstractOracle
 
 from alphai_cromulon_oracle.cromulon.helpers import TensorflowPath, TensorboardOptions
 from alphai_cromulon_oracle.data.providers import TrainDataProvider
@@ -41,6 +40,10 @@ logger = logging.getLogger(__name__)
 
 
 class CromulonOracle(AbstractOracle):
+
+    @property
+    def target_feature_name(self):
+        return self._target_feature.name
 
     def _sanity_check(self):
         pass
@@ -76,30 +79,31 @@ class CromulonOracle(AbstractOracle):
     def get_universe(self):
         pass
 
-    def __init__(self, config):
+    def __init__(self, calendar_name, scheduling_configuration, oracle_configuration):
         """
         :param configuration: Dictionary containing all the parameters. Full specifications can be found at:
         oracle-cromulon-python/docs/cromulon_options.md
         """
-        super().__init__(config)
+
+        super().__init__(calendar_name, scheduling_configuration, oracle_configuration)
         logger.info('Initialising Cromulon Oracle.')
 
-        self.config = self.update_configuration(self.config)
-
         self._init_data_transformation()
-        self._train_path = self.config['train_path']
 
-        n_correlated_series = self.config.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
-        self._configuration = self.config
+        self._model_configuration = self.config['model']
+
+        self._train_path = self._model_configuration['train_path']
         self._init_train_file_manager()
 
-        self._tensorflow_flags = build_tensorflow_flags(self.config)  # Perhaps use separate config dict here?
-        self._n_forecasts = self.config.get('n_forecasts', 1)
+        self._tensorflow_flags = build_tensorflow_flags(self._model_configuration)  # Perhaps use separate config dict here?
+        self._n_forecasts = self._model_configuration.get('n_forecasts', 1)
 
         if self._tensorflow_flags.predict_single_shares:
-            self._n_input_series = int(np.minimum(n_correlated_series, self.config['n_series']))
+            n_correlated_series = self._model_configuration.get('n_correlated_series', DEFAULT_N_CORRELATED_SERIES)
+            self._n_input_series = int(np.minimum(n_correlated_series, self._model_configuration['n_series']))
+            self._n_forecasts = 1
         else:
-            self._n_input_series = self.config['n_series']
+            self._n_input_series = self._model_configuration['n_series']
 
         self._topology = None
 
@@ -114,10 +118,19 @@ class CromulonOracle(AbstractOracle):
     def _init_data_transformation(self):
         data_transformation_config = self.config['data_transformation']
 
-        data_transformation_config["prediction_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
-        data_transformation_config["features_start_market_minute"] = self.scheduling.training_frequency.minutes_offset
-        data_transformation_config["target_delta_ndays"] = int(self.scheduling.prediction_horizon.days)
-        data_transformation_config["target_market_minute"] = self.scheduling.prediction_frequency.minutes_offset
+        """ Pass on some config entries to data_transformation"""
+        data_transformation_config[GymDataTransformation.KEY_EXCHANGE] = self.calendar_name
+
+        data_transformation_config["n_classification_bins"] = self.config["model"]["n_classification_bins"]
+        data_transformation_config["n_assets"] = self.config["model"]["n_assets"]
+        data_transformation_config["classify_per_series"] = self.config["model"]["classify_per_series"]
+        data_transformation_config["normalise_per_series"] = self.config["model"]["normalise_per_series"]
+        data_transformation_config["n_forecasts"] = self.config.get("n_forecasts", 1)
+
+        data_transformation_config["prediction_market_minute"] = self.scheduling['prediction_frequency']['minutes_offset']
+        data_transformation_config["features_start_market_minute"] = self.scheduling["training_frequency"]["minutes_offset"]
+        data_transformation_config["target_delta"] = self.prediction_horizon
+        data_transformation_config["target_market_minute"] = self.scheduling['prediction_frequency']['minutes_offset']
 
         self._data_transformation = GymDataTransformation(data_transformation_config)
         self._target_feature = self._data_transformation.get_target_feature()
@@ -229,16 +242,14 @@ class CromulonOracle(AbstractOracle):
 
         return predict_y, symbols, target_timestamps
 
-    def predict(self, data, current_timestamp, number_of_iterations=1):
+    def predict(self, data, current_timestamp, target_timestamp=None, number_of_iterations=1):
         """
         Main method that gives us a prediction after the training phase is done
-        :param data: The dict of dataframes to be used for prediction
-        :type data: dict
+
+        :param dict data: The dict of dataframes to be used for prediction
         :param current_timestamp: The timestamp of the time when the prediction is executed
-        :type current_timestamp: datetime.datetime
-        :param number_of_iterations: The number of iterations which we use to sample the uncertain features.
-        :type number_of_iterations: Integer
-        :return: Mean forecast, lower and upper confidence limits, and the timestamp of the prediction
+        :param datetime.datetime target_timestamp: object
+        :param Integer number_of_iterations: The number of iterations which we use to sample the uncertain features.
         :rtype: OraclePrediction
         """
 
@@ -351,17 +362,6 @@ class CromulonOracle(AbstractOracle):
 
         return x_data
 
-    def update_configuration(self, config):
-        """ Pass on some config entries to data_transformation"""
-
-        config["data_transformation"]["n_classification_bins"] = config["n_classification_bins"]
-        config["data_transformation"]["nassets"] = config["nassets"]
-        config["data_transformation"]["classify_per_series"] = config["classify_per_series"]
-        config["data_transformation"]["normalise_per_series"] = config["normalise_per_series"]
-        config["data_transformation"]["n_forecasts"] = config.get("n_forecasts", 1)
-
-        return config
-
     def _preprocess_inputs(self, train_x_dict):
         """ Prepare training data to be fed into Cromulon. """
 
@@ -464,11 +464,11 @@ class CromulonOracle(AbstractOracle):
     def initialise_topology(self, n_timesteps):
         """ Set up the network topology based upon the configuration file, and shape of input data. """
 
-        layer_heights = self._configuration['layer_heights']
-        layer_widths = self._configuration['layer_widths']
+        layer_heights = self._model_configuration['layer_heights']
+        layer_widths = self._model_configuration['layer_widths']
         layer_depths = np.ones(len(layer_heights), dtype=np.int)
         default_layer_types = ['full'] * len(layer_heights)
-        layer_types = self._configuration.get('layer_types', default_layer_types)
+        layer_types = self._model_configuration.get('layer_types', default_layer_types)
 
         # Override input layer to match data
         layer_depths[0] = 1  # n input series currently fixed to 1
@@ -476,21 +476,22 @@ class CromulonOracle(AbstractOracle):
         layer_widths[0] = self._n_features
 
         # Setup convolutional layer configuration
-        conv_config = {}
-        conv_config["kernel_size"] = self._configuration.get('kernel_size', DEFAULT_CONV_KERNEL_SIZE)
-        conv_config["n_kernels"] = self._configuration.get('n_kernels', DEFAULT_N_CONV_FILTERS)
-        conv_config["dilation_rates"] = self._configuration.get('dilation_rates', 1)
-        conv_config["strides"] = self._configuration.get('strides', 1)
+        conv_config = {
+            "kernel_size": self._model_configuration.get('kernel_size', DEFAULT_CONV_KERNEL_SIZE),
+            "n_kernels": self._model_configuration.get('n_kernels', DEFAULT_N_CONV_FILTERS),
+            "dilation_rates": self._model_configuration.get('dilation_rates', 1),
+            "strides": self._model_configuration.get('strides', 1),
+        }
 
         self._topology = tp.Topology(
             n_timesteps=n_timesteps,
             n_forecasts=self._n_forecasts,
-            n_classification_bins=self._configuration['n_classification_bins'],
+            n_classification_bins=self._model_configuration['n_classification_bins'],
             layer_heights=layer_heights,
             layer_widths=layer_widths,
             layer_depths=layer_depths,
             layer_types=layer_types,
-            activation_functions=self._configuration['activation_functions'],
+            activation_functions=self._model_configuration['activation_functions'],
             n_features=self._n_features,
             conv_config=conv_config
         )

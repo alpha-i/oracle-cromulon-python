@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from unittest import TestCase
 
 import pandas as pd
-from alphai_delphi.oracle.oracle_configuration import OracleConfiguration
 
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 from alphai_cromulon_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
@@ -16,11 +15,11 @@ from tests.helpers import (
     read_hdf5_into_dict_of_data_frames,
     DummyCromulonOracle,
     default_oracle_config,
-    default_scheduling_config
-)
+    default_scheduling_config,
+    DEFAULT_CALENDAR_NAME)
 
 
-class TestCrocubot(TestCase):
+class TestCromulon(TestCase):
     def setUp(self):
         create_fixtures()
 
@@ -36,12 +35,6 @@ class TestCrocubot(TestCase):
         fill_limit = 10
         resample_rule = '15T'
 
-        historical_universes = pd.DataFrame(columns=['start_date', 'end_date', 'assets'])
-        historical_universes.loc[0] = [
-            pd.Timestamp(start_date),
-            pd.Timestamp(end_date),
-            symbols,
-        ]
         data = read_hdf5_into_dict_of_data_frames(start_date,
                                                   end_date,
                                                   symbols,
@@ -50,28 +43,28 @@ class TestCrocubot(TestCase):
                                                   fill_limit,
                                                   resample_rule
                                                   )
-        return historical_universes, data
+        return data
 
     def test_crocubot_train_and_predict(self):
-        historical_universes, data = self._prepare_data_for_test()
+        data = self._prepare_data_for_test()
 
         oracle_configuration = default_oracle_config()
-        oracle_configuration['n_correlated_series'] = 1
+        oracle_configuration['model']['n_correlated_series'] = 1
 
-        configuration = OracleConfiguration({
-            'scheduling': default_scheduling_config(),
-            'oracle': oracle_configuration
-        })
+        oracle = DummyCromulonOracle(
+            DEFAULT_CALENDAR_NAME,
+            oracle_configuration=oracle_configuration,
+            scheduling_configuration=default_scheduling_config()
 
-        oracle = DummyCromulonOracle(configuration)
+        )
 
-        train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
-        prediction_time = train_time + timedelta(minutes=1)
+        train_time = datetime(2014, 1, 20, 9) + timedelta(minutes=60)
+        target_timestamp = train_time + oracle.prediction_horizon
 
         oracle.train(data, train_time)
 
-        _, predict_data = self._prepare_data_for_test()
-        oracle.predict(predict_data, prediction_time)
+        predict_data = self._prepare_data_for_test()
+        oracle.predict(predict_data, train_time, target_timestamp)
 
     def test_crocubot_train_and_save_file(self):
         train_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
@@ -79,14 +72,14 @@ class TestCrocubot(TestCase):
 
         expected_train_path = os.path.join(FIXTURE_DESTINATION_DIR, train_filename)
 
-        historical_universes, data = self._prepare_data_for_test()
+        data = self._prepare_data_for_test()
 
-        configuration = OracleConfiguration({
-            'scheduling': default_scheduling_config(),
-            'oracle': default_oracle_config()
-        })
+        oracle = DummyCromulonOracle(
+            DEFAULT_CALENDAR_NAME,
+            oracle_configuration=default_oracle_config(),
+            scheduling_configuration=default_scheduling_config()
 
-        oracle = DummyCromulonOracle(configuration)
+        )
 
         oracle.train(data, train_time)
 
@@ -95,12 +88,12 @@ class TestCrocubot(TestCase):
         self.assertTrue(os.path.exists(full_tensorflow_path))
 
     def test_crocubot_predict_without_train_file(self):
-        configuration = OracleConfiguration({
-            'scheduling': default_scheduling_config(),
-            'oracle': default_oracle_config()
-        })
+        oracle = DummyCromulonOracle(
+            DEFAULT_CALENDAR_NAME,
+            oracle_configuration=default_oracle_config(),
+            scheduling_configuration=default_scheduling_config()
 
-        oracle = DummyCromulonOracle(configuration)
+        )
 
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 

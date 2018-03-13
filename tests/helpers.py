@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 
-import pandas_market_calendars as mcal
+import alphai_calendars as mcal
 
 from alphai_feature_generation.cleaning import (
     convert_to_utc, select_trading_hours, fill_gaps_data_dict, resample_ohlcv)
@@ -17,6 +17,7 @@ FIXTURE_DESTINATION_DIR = tempfile.TemporaryDirectory().name
 
 FIXTURE_DATA_FULLPATH = os.path.join(FIXTURE_DESTINATION_DIR, DATA_FILENAME)
 
+DEFAULT_CALENDAR_NAME = 'NYSE'
 
 def create_fixtures():
 
@@ -57,8 +58,6 @@ def read_hdf5_into_dict_of_data_frames(start_date, end_date, symbols, file_path,
 
 
 class DummyCromulonOracle(CromulonOracle):
-    def __init__(self, configuration):
-        super().__init__(configuration)
 
     def get_train_file_manager(self):
         return self._train_file_manager
@@ -66,10 +65,20 @@ class DummyCromulonOracle(CromulonOracle):
 
 def default_oracle_config():
     configuration = {
-        'nassets': 1,
+        'prediction_delta': {
+            'unit': 'days',
+            'value': 10
+        },
+        'training_delta': {
+            'unit': 'days',
+            'value': 20
+        },
+        'prediction_horizon': {
+            'unit': 'days',
+            'value': 1
+        },
         'data_transformation': {
             'fill_limit': 5,
-            'holiday_calendar': 'NYSE',
             'feature_config_list': [
                 {
                     'name': 'close',
@@ -81,59 +90,62 @@ def default_oracle_config():
                     'local': False,
                 },
             ],
-            'data_name': 'GYM',
             'features_ndays': 10,
             'features_resample_minutes': 15,
             'target_delta_hours': 1,
         },
-        'train_path': FIXTURE_DESTINATION_DIR,
-        'covariance_method': 'NERCOME',
-        'covariance_ndays': 9,
-        'model_save_path': FIXTURE_DESTINATION_DIR,
-        'tensorboard_log_path': FIXTURE_DESTINATION_DIR,
-        'd_type': 'float32',
-        'tf_type': 32,
-        'random_seed': 0,
-        'predict_single_shares': False,
-        'classify_per_series': True,
-        'normalise_per_series': True,
+        "model": {
+            'n_assets': 1,
+            'train_path': FIXTURE_DESTINATION_DIR,
+            'covariance_method': 'NERCOME',
+            'covariance_ndays': 9,
+            'model_save_path': FIXTURE_DESTINATION_DIR,
+            'tensorboard_log_path': FIXTURE_DESTINATION_DIR,
+            'd_type': 'float32',
+            'tf_type': 32,
+            'random_seed': 0,
+            'predict_single_shares': False,
+            'classify_per_series': True,
+            'normalise_per_series': True,
 
-        # Training specific
-        'n_epochs': 200,
-        'n_retrain_epochs': 20,
-        'learning_rate': 1e-3,
-        'batch_size': 200,
-        'cost_type': 'bayes',
-        'n_train_passes': 32,
-        'n_eval_passes': 32,
-        'resume_training': True,
-        'use_gpu': False,
+            # Training specific
+            'n_epochs': 200,
+            'n_retrain_epochs': 20,
+            'learning_rate': 1e-3,
+            'batch_size': 200,
+            'cost_type': 'bayes',
+            'n_train_passes': 32,
+            'n_eval_passes': 32,
+            'resume_training': True,
+            'use_gpu': False,
 
-        # Topology
-        'n_series': 1,
-        'do_kernel_regularisation': True,
-        'do_batch_norm': False,
-        'n_res_blocks': 6,
-        'n_features_per_series': 271,
-        'n_forecasts': 84,
-        'n_classification_bins': 6,
-        'layer_heights': [400, 400, 400, 400, 400],
-        'layer_widths': [1, 1, 1, 1, 1],
-        'layer_types': ['conv', 'res', 'full', 'full', 'full'],
-        'activation_functions': ['relu', 'relu', 'relu', 'linear', 'linear'],
+            # Topology
+            'n_series': 1,
+            'do_kernel_regularisation': True,
+            'do_batch_norm': False,
+            'n_res_blocks': 6,
+            'n_features_per_series': 271,
+            'n_forecasts': 84,
+            'n_classification_bins': 6,
+            'layer_heights': [400, 400, 400, 400, 400],
+            'layer_widths': [1, 1, 1, 1, 1],
+            'layer_types': ['conv', 'res', 'full', 'full', 'full'],
+            'activation_functions': ['relu', 'relu', 'relu', 'linear', 'linear'],
 
-        # Initial conditions
-        'INITIAL_WEIGHT_UNCERTAINTY': 0.02,
-        'INITIAL_BIAS_UNCERTAINTY': 0.02,
-        'INITIAL_WEIGHT_DISPLACEMENT': 0.1,
-        'INITIAL_BIAS_DISPLACEMENT': 0.1,
-        'USE_PERFECT_NOISE': False,
+            # Initial conditions
+            'INITIAL_WEIGHT_UNCERTAINTY': 0.02,
+            'INITIAL_BIAS_UNCERTAINTY': 0.02,
+            'INITIAL_WEIGHT_DISPLACEMENT': 0.1,
+            'INITIAL_BIAS_DISPLACEMENT': 0.1,
+            'USE_PERFECT_NOISE': False,
 
-        # Priors
-        'double_gaussian_weights_prior': True,
-        'wide_prior_std': 1.0,
-        'narrow_prior_std': 0.001,
-        'spike_slab_weighting': 0.6
+            # Priors
+            'double_gaussian_weights_prior': True,
+            'wide_prior_std': 1.0,
+            'narrow_prior_std': 0.001,
+            'spike_slab_weighting': 0.6
+        },
+
     }
     # configuration = {
     #     'data_transformation': {
@@ -214,26 +226,22 @@ def default_oracle_config():
 
 def default_scheduling_config():
     return {
-        'prediction_horizon': 24,
         'prediction_frequency':
             {
                 'frequency_type': 'DAILY',
                 'days_offset': 0,
                 'minutes_offset': 60
             },
-        'prediction_delta': 10,
-
         'training_frequency':
             {
                 'frequency_type': 'DAILY',
                 'days_offset': 0,
                 'minutes_offset': 60
-            },
-        'training_delta': 20,
+            }
     }
 
 
 def get_default_flags():
     default_config = default_oracle_config()
-    return build_tensorflow_flags(default_config)
+    return build_tensorflow_flags(default_config['model'])
 
