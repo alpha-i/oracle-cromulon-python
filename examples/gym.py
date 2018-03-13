@@ -2,28 +2,25 @@
 import tempfile
 import logging
 from datetime import timedelta, datetime
-from datetime import datetime as dt
 from copy import deepcopy
 
 import pandas as pd
-import numpy as np
 
 import matplotlib
-
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
 from alphai_cromulon_oracle.oracle import CromulonOracle
-from alphai_cromulon_oracle.oracle import OraclePrediction
+from examples.gym_iotools import load_gym_dataframe
 
-import examples.gym_iotools as io
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger('tipper').addHandler(logging.StreamHandler())
+
 
 RUNTIME_PATH = tempfile.TemporaryDirectory().name
-
-logger = logging.getLogger('tipper')
-logger.addHandler(logging.StreamHandler())
-logging.basicConfig(level=logging.DEBUG)
+TARGET_FEATURE = 'number_people'
 
 EXECUTION_TIME = datetime(2016, 12, 7)  # beware - chunks missing from data in 2017
 D_TYPE = 'float32'
@@ -41,7 +38,10 @@ oracle_configuration = {
         'unit': 'days',
         'value': 10
     },
-    "training_delta": {'unit': 'days', 'value': 20},
+    "training_delta": {
+        'unit': 'days',
+        'value': 20
+    },
     'data_transformation': {
         'fill_limit': 5,
         'holiday_calendar': 'NYSE',
@@ -60,7 +60,6 @@ oracle_configuration = {
                 'resolution': 1440
             },
         ],
-        'data_name': 'GYM',
         'features_ndays': 10,
         'features_resample_minutes': 15
     },
@@ -113,8 +112,8 @@ oracle_configuration = {
         'narrow_prior_std': 0.001,
         'spike_slab_weighting': 0.6
     }
-
 }
+
 scheduling_config = {
     "prediction_frequency":
         {
@@ -131,68 +130,6 @@ scheduling_config = {
 }
 
 
-def run_oracle():
-
-    gym_df = io.load_gym_dataframe()
-
-    cut_gym_df = deepcopy(gym_df)
-    cut_time = EXECUTION_TIME + timedelta(days=1)
-
-    cut_gym_df = truncate_dataframe(cut_gym_df, cut_time)
-
-    full_data_dict = make_dict_from_dataframe(gym_df)
-    data_dict = make_dict_from_dataframe(cut_gym_df)
-
-    oracle = CromulonOracle(CALENDAR_NAME,
-                            oracle_configuration=oracle_configuration,
-                            scheduling_configuration=scheduling_config
-                            )
-    oracle.train(full_data_dict, EXECUTION_TIME)
-
-    prediction = oracle.predict(data_dict, EXECUTION_TIME, number_of_iterations=1)
-    actuals = extract_actuals(full_data_dict, prediction.lower_bound.index)
-
-    return prediction, actuals
-
-
-def truncate_dataframe(gym_df, execution_time):
-
-    return gym_df.ix[:execution_time]    # gym_df[(gym_df['date'] < EXECUTION_TIME)]
-
-
-def extract_actuals(data_dict, index):
-
-    target = data_dict['number_people']
-    actuals = target.loc[index]
-
-    return actuals
-
-
-def make_dummy_prediction():
-    """ Generates a mock prediction result (2 gyms; 3 forecasts each), useful for testing purposes. """
-
-    gym_names = ['UCB', 'Santa Cruz']
-
-    current_timestamp = datetime(2008, 1, 1, 2, 2, 2)
-    time1 = datetime(2008, 1, 2, 2, 2, 2)
-    time2 = datetime(2008, 1, 3, 2, 2, 2)
-    time3 = datetime(2008, 1, 4, 2, 2, 2)
-    target_timestamps = [time1, time2, time3]
-
-    n_gyms = len(gym_names)
-    n_timestamps = len(target_timestamps)
-    data_shape = (n_timestamps, n_gyms)
-    means = np.random.normal(10, 3, data_shape)
-    conf_low = means - 1.5
-    conf_high = means + 1.5
-
-    means_pd = pd.DataFrame(data=means, columns=gym_names, index=target_timestamps)
-    conf_low_pd = pd.DataFrame(data=conf_low, columns=gym_names, index=target_timestamps)
-    conf_high_pd = pd.DataFrame(data=conf_high, columns=gym_names, index=target_timestamps)
-
-    return OraclePrediction(means_pd, conf_low_pd, conf_high_pd, current_timestamp)
-
-
 def make_dict_from_dataframe(csv_dataframe):
     """ Takes the csv-derived dataframe and splits into dict where each key is a column from the ."""
 
@@ -206,29 +143,41 @@ def make_dict_from_dataframe(csv_dataframe):
 
     return data_dict
 
-# prediction = make_dummy_prediction()
-#
-# with open('./dummy_prediction.pickle', 'wb') as handle:
-#     pickle.dump(prediction, handle)
 
+if __name__ == '__main__':
 
-predictions, actuals = run_oracle()
+    gym_df = load_gym_dataframe()
+    cut_gym_df = deepcopy(gym_df)
+    cut_time = EXECUTION_TIME + timedelta(days=1)
+    cut_gym_df = cut_gym_df.ix[:cut_time]
 
-print("Predictions: ", predictions)
-print("actuals: ", actuals)
+    complete_dataset = make_dict_from_dataframe(gym_df)
+    prediction_dataset = make_dict_from_dataframe(cut_gym_df)
 
-plt.figure(num=1)
+    oracle = CromulonOracle(CALENDAR_NAME,
+                            oracle_configuration=oracle_configuration,
+                            scheduling_configuration=scheduling_config
+                            )
+    oracle.train(complete_dataset, EXECUTION_TIME)
 
-ax = plt.axes()
+    prediction = oracle.predict(prediction_dataset, EXECUTION_TIME, number_of_iterations=1)
 
-t_predict = predictions.lower_bound.index.values
+    actuals = complete_dataset[TARGET_FEATURE].loc[prediction.lower_bound.index]
 
-ax.plot(t_predict, predictions.lower_bound.values)
-ax.plot(t_predict, predictions.upper_bound.values)
+    print("Predictions: ", prediction)
+    print("actuals: ", actuals)
 
-# Need actuals too
-t_actuals = t_predict
-ax.scatter(t_actuals.tolist(), list(actuals.values))
+    plt.figure(num=1)
 
-plt.ylim(0, 45)
-plt.show()
+    ax = plt.axes()
+
+    t_predict = prediction.lower_bound.index.values
+
+    ax.plot(t_predict, prediction.lower_bound.values)
+    ax.plot(t_predict, prediction.upper_bound.values)
+
+    t_actuals = t_predict
+    ax.scatter(t_actuals.tolist(), list(actuals.values))
+
+    plt.ylim(0, 45)
+    plt.show()

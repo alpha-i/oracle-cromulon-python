@@ -65,6 +65,10 @@ class DummyCromulonOracle(CromulonOracle):
 
 def default_oracle_config():
     configuration = {
+        'prediction_horizon': {
+            'unit': 'hours',
+            'value': 1
+        },
         'prediction_delta': {
             'unit': 'days',
             'value': 10
@@ -73,10 +77,7 @@ def default_oracle_config():
             'unit': 'days',
             'value': 20
         },
-        'prediction_horizon': {
-            'unit': 'days',
-            'value': 1
-        },
+
         'data_transformation': {
             'fill_limit': 5,
             'feature_config_list': [
@@ -87,17 +88,23 @@ def default_oracle_config():
                     },
                     'normalization': 'standard',
                     'is_target': True,
-                    'local': False,
-                    'length': 5,
+                    'length': 20,
+                    'resolution':60
+                },
+                {
+                    'name': 'close',
+                    'normalization': 'min_max',
+                    'length': 20,
+                    'resolution': 1440
                 },
             ],
             'features_ndays': 10,
             'features_resample_minutes': 15,
         },
         "model": {
+            'n_series': 1,
+            'n_assets': 1,
             'train_path': FIXTURE_DESTINATION_DIR,
-            'covariance_method': 'NERCOME',
-            'covariance_ndays': 9,
             'model_save_path': FIXTURE_DESTINATION_DIR,
             'tensorboard_log_path': FIXTURE_DESTINATION_DIR,
             'd_type': 'float32',
@@ -119,26 +126,16 @@ def default_oracle_config():
             'use_gpu': False,
 
             # Topology
-            # Topology
-            'n_series': 1,
-            'n_assets': 1,
-            'n_features_per_series': 271,
-            'n_forecasts': 1,
-            'n_classification_bins': 12,
-            'layer_heights': [270, 270],
-            'layer_widths': [3, 3],
-            'activation_functions': ['relu', 'relu'],
-            # 'n_series': 1,
             'do_kernel_regularisation': True,
-            # 'do_batch_norm': False,
+            'do_batch_norm': False,
             'n_res_blocks': 6,
-            # 'n_features_per_series': 271,
-            # 'n_forecasts': 84,
-            # 'n_classification_bins': 6,
-            # 'layer_heights': [400, 400, 400, 400, 400],
-            # 'layer_widths': [1, 1, 1, 1, 1],
+            'n_features_per_series': 271,
+            'n_forecasts': 84,
+            'n_classification_bins': 6,
+            'layer_heights': [400, 400, 400, 400, 400],
+            'layer_widths': [1, 1, 1, 1, 1],
             'layer_types': ['conv', 'res', 'full', 'full', 'full'],
-            # 'activation_functions': ['relu', 'relu', 'relu', 'linear', 'linear'],
+            'activation_functions': ['relu', 'relu', 'relu', 'linear', 'linear'],
 
             # Initial conditions
             'INITIAL_WEIGHT_UNCERTAINTY': 0.02,
@@ -152,82 +149,8 @@ def default_oracle_config():
             'wide_prior_std': 1.0,
             'narrow_prior_std': 0.001,
             'spike_slab_weighting': 0.6
-        },
-
+        }
     }
-    # configuration = {
-    #     'data_transformation': {
-    #         'feature_config_list': [
-    #             {
-    #                 'name': 'close',
-    #                 'transformation': {
-    #                     'name': 'log-return'
-    #                 },
-    #                 'normalization': 'standard',
-    #                 'is_target': True,
-    #                 'local': False,
-    #             },
-    #         ],
-    #         'holiday_calendar': 'NYSE',
-    #         'fill_limit': 0,
-    #         'features_ndays': 10,
-    #         'features_resample_minutes': 15,
-    #         'features_start_market_minute': 60,
-    #         'prediction_frequency_ndays': 1,
-    #         'prediction_market_minute': 60,
-    #         'target_delta_ndays': 1,
-    #         'target_market_minute': 60,
-    #     },
-    #     'train_path': FIXTURE_DESTINATION_DIR,
-    #     'covariance_method': 'NERCOME',
-    #     'covariance_ndays': 9,
-    #     'model_save_path': FIXTURE_DESTINATION_DIR,
-    #     'tensorboard_log_path': FIXTURE_DESTINATION_DIR,
-    #     'd_type': 'float32',
-    #     'tf_type': 32,
-    #     'random_seed': 0,
-    #
-    #     # Training specific
-    #     'predict_single_shares': True,
-    #     'n_epochs': 1,
-    #     'n_retrain_epochs': 1,
-    #     'learning_rate': 2e-3,
-    #     'batch_size': 100,
-    #     'cost_type': 'bayes',
-    #     'n_train_passes': 30,
-    #     'n_eval_passes': 100,
-    #     'resume_training': False,
-    #     'classify_per_series': False,
-    #     'normalise_per_series': False,
-    #
-        # Topology
-        # 'n_series': 3,
-        # 'nassets': 3,
-        # 'n_features_per_series': 271,
-        # 'n_forecasts': 1,
-        # 'n_classification_bins': 12,
-        # 'layer_heights': [270, 270],
-        # 'layer_widths': [3, 3],
-        # 'activation_functions': ['relu', 'relu'],
-    #
-    #     # Initial conditions
-    #     'INITIAL_ALPHA': 0.2,
-    #     'INITIAL_WEIGHT_UNCERTAINTY': 0.4,
-    #     'INITIAL_BIAS_UNCERTAINTY': 0.4,
-    #     'INITIAL_WEIGHT_DISPLACEMENT': 0.1,
-    #     'INITIAL_BIAS_DISPLACEMENT': 0.4,
-    #     'USE_PERFECT_NOISE': True,
-    #
-    #     # Priors
-    #     'double_gaussian_weights_prior': False,
-    #     'wide_prior_std': 1.2,
-    #     'narrow_prior_std': 0.05,
-    #     'spike_slab_weighting': 0.5,
-    #
-    #     'use_gpu': False,
-    #     'n_res_blocks': 6,
-    #     'do_kernel_regularisation': True
-    # }
 
     return configuration
 
@@ -236,15 +159,15 @@ def default_scheduling_config():
     return {
         'prediction_frequency':
             {
-                'frequency_type': 'DAILY',
+                'frequency_type': 'MINUTE',
                 'days_offset': 0,
-                'minutes_offset': 60
+                'minutes_offset': 15
             },
         'training_frequency':
             {
-                'frequency_type': 'DAILY',
+                'frequency_type': 'WEEKLY',
                 'days_offset': 0,
-                'minutes_offset': 60
+                'minutes_offset': 15
             }
     }
 

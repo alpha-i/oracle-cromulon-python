@@ -2,6 +2,10 @@ import os
 from datetime import datetime, timedelta
 from unittest import TestCase
 
+# this is for silencing a matlab error
+import matplotlib
+matplotlib.use('Agg')
+
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 from alphai_cromulon_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
@@ -28,7 +32,7 @@ class TestCromulon(TestCase):
     def _prepare_data_for_test():
         start_date = '20140102'  # these are values for the resources/sample_hdf5.h5
         end_date = '20140228'
-        symbols = ['AAPL', 'INTC', 'MSFT']
+        symbols = ['AAPL']
         exchange_name = 'NYSE'
         fill_limit = 10
         resample_rule = '15T'
