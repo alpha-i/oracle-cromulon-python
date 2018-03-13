@@ -2,8 +2,6 @@ import os
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import pandas as pd
-
 from alphai_cromulon_oracle import DATETIME_FORMAT_COMPACT
 from alphai_cromulon_oracle.oracle import TRAIN_FILE_NAME_TEMPLATE
 
@@ -97,7 +95,7 @@ class TestCromulon(TestCase):
 
         execution_time = datetime(2017, 6, 7, 9) + timedelta(minutes=60)
 
-        _, predict_data = self._prepare_data_for_test()
+        predict_data = self._prepare_data_for_test()
         self.assertRaises(
             ValueError,
             oracle.predict,

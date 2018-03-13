@@ -147,7 +147,7 @@ class CromulonOracle(AbstractOracle):
             execution_time,
         ))
 
-        train_x_dict, train_y_dict = self._data_transformation.create_train_data(data)
+        train_x_dict, train_y_dict, = self._data_transformation.create_train_data(data)
 
         logger.info("Preprocessing training data")
         train_x = self._preprocess_inputs(train_x_dict)
@@ -237,8 +237,7 @@ class CromulonOracle(AbstractOracle):
         for i in range(self._topology.n_forecasts):
             temp_timestamp = deepcopy(target_timestamp)
             target_timestamps.append(temp_timestamp)
-            target_delta_hours = int(self._data_transformation.target_delta_ndays * 24)
-            target_timestamp += timedelta(hours=target_delta_hours)
+            target_timestamp += self._data_transformation.target_delta
 
         return predict_y, symbols, target_timestamps
 

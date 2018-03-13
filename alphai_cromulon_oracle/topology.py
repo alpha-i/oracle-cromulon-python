@@ -232,16 +232,14 @@ class Topology(object):
 
     def _build_layers(self, layer_depths, layer_heights, layer_widths, activation_functions, layer_types=None):
         """
-        :param activation_functions:
-        :param n_series:
-        :param n_features_per_series:
-        :param n_forecasts:
-        :param n_classification_bins:
+
+        :param layer_depths:
         :param layer_heights:
         :param layer_widths:
+        :param activation_functions:
+        :param layer_types:
         :return:
         """
-
         layers = []
         n_layers = len(activation_functions)
         current_n_kernels = self.n_kernels

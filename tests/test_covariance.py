@@ -4,7 +4,7 @@ from tests.helpers import (create_fixtures, destroy_fixtures, read_hdf5_into_dic
 import pandas as pd
 from alphai_cromulon_oracle.covariance import estimate_covariance, DEFAULT_NUM_REALISATIONS_MULTIPLICATION_FACTOR, \
     returns_minutes_after_market_open_data_frame
-from alphai_feature_generation.transformation import FinancialDataTransformation, GymDataTransformation
+from alphai_feature_generation.transformation import GymDataTransformation
 
 from sklearn.covariance import GraphLassoCV
 import numpy as np
@@ -40,6 +40,7 @@ class TestCrocubot(TestCase):
                     'transformation': {'name': 'log-return'},
                     'is_target': True,
                     'local': False,
+                    'length': 5
                 },
             ],
             'fill_limit': 0,
